@@ -178,14 +178,30 @@ console.log('\ncontent');
   const n = SCENE.interactables.length;
   check(`scene meets the density floor (${n} interactables, floor 12)`, n >= 12);
 
-  const positions = [...SCENE.interactables.map((i) => i.t), ...SCENE.npcs.map((x) => x.t)].sort(
-    (a, b) => a - b,
+  // Ground separation, using the same weighted metric the game targets with.
+  // Two targets closer together than the interaction reach means the nearer one
+  // always wins and the other can never be selected.
+  const REACH = 0.085;
+  const pts = [
+    ...SCENE.interactables.map((i) => ({ id: i.id, x: i.x, z: i.z })),
+    ...SCENE.npcs.map((n) => ({ id: n.id, x: n.x, z: n.z })),
+  ];
+  let worst = { a: '', b: '', d: 1 };
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const d = Math.hypot(pts[i].x - pts[j].x, (pts[i].z - pts[j].z) * 0.75);
+      if (d < worst.d) worst = { a: pts[i].id, b: pts[j].id, d };
+    }
+  }
+  check(
+    `no target is shadowed by a neighbour (closest pair ${worst.d.toFixed(3)})`,
+    worst.d >= REACH,
+    `${worst.a} / ${worst.b}`,
   );
-  let minGap = 1;
-  for (let i = 1; i < positions.length; i++) minGap = Math.min(minGap, positions[i] - positions[i - 1]);
-  // Interaction reach is 0.045 either side, so anything closer than 0.045
-  // apart is unreachable — the nearer target always wins.
-  check(`no target is shadowed by a neighbour (min gap ${minGap.toFixed(3)})`, minGap >= 0.045);
+
+  const outside = pts.filter((p) => p.x < 0.05 || p.x > 0.95 || p.z < 0.1 || p.z > 0.82);
+  check('every target is inside the walkable bounds', outside.length === 0,
+    outside.map((p) => p.id).join(', '));
 }
 
 console.log(failures === 0 ? '\nall checks passed' : `\n${failures} FAILED`);

@@ -147,7 +147,7 @@ export class Overlay {
 
     const hint = document.createElement('div');
     hint.className = 'hint';
-    hint.textContent = '← → walk · E look · ↑ ↓ choose · Enter confirm · J what remains';
+    hint.textContent = '← → ↑ ↓ or WASD to walk · E look · Enter confirm · J what remains';
     root.appendChild(hint);
   }
 

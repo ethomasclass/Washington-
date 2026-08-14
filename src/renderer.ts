@@ -102,7 +102,38 @@ function textureFrom(canvas: HTMLCanvasElement): THREE.CanvasTexture {
 interface Layer {
   mesh: THREE.Mesh;
   parallax: number;
+  /** Where this layer sits in the world's depth, 0 = at the camera, 1 = horizon. */
+  depth: number;
 }
+
+/**
+ * The ground plane.
+ *
+ * Actors live at (x, z): x runs across the frame, z runs into it — 0 at the
+ * near edge, 1 at the horizon. Both the vertical placement and the scale come
+ * from z through the same easing curve, which is what makes walking "up" the
+ * lawn read as walking away rather than as sliding upward.
+ */
+const HORIZON = 0.34; // fraction of frame height, locked project-wide
+const NEAR_Y = -3.45; // view-space y of the near edge of walkable ground
+const FIGURE_H = 2.6; // world height of a figure at scale 1
+const NEAR_SCALE = 1.0;
+const FAR_SCALE = 0.46;
+/** How much the walkable width narrows toward the horizon. */
+const FAR_SPREAD = 0.40;
+/** The lawn falls away west toward the river. */
+const SLOPE = 0.22;
+const EASE = 1.55;
+
+/** Depth of each painted layer, so actors can pass behind them. */
+const LAYER_DEPTH = [1.0, 0.95, 0.82, 0.44, 0.02];
+
+export interface GroundPos {
+  x: number;
+  z: number;
+}
+
+const horizonY = (): number => 9 / 2 - HORIZON * 9;
 
 export class DioramaRenderer {
   readonly renderer: THREE.WebGLRenderer;
@@ -110,7 +141,8 @@ export class DioramaRenderer {
   private camera: THREE.OrthographicCamera;
   private layers: Layer[] = [];
   private player!: THREE.Mesh;
-  private npcs: { mesh: THREE.Mesh; t: number }[] = [];
+  private npcs: { mesh: THREE.Mesh; pos: GroundPos }[] = [];
+
 
   private target: THREE.WebGLRenderTarget;
   private postScene = new THREE.Scene();
@@ -118,8 +150,9 @@ export class DioramaRenderer {
   private postMat: THREE.ShaderMaterial;
 
   private breath = 0;
+  private breathZ = 0;
 
-  constructor(canvas: HTMLCanvasElement, npcPositions: number[] = []) {
+  constructor(canvas: HTMLCanvasElement, npcPositions: GroundPos[] = []) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.scene.background = new THREE.Color(PAPER.WARM);
@@ -141,7 +174,7 @@ export class DioramaRenderer {
       mesh.position.z = -i * 0.5;
       mesh.renderOrder = i;
       this.scene.add(mesh);
-      this.layers.push({ mesh, parallax: PARALLAX[i] });
+      this.layers.push({ mesh, parallax: PARALLAX[i], depth: LAYER_DEPTH[i] });
     });
 
     this.buildActors(npcPositions);
@@ -169,7 +202,7 @@ export class DioramaRenderer {
     addEventListener('resize', () => this.resize());
   }
 
-  private buildActors(npcPositions: number[]): void {
+  private buildActors(npcPositions: GroundPos[]): void {
     const mk = (canvas: HTMLCanvasElement, z: number) => {
       const tex = textureFrom(canvas);
       const aspect = canvas.width / canvas.height;
@@ -189,40 +222,68 @@ export class DioramaRenderer {
     this.player = mk(characterCutout(MEANING.CONTINENTAL_BLUE, 101), -1.2);
 
     const coats = ['#6B4F35', '#7A5C3E', '#5C6673', '#55627A', '#6E5B45'];
-    npcPositions.forEach((t, i) => {
-      const mesh = mk(characterCutout(coats[i % coats.length], 202 + i * 101), -1.25 + i * 0.01);
-      this.npcs.push({ mesh, t });
+    npcPositions.forEach((pos, i) => {
+      const mesh = mk(characterCutout(coats[i % coats.length], 202 + i * 101), -1.25);
+      this.npcs.push({ mesh, pos });
     });
   }
 
-  /** Place an actor on the walk-plane: horizontal position, ground line, scale. */
-  private place(mesh: THREE.Mesh, t: number): void {
-    const x = (t - 0.5) * VIEW_W * 0.86;
-    // The walk-plane rises slightly toward the centre of frame, so figures
-    // further "back" sit higher and read smaller.
-    const depth = 1 - Math.abs(t - 0.5) * 0.5;
-    const scale = 0.82 + 0.18 * (1 - depth);
-    mesh.scale.setScalar(scale);
-    const h = 2.6 * scale;
-    mesh.position.x = x;
-    mesh.position.y = -VIEW_H / 2 + h / 2 + 0.9 + (1 - depth) * 0.5;
+  /** Draw order for an actor at depth z: after every layer further away. */
+  private orderFor(z: number): number {
+    let n = 0;
+    for (const l of this.layers) if (l.depth > z) n++;
+    return n - 0.5;
   }
 
-  setPlayerT(t: number): void {
-    this.place(this.player, t);
-    for (const n of this.npcs) this.place(n.mesh, n.t);
+  /**
+   * Ground projection. Returns view-space x, the y of the actor's feet, and the
+   * scale — all three driven by the same easing of z, so a figure that halves
+   * in size also rises toward the horizon by the matching amount.
+   */
+  private project(pos: GroundPos): { x: number; y: number; scale: number } {
+    const f = Math.pow(1 - pos.z, EASE);
+    const scale = FAR_SCALE + (NEAR_SCALE - FAR_SCALE) * f;
+    const spread = FAR_SPREAD + (1 - FAR_SPREAD) * f;
+    const x = (pos.x - 0.5) * VIEW_W * 0.94 * spread;
+    const y = horizonY() + (NEAR_Y - horizonY()) * f - SLOPE * (0.5 - pos.x) * f;
+    return { x, y, scale };
+  }
 
-    // Parallax breath: the frame shifts against the walk, capped at 64px.
-    const target = (t - 0.5) * 2;
-    this.breath += (target - this.breath) * 0.12;
+  /** Screen pixels for a ground position, for placing DOM prompts. */
+  screenPos(pos: GroundPos): { x: number; y: number } {
+    const { x, y, scale } = this.project(pos);
+    const v = new THREE.Vector3(x, y + FIGURE_H * scale, 0).project(this.camera);
+    return {
+      x: ((v.x + 1) / 2) * innerWidth,
+      y: ((1 - v.y) / 2) * innerHeight,
+    };
+  }
+
+  private place(mesh: THREE.Mesh, pos: GroundPos): void {
+    const { x, y, scale } = this.project(pos);
+    mesh.scale.setScalar(scale);
+    mesh.position.x = x;
+    mesh.position.y = y + (FIGURE_H * scale) / 2;
+    mesh.renderOrder = this.orderFor(pos.z);
+  }
+
+  setPlayerPos(pos: GroundPos): void {
+
+    this.place(this.player, pos);
+    for (const n of this.npcs) this.place(n.mesh, n.pos);
+
+    // Parallax breath on both axes. Walking across the frame slides the stack
+    // sideways; walking into it pushes the near layers down and out, which is
+    // what sells the ground as a plane rather than a line.
+    const targetX = (pos.x - 0.5) * 2;
+    const targetY = (0.35 - pos.z) * 2;
+    this.breath += (targetX - this.breath) * 0.12;
+    this.breathZ += (targetY - this.breathZ) * 0.10;
     const px = (PARALLAX_MAX_PX / 1600) * VIEW_W;
     for (const l of this.layers) {
       l.mesh.position.x = -this.breath * l.parallax * px;
+      l.mesh.position.y = -this.breathZ * l.parallax * px * 0.42;
     }
-  }
-
-  npcPositions(): number[] {
-    return this.npcs.map((n) => n.t);
   }
 
   setMood(mood: number): void {

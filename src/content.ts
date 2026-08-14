@@ -25,8 +25,10 @@ import type { VoiceId } from './palette';
 export interface Interactable {
   id: string;
   label: string;
-  /** Position along the walk-plane, 0..1. */
-  t: number;
+  /** Across the frame, 0..1. */
+  x: number;
+  /** Into the frame: 0 at the near edge, 1 at the horizon. */
+  z: number;
   examine: string;
   /** Reading this sets a knowledge flag. Documents never move stats. */
   grants?: string;
@@ -69,7 +71,8 @@ export interface NpcThread {
   id: string;
   /** Shown on the interaction prompt. "speak" tells the player nothing. */
   name: string;
-  t: number;
+  x: number;
+  z: number;
   lines: DialogueLine[];
   decision?: Decision;
   /** Lines shown once the thread's decision is done. */
@@ -122,7 +125,8 @@ export const SCENE = {
     {
       id: 'scaffolding',
       label: 'the scaffolding',
-      t: 0.553,
+      x: 0.553,
+      z: 0.79,
       examine:
         'The north wing stands open to the weather. Sixteen years you have been building this ' +
         'house and it is still not finished.',
@@ -131,7 +135,8 @@ export const SCENE = {
     {
       id: 'newspaper',
       label: 'a Boston newspaper',
-      t: 0.29,
+      x: 0.29,
+      z: 0.2,
       examine:
         'Three weeks old by the time it reached the Potomac. Concord and Lexington — a column of ' +
         'regulars harried nineteen miles back to Charlestown by farmers who would not stand and ' +
@@ -141,7 +146,8 @@ export const SCENE = {
     {
       id: 'ledger',
       label: 'the farm ledger',
-      t: 0.395,
+      x: 0.395,
+      z: 0.27,
       examine:
         'Wheat, herring, flour to the West Indies, in your own hand. Every entry assumes you will ' +
         'be here in the autumn to make the next one.',
@@ -150,7 +156,8 @@ export const SCENE = {
     {
       id: 'commission',
       label: 'the Fairfax commission',
-      t: 0.343,
+      x: 0.343,
+      z: 0.5,
       examine:
         'Command of the Fairfax Independent Company. You did not ask for it either. Four counties ' +
         'have now named you to something, and none of them waited for an answer.',
@@ -159,7 +166,8 @@ export const SCENE = {
     {
       id: 'uniform',
       label: 'the new uniform',
-      t: 0.448,
+      x: 0.448,
+      z: 0.58,
       examine:
         'Blue faced with buff, cut to your own specification, hanging where it can be seen. You ' +
         'have not said why you had it made. Neither has anyone asked.',
@@ -168,7 +176,8 @@ export const SCENE = {
     {
       id: 'surveyors_chest',
       label: "the surveyor's chest",
-      t: 0.133,
+      x: 0.133,
+      z: 0.3,
       examine:
         'Chain, compass, and the Ohio field books from when you were seventeen. You know that ' +
         'country better than any man in Virginia. Ground is a thing you can read.',
@@ -177,7 +186,8 @@ export const SCENE = {
     {
       id: 'braddock',
       label: "Braddock's sash",
-      t: 0.71,
+      x: 0.71,
+      z: 0.19,
       examine:
         'Crimson silk, given to you as he was dying on the Monongahela road. Two horses shot ' +
         'under you that day, four balls through your coat, and nine hundred men lost in three hours.',
@@ -186,7 +196,8 @@ export const SCENE = {
     {
       id: 'lund_letter',
       label: "Lund's accounts",
-      t: 0.605,
+      x: 0.605,
+      z: 0.24,
       examine:
         'What the estate owes and what it is owed. The joiners are unpaid. Whoever runs this ' +
         'place next will be running it on credit.',
@@ -195,7 +206,8 @@ export const SCENE = {
     {
       id: 'dock',
       label: 'the landing',
-      t: 0.08,
+      x: 0.08,
+      z: 0.72,
       examine:
         'The Potomac runs flat and brown below the bluff. The herring come up in April in numbers ' +
         'that beggar description. You will miss them next year.',
@@ -203,13 +215,15 @@ export const SCENE = {
     {
       id: 'paddock',
       label: 'the paddock rail',
-      t: 0.868,
+      x: 0.868,
+      z: 0.69,
       examine: 'Nelson is in the near paddock and out of temper. He will be saddled before the week is out.',
     },
     {
       id: 'mill',
       label: 'the mill road',
-      t: 0.92,
+      x: 0.92,
+      z: 0.31,
       examine:
         'The road runs three miles to the gristmill. Everything you have built here is a machine ' +
         'for turning this ground into money, and it only runs if someone is standing over it.',
@@ -217,7 +231,8 @@ export const SCENE = {
     {
       id: 'greenhouse',
       label: 'the garden wall',
-      t: 0.185,
+      x: 0.185,
+      z: 0.63,
       examine:
         'Seedlings under glass, half of them experiments. You wrote to England for the seed and ' +
         'the war may well arrive before the answer does.',
@@ -225,7 +240,8 @@ export const SCENE = {
     {
       id: 'chariot',
       label: 'the chariot',
-      t: 0.763,
+      x: 0.763,
+      z: 0.55,
       examine:
         'Packed for Philadelphia. Whatever the Congress decides, you are going — the only question ' +
         'is what you are when you come back.',
@@ -236,7 +252,8 @@ export const SCENE = {
     {
       id: 'martha',
       name: 'Martha',
-      t: 0.238,
+      x: 0.238,
+      z: 0.38,
       lines: [
         {
           speaker: 'Martha',
@@ -316,7 +333,8 @@ export const SCENE = {
     {
       id: 'lund',
       name: 'Lund',
-      t: 0.658,
+      x: 0.658,
+      z: 0.46,
       lines: [
         {
           speaker: 'Lund Washington',
@@ -338,7 +356,8 @@ export const SCENE = {
     {
       id: 'lee',
       name: 'William Lee',
-      t: 0.815,
+      x: 0.815,
+      z: 0.41,
       lines: [
         {
           speaker: 'William Lee',
@@ -357,7 +376,8 @@ export const SCENE = {
     {
       id: 'messenger',
       name: 'the messenger',
-      t: 0.5,
+      x: 0.5,
+      z: 0.34,
       lines: [
         {
           speaker: 'Congress messenger',

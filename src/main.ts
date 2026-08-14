@@ -12,7 +12,7 @@
  * What is deliberately fake: all art, and everything past scene MV-01.
  */
 
-import { DioramaRenderer } from './renderer';
+import { DioramaRenderer, type GroundPos } from './renderer';
 import { SCENE, type Decision, type NpcThread } from './content';
 import { CSS, Overlay, type OptionView, type VoiceView } from './ui';
 import {
@@ -34,7 +34,10 @@ document.head.appendChild(style);
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
 const overlayRoot = document.getElementById('overlay') as HTMLElement;
 
-const renderer = new DioramaRenderer(canvas, SCENE.npcs.map((n) => n.t));
+const renderer = new DioramaRenderer(
+  canvas,
+  SCENE.npcs.map((n) => ({ x: n.x, z: n.z })),
+);
 const overlay = new Overlay(overlayRoot, SCENE.title, SCENE.subtitle);
 
 const resumed = loadAutosave();
@@ -44,43 +47,52 @@ takeSnapshot(state);
 /** Interactables looked at this session, for the journal. */
 const seen = new Set<string>();
 
-/** Player position along the walk-plane, as a scalar 0..1. */
-let t = 0.5;
-const held = { left: false, right: false };
+/** Player position on the ground plane. */
+const pos: GroundPos = { x: 0.5, z: 0.34 };
+const held = { left: false, right: false, up: false, down: false };
 let busy = false;
 
-const WALK_SPEED = 0.34; // plane-widths per second
-const REACH = 0.045;
+const WALK_X = 0.30; // frame-widths per second
+const WALK_Z = 0.22; // depth is slower; it covers less apparent ground
+const REACH = 0.085;
+
+/** Walkable bounds. Beyond z = 0.82 you would be inside the house. */
+const BOUND = { x0: 0.05, x1: 0.95, z0: 0.10, z1: 0.82 };
+
+/**
+ * Ground distance. Depth counts for slightly less than width because the
+ * walkable area is much wider than it is deep, so a metre "into" the frame
+ * reads as a shorter step than a metre across it.
+ */
+const groundDist = (a: GroundPos, b: GroundPos): number =>
+  Math.hypot(a.x - b.x, (a.z - b.z) * 0.75);
 
 interface Target {
   kind: 'thing' | 'npc';
   id: string;
   label: string;
-  t: number;
+  pos: GroundPos;
 }
 
 function nearest(): Target | null {
   let best: Target | null = null;
   let bestD = REACH;
   for (const it of SCENE.interactables) {
-    const d = Math.abs(it.t - t);
+    const d = groundDist(pos, it);
     if (d < bestD) {
       bestD = d;
-      best = { kind: 'thing', id: it.id, label: it.label, t: it.t };
+      best = { kind: 'thing', id: it.id, label: it.label, pos: { x: it.x, z: it.z } };
     }
   }
   for (const n of SCENE.npcs) {
-    const d = Math.abs(n.t - t);
+    const d = groundDist(pos, n);
     if (d < bestD) {
       bestD = d;
-      best = { kind: 'npc', id: n.id, label: `speak to ${n.name}`, t: n.t };
+      best = { kind: 'npc', id: n.id, label: `speak to ${n.name}`, pos: { x: n.x, z: n.z } };
     }
   }
   return best;
 }
-
-const screenXFor = (planeT: number): number =>
-  (planeT - 0.5) * innerWidth * 0.86 + innerWidth / 2;
 
 const refreshCode = (): void => overlay.setCode(encode(state));
 
@@ -219,9 +231,19 @@ function interact(): void {
   });
 }
 
+const KEYS: Record<string, keyof typeof held> = {
+  ArrowLeft: 'left', a: 'left', A: 'left',
+  ArrowRight: 'right', d: 'right', D: 'right',
+  ArrowUp: 'up', w: 'up', W: 'up',
+  ArrowDown: 'down', s: 'down', S: 'down',
+};
+
 addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') held.left = true;
-  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') held.right = true;
+  const k = KEYS[e.key];
+  if (k && !busy) {
+    held[k] = true;
+    e.preventDefault();
+  }
   if (!busy && (e.key === 'j' || e.key === 'J')) {
     e.preventDefault();
     openJournal();
@@ -233,8 +255,12 @@ addEventListener('keydown', (e) => {
   }
 });
 addEventListener('keyup', (e) => {
-  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') held.left = false;
-  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') held.right = false;
+  const k = KEYS[e.key];
+  if (k) held[k] = false;
+});
+/** A panel stealing focus must not leave the player walking into a wall. */
+addEventListener('blur', () => {
+  held.left = held.right = held.up = held.down = false;
 });
 
 let last = performance.now();
@@ -243,17 +269,28 @@ function frame(now: number): void {
   last = now;
 
   if (!busy) {
-    if (held.left) t -= WALK_SPEED * dt;
-    if (held.right) t += WALK_SPEED * dt;
-    t = Math.max(0.04, Math.min(0.96, t));
+    let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+    let dz = (held.up ? 1 : 0) - (held.down ? 1 : 0);
+    if (dx && dz) {
+      // Normalise the diagonal so cutting a corner is not the fast route.
+      const k = Math.SQRT1_2;
+      dx *= k;
+      dz *= k;
+    }
+    pos.x = Math.max(BOUND.x0, Math.min(BOUND.x1, pos.x + dx * WALK_X * dt));
+    pos.z = Math.max(BOUND.z0, Math.min(BOUND.z1, pos.z + dz * WALK_Z * dt));
   }
 
-  renderer.setPlayerT(t);
+  renderer.setPlayerPos(pos);
   renderer.setMood(moodScalar(state.snapshot));
 
   const near = busy ? null : nearest();
-  if (near) overlay.showPrompt(near.label, screenXFor(near.t), innerHeight * 0.58);
-  else overlay.hidePrompt();
+  if (near) {
+    const p = renderer.screenPos(near.pos);
+    overlay.showPrompt(near.label, p.x, p.y - 14);
+  } else {
+    overlay.hidePrompt();
+  }
 
   renderer.render();
   requestAnimationFrame(frame);

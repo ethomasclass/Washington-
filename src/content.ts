@@ -81,11 +81,42 @@ const MESSENGER = { portraitSeed: 303, coat: '#55627A' };
 const LUND = { portraitSeed: 404, coat: '#7A5C3E' };
 const LEE = { portraitSeed: 505, coat: '#5C6673' };
 
+/**
+ * Business the act will not close without. Everything else in the scene is
+ * optional, and the optional things are what open the locked choices — so a
+ * student who only does the business gets a thinner version of the same act
+ * rather than a shorter one.
+ */
+export interface Business {
+  /** The decision that settles it. */
+  decision: string;
+  /** How Washington thinks about it while it is unsettled. */
+  pending: string;
+}
+
 export const SCENE = {
   id: 'MV-01',
   act: 1,
   title: 'Mount Vernon — the west front',
   subtitle: 'May 1775',
+
+  /** Shown once, on arrival, before the player has control. */
+  opening: [
+    'You have been home since the autumn, and you have not been still for a day of it.',
+    'A rider came up from the ferry this morning with a letter from Philadelphia, and the ' +
+      'house has been quiet in a particular way ever since.',
+  ],
+
+  business: [
+    { decision: 'A1-D2', pending: 'Martha is waiting on an answer you have not given her' },
+    { decision: 'A1-D1', pending: 'the messenger is waiting on an answer for Philadelphia' },
+  ] as Business[],
+
+  /** The object that ends the act. */
+  exit: 'chariot',
+
+  /** What Washington thinks when there is nothing left to settle. */
+  settled: 'Nothing is left here to settle. The chariot is packed.',
 
   interactables: [
     {

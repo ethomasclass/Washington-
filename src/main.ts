@@ -37,8 +37,12 @@ const overlayRoot = document.getElementById('overlay') as HTMLElement;
 const renderer = new DioramaRenderer(canvas, SCENE.npcs.map((n) => n.t));
 const overlay = new Overlay(overlayRoot, SCENE.title, SCENE.subtitle);
 
-const state: GameState = loadAutosave() ?? initialState();
+const resumed = loadAutosave();
+const state: GameState = resumed ?? initialState();
 takeSnapshot(state);
+
+/** Interactables looked at this session, for the journal. */
+const seen = new Set<string>();
 
 /** Player position along the walk-plane, as a scalar 0..1. */
 let t = 0.5;
@@ -79,6 +83,29 @@ const screenXFor = (planeT: number): number =>
   (planeT - 0.5) * innerWidth * 0.86 + innerWidth / 2;
 
 const refreshCode = (): void => overlay.setCode(encode(state));
+
+/** Business still owed. Optional discoveries are deliberately not listed. */
+const owed = (): string[] =>
+  SCENE.business.filter((b) => !state.decisions.has(b.decision)).map((b) => b.pending);
+
+function refreshIntent(): void {
+  const left = owed();
+  if (!left.length) {
+    overlay.setIntent(SCENE.settled);
+    return;
+  }
+  // Sentence-case the first clause, join with "and", end with a full stop.
+  const joined = left.length === 1 ? left[0] : `${left[0]}, and ${left[1]}`;
+  overlay.setIntent(`${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`);
+}
+
+function openJournal(): void {
+  busy = true;
+  const read = SCENE.interactables.filter((i) => seen.has(i.id)).map((i) => i.label);
+  overlay.showJournal(read, owed(), () => {
+    busy = false;
+  });
+}
 
 /**
  * Two to four voices speak, loudest first. A voice too quiet to reach the
@@ -122,6 +149,7 @@ function runDecision(d: Decision, after: () => void): void {
         // The world re-reads the snapshot at act boundaries. The prototype
         // takes it immediately so the wash visibly answers the choice.
         takeSnapshot(state);
+        refreshIntent();
         busy = false;
         after();
       });
@@ -167,10 +195,25 @@ function interact(): void {
 
   const it = SCENE.interactables.find((x) => x.id === near.id)!;
   busy = true;
+  seen.add(it.id);
   // Documents unlock options. They never grant stats.
   if (it.grants) state.knowledge.add(it.grants);
   autosave(state);
   refreshCode();
+
+  // The exit reports what is still owed rather than refusing to open. Nothing
+  // in this game blocks the player; it only tells them what they are leaving.
+  if (it.id === SCENE.exit) {
+    const left = owed();
+    const text = left.length
+      ? `${it.examine} But ${left.join(', and ')}.`
+      : `${it.examine}\n\nYou could leave now. Nothing here is unfinished.`;
+    overlay.showExamine(it.label, text, () => {
+      busy = false;
+    });
+    return;
+  }
+
   overlay.showExamine(it.label, it.examine, () => {
     busy = false;
   });
@@ -179,6 +222,11 @@ function interact(): void {
 addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') held.left = true;
   if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') held.right = true;
+  if (!busy && (e.key === 'j' || e.key === 'J')) {
+    e.preventDefault();
+    openJournal();
+    return;
+  }
   if (!busy && (e.key === 'e' || e.key === 'E' || e.key === ' ')) {
     e.preventDefault();
     interact();
@@ -212,4 +260,14 @@ function frame(now: number): void {
 }
 
 refreshCode();
+refreshIntent();
 requestAnimationFrame(frame);
+
+// The arrival card runs once per fresh start. A student resuming on a new
+// Chromebook next period should not sit through the scene-setting again.
+if (!resumed) {
+  busy = true;
+  overlay.showOpening(SCENE.title, SCENE.subtitle, SCENE.opening, () => {
+    busy = false;
+  });
+}

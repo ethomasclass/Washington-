@@ -37,6 +37,23 @@ export const CSS = `
                  letter-spacing: .09em; font-size: 15px; color: ${INK.LIGHT}; }
   .plate-title b { display: block; font-size: 20px; color: ${INK.SETTLED}; font-weight: 600; }
 
+  /* Washington's own sense of what is unfinished. Not an objective marker —
+     it is written as a thought, and it names people rather than tasks. */
+  .intent { position: absolute; top: 82px; left: 34px; max-width: 40ch;
+            font-size: 16px; line-height: 1.5; font-style: italic; color: ${INK.FADED};
+            border-left: 2px solid ${PAPER.SHADOW}; padding-left: 12px; }
+
+  .journal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+             width: min(680px, calc(100vw - 64px)); background: ${PAPER.BRIGHT};
+             border: 1px solid ${INK.FADED}; box-shadow: 0 18px 44px rgba(36,28,20,.22);
+             padding: 26px 30px; pointer-events: auto; }
+  .journal h2 { margin: 0 0 4px; font-size: 20px; font-variant: small-caps;
+                letter-spacing: .08em; font-weight: 600; }
+  .journal h3 { margin: 18px 0 6px; font-size: 14px; font-variant: small-caps;
+                letter-spacing: .1em; color: ${INK.LIGHT}; font-weight: 700; }
+  .journal ul { margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }
+  .journal .none { font-size: 17px; color: ${INK.LIGHT}; font-style: italic; }
+
   .hint { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
           font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .04em; }
 
@@ -130,8 +147,53 @@ export class Overlay {
 
     const hint = document.createElement('div');
     hint.className = 'hint';
-    hint.textContent = '← → walk · E look · ↑ ↓ choose · Enter confirm';
+    hint.textContent = '← → walk · E look · ↑ ↓ choose · Enter confirm · J what remains';
     root.appendChild(hint);
+  }
+
+  /**
+   * The standing sense of what is unfinished, in Washington's own voice.
+   * Deliberately not a quest marker: it names the people waiting on him rather
+   * than issuing tasks, and it never points at the optional half of the scene.
+   */
+  setIntent(text: string): void {
+    let el = this.root.querySelector<HTMLElement>('.intent');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'intent';
+      this.root.appendChild(el);
+    }
+    el.textContent = text;
+  }
+
+  /** Arrival card — the situation, before the player has control. */
+  showOpening(title: string, subtitle: string, lines: string[], onDone: () => void): void {
+    const p = this.makePanel(true);
+    p.innerHTML =
+      `<div class="body"><div class="speaker">${title} · ${subtitle}</div>` +
+      lines.map((l) => `<div class="line" style="margin-bottom:10px">${l}</div>`).join('') +
+      '<div class="continue">press <b>Space</b> to begin</div></div>';
+    this.waitForDismiss(onDone);
+  }
+
+  /** What he has looked at, and what is still owed. Opened on demand. */
+  showJournal(read: string[], owed: string[], onDone: () => void): void {
+    this.clearPanel();
+    const j = document.createElement('div');
+    j.className = 'journal';
+    j.innerHTML =
+      '<h2>What remains</h2>' +
+      '<h3>Owed an answer</h3>' +
+      (owed.length
+        ? `<ul>${owed.map((o) => `<li>${o}</li>`).join('')}</ul>`
+        : '<div class="none">Nothing. You may go when you please.</div>') +
+      '<h3>Looked at today</h3>' +
+      (read.length
+        ? `<ul>${read.map((r) => `<li>${r}</li>`).join('')}</ul>`
+        : '<div class="none">Nothing yet.</div>');
+    this.root.appendChild(j);
+    this.panel = j;
+    this.waitForDismiss(onDone);
   }
 
   private detach(): void {

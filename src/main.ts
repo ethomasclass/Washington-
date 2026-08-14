@@ -7,14 +7,14 @@
  *
  * What is deliberately real here: the layer stack and parallax, the walk-plane,
  * the wash-mood shader driven by hidden stats, the documents-unlock-options
- * rule, the council chorus with loudness-ordered voices, and the passport save.
+ * rule, the two-beat council decision, and the passport save.
  *
  * What is deliberately fake: all art, and everything past scene MV-01.
  */
 
 import { DioramaRenderer } from './renderer';
 import { SCENE, type Decision, type NpcThread } from './content';
-import { CSS, Overlay, type OptionView } from './ui';
+import { CSS, Overlay, type OptionView, type VoiceView } from './ui';
 import {
   applyDelta,
   DROP_BELOW,
@@ -23,9 +23,9 @@ import {
   moodScalar,
   takeSnapshot,
   type GameState,
+  type StatId,
 } from './state';
 import { autosave, encode, loadAutosave } from './passport';
-import type { VoiceId } from './palette';
 
 const style = document.createElement('style');
 style.textContent = CSS;
@@ -34,7 +34,7 @@ document.head.appendChild(style);
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
 const overlayRoot = document.getElementById('overlay') as HTMLElement;
 
-const renderer = new DioramaRenderer(canvas);
+const renderer = new DioramaRenderer(canvas, SCENE.npcs.map((n) => n.t));
 const overlay = new Overlay(overlayRoot, SCENE.title, SCENE.subtitle);
 
 const state: GameState = loadAutosave() ?? initialState();
@@ -42,15 +42,21 @@ takeSnapshot(state);
 
 /** Player position along the walk-plane, as a scalar 0..1. */
 let t = 0.5;
-let held = { left: false, right: false };
+const held = { left: false, right: false };
 let busy = false;
-const done = new Set<string>();
 
 const WALK_SPEED = 0.34; // plane-widths per second
-const REACH = 0.06;
+const REACH = 0.045;
 
-function nearest(): { kind: 'thing' | 'npc'; id: string; label: string; t: number } | null {
-  let best: { kind: 'thing' | 'npc'; id: string; label: string; t: number } | null = null;
+interface Target {
+  kind: 'thing' | 'npc';
+  id: string;
+  label: string;
+  t: number;
+}
+
+function nearest(): Target | null {
+  let best: Target | null = null;
   let bestD = REACH;
   for (const it of SCENE.interactables) {
     const d = Math.abs(it.t - t);
@@ -63,22 +69,22 @@ function nearest(): { kind: 'thing' | 'npc'; id: string; label: string; t: numbe
     const d = Math.abs(n.t - t);
     if (d < bestD) {
       bestD = d;
-      best = { kind: 'npc', id: n.id, label: 'speak', t: n.t };
+      best = { kind: 'npc', id: n.id, label: `speak to ${n.name}`, t: n.t };
     }
   }
   return best;
 }
 
-function screenXFor(planeT: number): number {
-  return (planeT - 0.5) * innerWidth * 0.86 + innerWidth / 2;
-}
+const screenXFor = (planeT: number): number =>
+  (planeT - 0.5) * innerWidth * 0.86 + innerWidth / 2;
 
-function refreshCode(): void {
-  overlay.setCode(encode(state));
-}
+const refreshCode = (): void => overlay.setCode(encode(state));
 
-/** Pick 2–4 voices, loudest first, dropping any that are too quiet to speak. */
-function councilFor(d: Decision): { id: VoiceId; line: string }[] {
+/**
+ * Two to four voices speak, loudest first. A voice too quiet to reach the
+ * threshold does not speak at all — that silence is itself a stat readout.
+ */
+function councilFor(d: Decision): VoiceView[] {
   return d.voices
     .map((id) => ({ id, l: loudness(id, state.stats) }))
     .filter((v) => v.l >= DROP_BELOW)
@@ -89,46 +95,49 @@ function councilFor(d: Decision): { id: VoiceId; line: string }[] {
 }
 
 function runDecision(d: Decision, after: () => void): void {
+  const voices = councilFor(d);
   const options: OptionView[] = d.options.map((o) => ({
     id: o.id,
-    text: o.text,
+    label: o.label,
+    full: o.full,
+    favoured: o.favoured,
     locked: !!o.requires && !state.knowledge.has(o.requires),
     lockNote: o.lockNote,
   }));
 
-  overlay.showDecision(
-    d.speaker,
-    d.prompt,
-    { seed: d.portraitSeed, coat: d.coat },
-    councilFor(d),
-    options,
-    (id) => {
+  const portrait = { seed: d.portraitSeed, coat: d.coat };
+
+  // Beat 1: the council argues. Beat 2: you decide.
+  overlay.showCouncil(portrait, voices, () => {
+    overlay.showDecision(d.speaker, d.prompt, portrait, voices, options, (id) => {
       const picked = d.options.find((o) => o.id === id)!;
       // Decisions move stats. Documents never do.
       for (const [stat, delta] of Object.entries(picked.effects)) {
-        applyDelta(state, stat as keyof GameState['stats'], delta as number);
+        applyDelta(state, stat as StatId, delta as number);
       }
       state.decisions.set(d.id, id);
       autosave(state);
       refreshCode();
-      overlay.close();
       overlay.showExamine('the room', picked.result, () => {
-        // The world re-reads the snapshot on the next act boundary. For the
-        // prototype we take it immediately so the wash visibly answers.
+        // The world re-reads the snapshot at act boundaries. The prototype
+        // takes it immediately so the wash visibly answers the choice.
         takeSnapshot(state);
         busy = false;
         after();
       });
-    },
-  );
+    });
+  });
 }
 
 function runThread(n: NpcThread): void {
   busy = true;
+  const settled = !!n.decision && state.decisions.has(n.decision.id);
+  const lines = settled ? (n.after ?? []) : n.lines;
   let i = 0;
+
   const step = (): void => {
-    if (i < n.lines.length) {
-      const line = n.lines[i++];
+    if (i < lines.length) {
+      const line = lines[i++];
       overlay.showLine(
         line.speaker,
         line.text,
@@ -152,8 +161,7 @@ function interact(): void {
   if (!near) return;
 
   if (near.kind === 'npc') {
-    const n = SCENE.npcs.find((x) => x.id === near.id)!;
-    runThread(n);
+    runThread(SCENE.npcs.find((x) => x.id === near.id)!);
     return;
   }
 
@@ -161,7 +169,6 @@ function interact(): void {
   busy = true;
   // Documents unlock options. They never grant stats.
   if (it.grants) state.knowledge.add(it.grants);
-  done.add(it.id);
   autosave(state);
   refreshCode();
   overlay.showExamine(it.label, it.examine, () => {
@@ -196,13 +203,9 @@ function frame(now: number): void {
   renderer.setPlayerT(t);
   renderer.setMood(moodScalar(state.snapshot));
 
-  if (!busy) {
-    const near = nearest();
-    if (near) overlay.showPrompt(near.label, screenXFor(near.t), innerHeight * 0.58);
-    else overlay.hidePrompt();
-  } else {
-    overlay.hidePrompt();
-  }
+  const near = busy ? null : nearest();
+  if (near) overlay.showPrompt(near.label, screenXFor(near.t), innerHeight * 0.58);
+  else overlay.hidePrompt();
 
   renderer.render();
   requestAnimationFrame(frame);

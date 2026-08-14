@@ -14,16 +14,21 @@ import { initialState, type GameState, type StatId } from './state';
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
 const STATS: StatId[] = ['judgment', 'legitimacy', 'loyalty', 'character'];
 
-/** Registry of every flag that can persist. Index is the bit position. */
+/**
+ * Registry of every flag that can persist. Index is the bit position, so this
+ * list is append-only: reordering it invalidates every save code in every
+ * classroom. A flag missing from here silently fails to persist, which is why
+ * passport.test.ts checks the registry against the content.
+ */
 export const FLAG_REGISTRY: string[] = [
-  'doc.a1.commission',
   'doc.a1.boston_clipping',
-  'doc.a1.fairfax_muster',
   'doc.a1.ledger',
+  'doc.a1.commission',
+  'doc.a1.braddock',
+  'doc.a1.accounts',
   'obs.a1.scaffolding',
-  'obs.a1.quarter',
-  'dec.a1.accept_command',
-  'dec.a1.refuse_pay',
+  'obs.a1.uniform',
+  'obs.a1.surveying',
 ];
 
 class BitWriter {

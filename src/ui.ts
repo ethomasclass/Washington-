@@ -1,19 +1,25 @@
 /**
- * The DOM overlay: dialogue, options, council interjections, examine text.
+ * The DOM overlay: dialogue, the council, and the decision UI.
  *
  * The player spends most of the game here, so this is where the design
- * attention goes. Rules honoured from the docs, each of which a document
- * somewhere else got wrong and the critics caught:
+ * attention goes. Rules honoured from the docs, each of which some document
+ * elsewhere got wrong and the critics caught:
  *
  *  - a council voice's ink colours its NAME only. The line beneath is always
- *    INK-SETTLED at 10.66:1. Colour is never the only channel.
- *  - locked options are struck, glyphed and annotated — never greyed. Greying
- *    text below contrast threshold is the most common accessibility failure in
- *    games and we are not committing it.
+ *    INK-SETTLED at 10.66:1. Colour is never the only channel — each voice
+ *    also carries an emblem and a distinct position.
+ *  - locked options are struck, glyphed and annotated at FULL contrast, never
+ *    greyed. Greying text below threshold to indicate state is the most common
+ *    accessibility failure in games and we are not committing it.
  *  - nothing is timed. Not one choice, in eight acts.
+ *
+ * The decision runs in two beats: the council argues, then the choice arrives
+ * with the voices collapsed to emblems. That split is most of why this screen
+ * carries ~60 words instead of 175.
  */
 
 import { INK, PAPER, VOICE_INK, type VoiceId } from './palette';
+import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { portraitPlate } from './art';
 
 export const CSS = `
@@ -27,38 +33,23 @@ export const CSS = `
     color: ${INK.SETTLED};
   }
 
-  .plate-title {
-    position: absolute; top: 26px; left: 34px;
-    font-variant: small-caps; letter-spacing: .09em;
-    font-size: 15px; color: ${INK.LIGHT};
-  }
+  .plate-title { position: absolute; top: 26px; left: 34px; font-variant: small-caps;
+                 letter-spacing: .09em; font-size: 15px; color: ${INK.LIGHT}; }
   .plate-title b { display: block; font-size: 20px; color: ${INK.SETTLED}; font-weight: 600; }
 
-  .hint {
-    position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
-    font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .04em;
-  }
+  .hint { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+          font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .04em; }
 
-  .prompt {
-    position: absolute; transform: translate(-50%, 0);
-    font-size: 14px; letter-spacing: .05em; color: ${INK.SETTLED};
-    background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED};
-    padding: 3px 10px; white-space: nowrap;
-  }
-  .prompt::after { content: ""; }
+  .prompt { position: absolute; transform: translate(-50%, 0); font-size: 14px;
+            letter-spacing: .05em; color: ${INK.SETTLED}; background: ${PAPER.BRIGHT};
+            border: 1px solid ${INK.FADED}; padding: 3px 10px; white-space: nowrap; }
 
-  .panel {
-    position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%);
-    width: min(1080px, calc(100vw - 64px));
-    background: ${PAPER.BRIGHT};
-    border: 1px solid ${INK.FADED};
-    box-shadow: 0 18px 44px rgba(36,28,20,.22);
-    padding: 22px 26px; pointer-events: auto;
-    display: flex; gap: 22px;
-  }
-  .well { width: 300px; height: 400px; flex: 0 0 300px;
-          display: flex; align-items: center; justify-content: center;
-          background: ${PAPER.COOL}; border: 1px solid ${INK.FADED}; }
+  .panel { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%);
+           width: min(1080px, calc(100vw - 64px)); background: ${PAPER.BRIGHT};
+           border: 1px solid ${INK.FADED}; box-shadow: 0 18px 44px rgba(36,28,20,.22);
+           padding: 22px 26px; pointer-events: auto; display: flex; gap: 22px; }
+  .well { width: 300px; height: 400px; flex: 0 0 300px; display: flex; align-items: center;
+          justify-content: center; background: ${PAPER.COOL}; border: 1px solid ${INK.FADED}; }
   .well img { width: 288px; height: 384px; display: block; }
   .panel.compact .well { display: none; }
   .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -68,54 +59,67 @@ export const CSS = `
   .line { font-size: 19px; line-height: 1.55; max-width: 64ch; }
 
   .council { margin: 16px 0 4px; border-left: 2px solid ${PAPER.SHADOW}; padding-left: 14px; }
-  .voice { margin-bottom: 10px; }
-  .voice-name { font-variant: small-caps; letter-spacing: .11em; font-size: 14px;
-                font-weight: 700; display: block; }
-  .voice-line { font-style: italic; font-size: 18px; line-height: 1.5;
-                color: ${INK.SETTLED}; max-width: 62ch; }
+  .voice { margin-bottom: 11px; }
+  .voice-name { font-variant: small-caps; letter-spacing: .11em; font-size: 15px; font-weight: 700;
+                display: flex; align-items: center; gap: 8px; }
+  .voice-line { font-style: italic; font-size: 18px; line-height: 1.5; color: ${INK.SETTLED};
+                max-width: 62ch; }
 
-  .options { list-style: none; margin: 16px 0 0; padding: 0; }
-  .options li { margin: 0 0 2px; }
-  .opt {
-    display: block; width: 100%; text-align: left; cursor: pointer;
-    background: none; border: none; padding: 8px 10px;
-    font: inherit; font-size: 18px; line-height: 1.5; color: ${INK.SETTLED};
-    border-left: 3px solid transparent;
-  }
-  .opt:hover, .opt:focus-visible { background: ${PAPER.SMOKED}; border-left-color: ${INK.SETTLED}; outline: none; }
-  .opt.locked {
-    cursor: not-allowed; color: ${INK.LOCKED};
-    text-decoration: line-through; text-decoration-thickness: 1px;
-  }
-  .opt.locked:hover { background: none; border-left-color: transparent; }
-  /* inline-block, not inline: text-decoration propagates to inline children,
-     and the note is an annotation about the strike, not part of it. */
-  .margin-note { font-style: italic; font-size: 15px; color: ${INK.LIGHT};
-                 text-decoration: none; display: inline-block; margin-left: 10px; }
-  .glyph { color: ${INK.LIGHT}; margin-right: 8px; text-decoration: none; display: inline-block; }
+  /* The council collapsed to emblems, once it has spoken. */
+  .emblem-row { display: flex; gap: 16px; align-items: center; margin: 15px 0 4px;
+                font-size: 23px; }
+  .emblem-row .e { cursor: help; }
+  .emblem-row .said { margin-left: 6px; font-size: 13px; color: ${INK.LIGHT};
+                      letter-spacing: .04em; font-style: italic; }
+
+  .options { list-style: none; margin: 12px 0 0; padding: 0; }
+  .opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+         cursor: pointer; background: none; border: none; border-left: 3px solid transparent;
+         padding: 9px 10px; font: inherit; font-size: 19px; line-height: 1.5;
+         color: ${INK.SETTLED}; }
+  .opt .lbl { font-variant: small-caps; letter-spacing: .045em; }
+  .opt:hover, .opt.on { background: ${PAPER.SMOKED}; border-left-color: ${INK.SETTLED};
+                        outline: none; }
+  .opt.locked { cursor: not-allowed; color: ${INK.LOCKED}; }
+  .opt.locked .lbl { text-decoration: line-through; text-decoration-thickness: 1px; }
+  .marks { margin-left: auto; display: flex; gap: 9px; font-size: 23px; opacity: .9; }
+  .glyph { color: ${INK.LIGHT}; display: inline-flex; font-size: 20px; }
+
+  .expand { margin-top: 14px; padding: 12px 14px; border-left: 2px solid ${PAPER.SHADOW};
+            background: ${PAPER.WARM}; font-size: 17px; line-height: 1.5; min-height: 3.4em; }
+  .expand .why { display: block; margin-top: 7px; font-size: 14px; color: ${INK.LIGHT};
+                 font-style: italic; }
 
   .continue { margin-top: 14px; font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .05em; }
+  .continue b { font-weight: 600; color: ${INK.SETTLED}; }
 
-  .codebar {
-    position: absolute; top: 22px; right: 26px; pointer-events: auto;
-    background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED};
-    padding: 10px 14px; font-size: 13px; letter-spacing: .06em; color: ${INK.LIGHT};
-  }
-  .codebar b { display: block; font-size: 16px; letter-spacing: .16em;
-               color: ${INK.SETTLED}; font-weight: 600; margin-top: 4px;
-               font-variant-numeric: tabular-nums; }
+  .codebar { position: absolute; top: 22px; right: 26px; pointer-events: auto;
+             background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED}; padding: 10px 14px;
+             font-size: 13px; letter-spacing: .06em; color: ${INK.LIGHT}; }
+  .codebar b { display: block; font-size: 16px; letter-spacing: .16em; color: ${INK.SETTLED};
+               font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
 `;
+
+export interface VoiceView {
+  id: VoiceId;
+  line: string;
+}
 
 export interface OptionView {
   id: string;
-  text: string;
+  label: string;
+  full: string;
+  favoured: VoiceId[];
   locked: boolean;
   lockNote?: string;
 }
 
+type Portrait = { seed: number; coat: string };
+
 export class Overlay {
   private root: HTMLElement;
   private panel: HTMLElement | null = null;
+  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(root: HTMLElement, title: string, subtitle: string) {
     this.root = root;
@@ -126,11 +130,17 @@ export class Overlay {
 
     const hint = document.createElement('div');
     hint.className = 'hint';
-    hint.textContent = '← → or A / D to walk · E or Space to look · Esc to step back';
+    hint.textContent = '← → walk · E look · ↑ ↓ choose · Enter confirm';
     root.appendChild(hint);
   }
 
+  private detach(): void {
+    if (this.keyHandler) removeEventListener('keydown', this.keyHandler);
+    this.keyHandler = null;
+  }
+
   private clearPanel(): void {
+    this.detach();
     this.panel?.remove();
     this.panel = null;
   }
@@ -144,7 +154,11 @@ export class Overlay {
     return p;
   }
 
-  showPrompt(label: string, screenX: number, screenY: number): void {
+  private wellFor(p: Portrait): string {
+    return `<div class="well"><img src="${portraitPlate(p.coat, p.seed).toDataURL()}" alt=""></div>`;
+  }
+
+  showPrompt(label: string, x: number, y: number): void {
     let el = this.root.querySelector<HTMLElement>('.prompt');
     if (!el) {
       el = document.createElement('div');
@@ -152,8 +166,8 @@ export class Overlay {
       this.root.appendChild(el);
     }
     el.textContent = label;
-    el.style.left = `${screenX}px`;
-    el.style.top = `${screenY}px`;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
     el.style.display = 'block';
   }
 
@@ -162,114 +176,144 @@ export class Overlay {
     if (el) el.style.display = 'none';
   }
 
-  /** Examine text: no portrait, no options, dismiss to continue. */
   showExamine(label: string, text: string, onDone: () => void): void {
     const p = this.makePanel(true);
-    const body = document.createElement('div');
-    body.className = 'body';
-    body.innerHTML =
-      `<div class="speaker">${label}</div>` +
-      `<div class="line">${text}</div>` +
-      `<div class="continue">press Space or Esc to continue</div>`;
-    p.appendChild(body);
+    p.innerHTML =
+      `<div class="body"><div class="speaker">${label}</div><div class="line">${text}</div>` +
+      `<div class="continue">press <b>Space</b> to continue</div></div>`;
     this.waitForDismiss(onDone);
   }
 
-  showLine(
-    speaker: string,
-    text: string,
-    portrait: { seed: number; coat: string },
-    onDone: () => void,
-  ): void {
+  showLine(speaker: string, text: string, portrait: Portrait, onDone: () => void): void {
     const p = this.makePanel();
-    p.appendChild(this.wellFor(portrait));
-    const body = document.createElement('div');
-    body.className = 'body';
-    body.innerHTML =
-      `<div class="speaker">${speaker}</div>` +
-      `<div class="line">${text}</div>` +
-      `<div class="continue">press Space to continue</div>`;
-    p.appendChild(body);
+    p.innerHTML =
+      this.wellFor(portrait) +
+      `<div class="body"><div class="speaker">${speaker}</div><div class="line">${text}</div>` +
+      `<div class="continue">press <b>Space</b> to continue</div></div>`;
     this.waitForDismiss(onDone);
   }
 
+  /** Beat 1 — the council argues. The player only listens. */
+  showCouncil(portrait: Portrait, voices: VoiceView[], onDone: () => void): void {
+    const p = this.makePanel();
+    p.innerHTML =
+      this.wellFor(portrait) +
+      '<div class="body"><div class="speaker">the council</div><div class="council">' +
+      voices
+        .map(
+          (v) =>
+            `<div class="voice"><span class="voice-name" style="color:${VOICE_INK[v.id]}">` +
+            `${EMBLEM[v.id]}${v.id}</span>` +
+            `<span class="voice-line">${v.line}</span></div>`,
+        )
+        .join('') +
+      '</div><div class="continue">press <b>Space</b> to decide</div></div>';
+    this.waitForDismiss(onDone);
+  }
+
+  /** Beat 2 — the choice, with the council collapsed to emblems. */
   showDecision(
     speaker: string,
     prompt: string,
-    portrait: { seed: number; coat: string },
-    voices: { id: VoiceId; line: string }[],
+    portrait: Portrait,
+    voices: VoiceView[],
     options: OptionView[],
     onPick: (id: string) => void,
   ): void {
     const p = this.makePanel();
-    p.appendChild(this.wellFor(portrait));
+    let focus = options.findIndex((o) => !o.locked);
+    if (focus < 0) focus = 0;
 
-    const body = document.createElement('div');
-    body.className = 'body';
-    body.innerHTML = `<div class="speaker">${speaker}</div><div class="line">${prompt}</div>`;
+    const draw = (): void => {
+      const f = options[focus];
+      const why = f.locked
+        ? `<span class="why">Locked — ${f.lockNote ?? 'not available to you'}.</span>`
+        : f.favoured.length
+          ? `<span class="why">${f.favoured.join(' and ')} would have it so.</span>`
+          : '';
 
-    if (voices.length) {
-      const council = document.createElement('div');
-      council.className = 'council';
-      for (const v of voices) {
-        const el = document.createElement('div');
-        el.className = 'voice';
-        // Name carries the colour; the line never does.
-        el.innerHTML =
-          `<span class="voice-name" style="color:${VOICE_INK[v.id]}">${v.id}</span>` +
-          `<span class="voice-line">${v.line}</span>`;
-        council.appendChild(el);
+      p.innerHTML =
+        this.wellFor(portrait) +
+        `<div class="body"><div class="speaker">${speaker}</div>` +
+        `<div class="line">${prompt}</div>` +
+        '<div class="emblem-row">' +
+        voices
+          .map(
+            (v) =>
+              `<span class="e" style="color:${VOICE_INK[v.id]}" title="${v.id} — ${v.line}">` +
+              `${EMBLEM[v.id]}</span>`,
+          )
+          .join('') +
+        '<span class="said">the council has spoken — hover to hear it again</span></div>' +
+        '<ul class="options">' +
+        options
+          .map((o, i) => {
+            const marks = o.favoured.length
+              ? `<span class="marks">${o.favoured
+                  .map((v) => `<span style="color:${VOICE_INK[v]}">${EMBLEM[v]}</span>`)
+                  .join('')}</span>`
+              : '';
+            const lock = o.locked ? `<span class="glyph">${LOCK_GLYPH}</span>` : '';
+            return (
+              `<li><button class="opt${o.locked ? ' locked' : ''}${i === focus ? ' on' : ''}" ` +
+              `data-i="${i}"${o.locked ? ' aria-disabled="true"' : ''}>` +
+              `${lock}<span class="lbl">${o.label}</span>${marks}</button></li>`
+            );
+          })
+          .join('') +
+        `</ul><div class="expand">${f.full}${why}</div></div>`;
+
+      for (const b of Array.from(p.querySelectorAll<HTMLButtonElement>('.opt'))) {
+        const i = Number(b.dataset.i);
+        b.addEventListener('mouseenter', () => {
+          focus = i;
+          draw();
+        });
+        b.addEventListener('click', () => {
+          if (options[i].locked) {
+            focus = i;
+            draw();
+            return;
+          }
+          this.clearPanel();
+          onPick(options[i].id);
+        });
       }
-      body.appendChild(council);
-    }
+    };
 
-    const ul = document.createElement('ul');
-    ul.className = 'options';
-    for (const o of options) {
-      const li = document.createElement('li');
-      const b = document.createElement('button');
-      b.className = o.locked ? 'opt locked' : 'opt';
-      b.type = 'button';
-      if (o.locked) {
-        b.disabled = true;
-        b.setAttribute('aria-disabled', 'true');
-        b.innerHTML =
-          `<span class="glyph">✕</span>${o.text}` +
-          `<span class="margin-note">— ${o.lockNote ?? 'not available'}</span>`;
-      } else {
-        b.textContent = o.text;
-        b.addEventListener('click', () => onPick(o.id));
+    draw();
+
+    this.detach();
+    this.keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 's') {
+        e.preventDefault();
+        focus = (focus + 1) % options.length;
+        draw();
+      } else if (e.key === 'ArrowUp' || e.key === 'w') {
+        e.preventDefault();
+        focus = (focus - 1 + options.length) % options.length;
+        draw();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (options[focus].locked) return;
+        const id = options[focus].id;
+        this.clearPanel();
+        onPick(id);
       }
-      li.appendChild(b);
-      ul.appendChild(li);
-    }
-    body.appendChild(ul);
-    p.appendChild(body);
-
-    const first = ul.querySelector<HTMLButtonElement>('.opt:not(.locked)');
-    first?.focus();
-  }
-
-  private wellFor(portrait: { seed: number; coat: string }): HTMLElement {
-    const well = document.createElement('div');
-    well.className = 'well';
-    const img = document.createElement('img');
-    img.src = portraitPlate(portrait.coat, portrait.seed).toDataURL();
-    img.alt = '';
-    well.appendChild(img);
-    return well;
+    };
+    addEventListener('keydown', this.keyHandler);
   }
 
   private waitForDismiss(onDone: () => void): void {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'Escape' || e.key === 'Enter' || e.key === 'e' || e.key === 'E') {
+    this.detach();
+    this.keyHandler = (e: KeyboardEvent) => {
+      if ([' ', 'Enter', 'Escape', 'e', 'E'].includes(e.key)) {
         e.preventDefault();
-        removeEventListener('keydown', handler);
         this.clearPanel();
         onDone();
       }
     };
-    addEventListener('keydown', handler);
+    addEventListener('keydown', this.keyHandler);
   }
 
   close(): void {

@@ -10,6 +10,7 @@
 
 import { decode, encode, FLAG_REGISTRY } from './passport';
 import { applyDelta, initialState } from './state';
+import { SCENE } from './content';
 
 let failures = 0;
 
@@ -114,5 +115,78 @@ console.log('passport codec');
   check(`code is ${len} characters (target: under 32)`, len < 32);
 }
 
-console.log(failures === 0 ? '\nall passport checks passed' : `\n${failures} FAILED`);
+// ---------------------------------------------------------------- content linter
+//
+// A first slice of the build-time linter specced in 06-technical-architecture.md
+// §6. These are the checks that fail silently at runtime rather than loudly, so
+// they are the ones worth having before there is any content to speak of.
+
+console.log('\ncontent');
+
+{
+  const grants = new Set<string>();
+  const requires = new Set<string>();
+  for (const it of SCENE.interactables) if (it.grants) grants.add(it.grants);
+  for (const n of SCENE.npcs) {
+    for (const o of n.decision?.options ?? []) if (o.requires) requires.add(o.requires);
+  }
+  const registry = new Set(FLAG_REGISTRY);
+
+  const unregistered = [...grants, ...requires].filter((f) => !registry.has(f));
+  check(
+    'every flag used in content is in the passport registry',
+    unregistered.length === 0,
+    unregistered.join(', '),
+  );
+
+  const unsatisfiable = [...requires].filter((f) => !grants.has(f));
+  check(
+    'every required flag is granted by something reachable',
+    unsatisfiable.length === 0,
+    unsatisfiable.join(', '),
+  );
+
+  const unused = [...registry].filter((f) => !grants.has(f));
+  check('no registry flag is dead weight', unused.length === 0, unused.join(', '));
+}
+
+{
+  // An emblem beside an option must belong to a voice that actually spoke at
+  // that decision, or the player is being shown an opinion from nobody.
+  const orphans: string[] = [];
+  const unnoted: string[] = [];
+  for (const n of SCENE.npcs) {
+    const d = n.decision;
+    if (!d) continue;
+    const authored = new Set(d.voices);
+    for (const o of d.options) {
+      for (const v of o.favoured) {
+        if (!authored.has(v)) orphans.push(`${d.id}/${o.id}: ${v}`);
+      }
+      if (o.requires && !o.lockNote) unnoted.push(`${d.id}/${o.id}`);
+    }
+    for (const v of d.voices) {
+      if (!d.interjections[v]) orphans.push(`${d.id}: ${v} has no line`);
+    }
+  }
+  check('option emblems only cite voices present at that decision', orphans.length === 0,
+    orphans.join('; '));
+  check('every gated option explains its lock', unnoted.length === 0, unnoted.join(', '));
+}
+
+{
+  const n = SCENE.interactables.length;
+  check(`scene meets the density floor (${n} interactables, floor 12)`, n >= 12);
+
+  const positions = [...SCENE.interactables.map((i) => i.t), ...SCENE.npcs.map((x) => x.t)].sort(
+    (a, b) => a - b,
+  );
+  let minGap = 1;
+  for (let i = 1; i < positions.length; i++) minGap = Math.min(minGap, positions[i] - positions[i - 1]);
+  // Interaction reach is 0.045 either side, so anything closer than 0.045
+  // apart is unreachable — the nearer target always wins.
+  check(`no target is shadowed by a neighbour (min gap ${minGap.toFixed(3)})`, minGap >= 0.045);
+}
+
+console.log(failures === 0 ? '\nall checks passed' : `\n${failures} FAILED`);
 if (failures > 0) process.exit(1);

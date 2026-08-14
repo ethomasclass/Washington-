@@ -119,7 +119,7 @@ export class DioramaRenderer {
 
   private breath = 0;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, npcPositions: number[] = []) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.scene.background = new THREE.Color(PAPER.WARM);
@@ -144,7 +144,7 @@ export class DioramaRenderer {
       this.layers.push({ mesh, parallax: PARALLAX[i] });
     });
 
-    this.buildActors();
+    this.buildActors(npcPositions);
 
     this.target = new THREE.WebGLRenderTarget(1, 1, {
       minFilter: THREE.LinearFilter,
@@ -169,7 +169,7 @@ export class DioramaRenderer {
     addEventListener('resize', () => this.resize());
   }
 
-  private buildActors(): void {
+  private buildActors(npcPositions: number[]): void {
     const mk = (canvas: HTMLCanvasElement, z: number) => {
       const tex = textureFrom(canvas);
       const aspect = canvas.width / canvas.height;
@@ -184,9 +184,15 @@ export class DioramaRenderer {
       return mesh;
     };
 
+    // Washington is the only figure in Continental blue. Everyone else wears
+    // the earth range, so the eye finds him in one pass without a marker.
     this.player = mk(characterCutout(MEANING.CONTINENTAL_BLUE, 101), -1.2);
-    this.npcs.push({ mesh: mk(characterCutout('#6B4F35', 202), -1.25), t: 0.24 });
-    this.npcs.push({ mesh: mk(characterCutout('#55627A', 303), -1.22), t: 0.78 });
+
+    const coats = ['#6B4F35', '#7A5C3E', '#5C6673', '#55627A', '#6E5B45'];
+    npcPositions.forEach((t, i) => {
+      const mesh = mk(characterCutout(coats[i % coats.length], 202 + i * 101), -1.25 + i * 0.01);
+      this.npcs.push({ mesh, t });
+    });
   }
 
   /** Place an actor on the walk-plane: horizontal position, ground line, scale. */

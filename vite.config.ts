@@ -8,5 +8,13 @@ export default defineConfig({
   build: {
     target: 'es2020',
     assetsInlineLimit: 0,
+    rollupOptions: {
+      input: {
+        // The game.
+        main: 'index.html',
+        // A comparison bench for picking a decision-UI direction. Not the game.
+        variants: 'variants.html',
+      },
+    },
   },
 });

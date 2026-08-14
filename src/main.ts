@@ -96,6 +96,12 @@ function nearest(): Target | null {
 
 const refreshCode = (): void => overlay.setCode(encode(state));
 
+function anchorSpeech(): void {
+  if (!speaking) return;
+  const p = renderer.screenPos({ x: speaking.x, z: speaking.z });
+  overlay.setSpeechAnchor(p.x, p.y);
+}
+
 /** Business still owed. Optional discoveries are deliberately not listed. */
 const owed = (): string[] =>
   SCENE.business.filter((b) => !state.decisions.has(b.decision)).map((b) => b.pending);
@@ -169,8 +175,12 @@ function runDecision(d: Decision, after: () => void): void {
   });
 }
 
+/** Where the open speech bubble is pointing, if any. */
+let speaking: NpcThread | null = null;
+
 function runThread(n: NpcThread): void {
   busy = true;
+  speaking = n;
   const settled = !!n.decision && state.decisions.has(n.decision.id);
   const lines = settled ? (n.after ?? []) : n.lines;
   let i = 0;
@@ -178,18 +188,18 @@ function runThread(n: NpcThread): void {
   const step = (): void => {
     if (i < lines.length) {
       const line = lines[i++];
-      overlay.showLine(
-        line.speaker,
-        line.text,
-        { seed: line.portraitSeed, coat: line.coat },
-        step,
-      );
+      overlay.showSpeech(line.speaker, line.text, step);
+      anchorSpeech();
       return;
     }
     if (n.decision && !state.decisions.has(n.decision.id)) {
+      // Deliberation is not speech: the council and the choice get the panel,
+      // with the portrait, because there is no body on screen to look at.
+      speaking = null;
       runDecision(n.decision, () => {});
       return;
     }
+    speaking = null;
     busy = false;
   };
   step();
@@ -288,7 +298,7 @@ function frame(now: number): void {
     renderer.setGait(0, dt);
   }
 
-  renderer.setPlayerPos(pos);
+  renderer.setPlayerPos(pos, dt);
   renderer.setMood(moodScalar(state.snapshot));
 
   const near = busy ? null : nearest();
@@ -299,6 +309,7 @@ function frame(now: number): void {
     overlay.hidePrompt();
   }
 
+  anchorSpeech();
   renderer.render();
   requestAnimationFrame(frame);
 }

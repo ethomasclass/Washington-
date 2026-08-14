@@ -57,6 +57,29 @@ export const CSS = `
   .hint { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
           font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .04em; }
 
+  /* Speech is anchored to whoever is speaking. The figure is standing right
+     there, so the bubble carries no portrait — the portrait well is for the
+     deliberation panel, where there is no body on screen to look at. */
+  .bubble { position: absolute; transform: translate(-50%, -100%);
+            width: max-content; max-width: min(46ch, calc(100vw - 80px));
+            background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED};
+            padding: 13px 17px 14px; pointer-events: auto;
+            box-shadow: 0 12px 30px rgba(36,28,20,.20); }
+  .bubble .who { font-variant: small-caps; letter-spacing: .1em; font-size: 13px;
+                 color: ${INK.LIGHT}; margin-bottom: 5px; }
+  .bubble .said { font-size: 18px; line-height: 1.5; }
+  .bubble .more { margin-top: 9px; font-size: 13px; color: ${INK.LIGHT};
+                  letter-spacing: .05em; }
+  .bubble .more b { font-weight: 600; color: ${INK.SETTLED}; }
+  .bubble::before, .bubble::after { content: ''; position: absolute; width: 0; height: 0;
+                                    border-style: solid; }
+  .bubble::before { left: var(--tail, 50%); margin-left: -10px; bottom: -13px;
+                    border-width: 13px 10px 0 10px;
+                    border-color: ${INK.FADED} transparent transparent transparent; }
+  .bubble::after  { left: var(--tail, 50%); margin-left: -9px; bottom: -11px;
+                    border-width: 12px 9px 0 9px;
+                    border-color: ${PAPER.BRIGHT} transparent transparent transparent; }
+
   .prompt { position: absolute; transform: translate(-50%, 0); font-size: 14px;
             letter-spacing: .05em; color: ${INK.SETTLED}; background: ${PAPER.BRIGHT};
             border: 1px solid ${INK.FADED}; padding: 3px 10px; white-space: nowrap; }
@@ -246,13 +269,38 @@ export class Overlay {
     this.waitForDismiss(onDone);
   }
 
-  showLine(speaker: string, text: string, portrait: Portrait, onDone: () => void): void {
-    const p = this.makePanel();
-    p.innerHTML =
-      this.wellFor(portrait) +
-      `<div class="body"><div class="speaker">${speaker}</div><div class="line">${text}</div>` +
-      `<div class="continue">press <b>Space</b> to continue</div></div>`;
+  /**
+   * A spoken line, in a bubble anchored over the speaker's head. Position is
+   * re-applied every frame by the caller, so the bubble stays with the figure
+   * if the frame breathes underneath it.
+   */
+  showSpeech(speaker: string, text: string, onDone: () => void): void {
+    this.clearPanel();
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.innerHTML =
+      `<div class="who">${speaker}</div><div class="said">${text}</div>` +
+      '<div class="more">press <b>Space</b> to continue</div>';
+    this.root.appendChild(b);
+    this.panel = b;
     this.waitForDismiss(onDone);
+  }
+
+  /** Point the open bubble at a screen position, keeping it inside the frame. */
+  setSpeechAnchor(x: number, y: number): void {
+    const b = this.panel;
+    if (!b || !b.classList.contains('bubble')) return;
+    const w = b.offsetWidth;
+    const margin = 18;
+    const half = w / 2;
+    const cx = Math.max(margin + half, Math.min(innerWidth - margin - half, x));
+    // Never let the bubble ride off the top of the frame.
+    const cy = Math.max(b.offsetHeight + 26, y - 16);
+    b.style.left = `${cx}px`;
+    b.style.top = `${cy}px`;
+    // The tail stays over the speaker even when the body has been nudged inward.
+    const tail = Math.max(16, Math.min(w - 16, half + (x - cx)));
+    b.style.setProperty('--tail', `${tail}px`);
   }
 
   /** Beat 1 — the council argues. The player only listens. */

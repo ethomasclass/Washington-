@@ -259,21 +259,63 @@ export function layerMidground(): HTMLCanvasElement {
     wash(x, [[cx - r, base], [cx + r, base - 4], [cx + r * 0.7, base + r * 0.24],
              [cx - r * 0.8, base + r * 0.26]], EARTH.RAW_UMBER, 0.2, rnd, 3);
 
+  /**
+   * A tree.
+   *
+   * Built as a broad, irregular mass of small dabs following the branch ends
+   * rather than a few big blobs stacked on a pole — the blob version reads as a
+   * lollipop at any size. Deciduous crowns at this distance are wider than they
+   * are tall, the silhouette is ragged, and the sky shows through in places.
+   */
   const tree = (tx: number, base: number, th: number, spread: number) => {
-    inkLine(x, [[tx, base], [tx + (rnd() - 0.5) * 8, base - th * 0.55]], rnd, 3.4, 0.02);
-    inkLine(x, [[tx, base - th * 0.5], [tx - spread * 0.5, base - th * 0.82]], rnd, 2.0, 0.06);
-    inkLine(x, [[tx, base - th * 0.55], [tx + spread * 0.45, base - th * 0.86]], rnd, 2.0, 0.06);
-    const cy = base - th * 0.82;
-    for (let i = 0; i < 7; i++) {
-      const ox = (rnd() - 0.5) * spread * 1.1;
-      const oy = (rnd() - 0.5) * th * 0.22;
-      const r = spread * (0.34 + rnd() * 0.3);
-      wash(x, [[tx + ox - r, cy + oy], [tx + ox - r * 0.4, cy + oy - r * 0.85],
-               [tx + ox + r * 0.5, cy + oy - r * 0.8], [tx + ox + r, cy + oy + r * 0.2],
-               [tx + ox + r * 0.3, cy + oy + r * 0.7], [tx + ox - r * 0.5, cy + oy + r * 0.6]],
-        EARTH.TERRE_VERTE, 0.17, rnd, 4);
+    const forkY = base - th * 0.36; // low fork: most of the tree is crown
+    const tips: [number, number][] = [];
+
+    // Trunk, tapering, drawn as a narrow wedge rather than a line.
+    wash(x, [[tx - th * 0.026, base], [tx + th * 0.026, base],
+             [tx + th * 0.014, forkY], [tx - th * 0.014, forkY]],
+      EARTH.RAW_UMBER, 0.55, rnd, 3);
+    inkLine(x, [[tx - th * 0.024, base], [tx - th * 0.012, forkY]], rnd, 1.6, 0.1);
+    inkLine(x, [[tx + th * 0.024, base], [tx + th * 0.012, forkY]], rnd, 1.6, 0.1);
+
+    // Boughs fan out from the fork; each one ends where a clump of leaf sits.
+    const boughs = 5;
+    for (let i = 0; i < boughs; i++) {
+      const t = (i + 0.5) / boughs;
+      const ang = -Math.PI / 2 + (t - 0.5) * 2.3 + (rnd() - 0.5) * 0.3;
+      const len = th * (0.34 + rnd() * 0.22);
+      const mx = tx + Math.cos(ang) * len * 0.55;
+      const my = forkY + Math.sin(ang) * len * 0.55;
+      const ex = tx + Math.cos(ang) * len;
+      const ey = forkY + Math.sin(ang) * len;
+      inkLine(x, [[tx, forkY], [mx, my], [ex, ey]], rnd, 2.0, 0.12);
+      tips.push([ex, ey]);
+      // A short secondary off each bough.
+      const sx2 = mx + Math.cos(ang + 0.7) * len * 0.3;
+      const sy2 = my + Math.sin(ang + 0.7) * len * 0.3;
+      inkLine(x, [[mx, my], [sx2, sy2]], rnd, 1.3, 0.3);
+      tips.push([sx2, sy2]);
     }
-    shadow(tx, base, spread * 0.5);
+
+    // Leaf: many small dabs clustered on the tips, thinning at the edges.
+    for (const [ex, ey] of tips) {
+      const n = 9 + Math.floor(rnd() * 5);
+      for (let k = 0; k < n; k++) {
+        const r = spread * (0.10 + rnd() * 0.14);
+        const ox = ex + (rnd() - 0.5) * spread * 0.62;
+        const oy = ey + (rnd() - 0.5) * spread * 0.42;
+        wash(x, [[ox - r, oy], [ox - r * 0.3, oy - r * 0.9], [ox + r * 0.6, oy - r * 0.75],
+                 [ox + r, oy + r * 0.15], [ox + r * 0.2, oy + r * 0.8], [ox - r * 0.6, oy + r * 0.6]],
+          EARTH.TERRE_VERTE, 0.13, rnd, 3);
+      }
+    }
+
+    // A darker core so the crown has weight where the boughs converge.
+    wash(x, [[tx - spread * 0.5, forkY - th * 0.18], [tx + spread * 0.45, forkY - th * 0.24],
+             [tx + spread * 0.3, forkY - th * 0.02], [tx - spread * 0.36, forkY]],
+      EARTH.TERRE_VERTE, 0.14, rnd, 4);
+
+    shadow(tx, base, spread * 0.55);
   };
 
   // A clipped box hedge — a long low mass to walk behind.
@@ -330,11 +372,11 @@ export function layerMidground(): HTMLCanvasElement {
 
   const base = hy + 196; // the midground stands at roughly z = 0.44
 
-  tree(W * 0.10, base + 34, 300, 122);
+  tree(W * 0.10, base + 34, 250, 168);
   hedge(W * 0.185, W * 0.335, base + 12, 54);
   timber(W * 0.475, base + 4, 96);
   cart(W * 0.695, base + 20, 130);
-  tree(W * 0.885, base + 40, 320, 132);
+  tree(W * 0.885, base + 40, 268, 182);
 
   // A few paling posts, to break the middle without hiding it.
   for (const px of [W * 0.385, W * 0.415, W * 0.585, W * 0.615]) {

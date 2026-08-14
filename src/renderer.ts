@@ -142,7 +142,8 @@ export class DioramaRenderer {
   private camera: THREE.OrthographicCamera;
   private layers: Layer[] = [];
   private player!: THREE.Mesh;
-  private npcs: { mesh: THREE.Mesh; pos: GroundPos }[] = [];
+  private npcs: { mesh: THREE.Mesh; pos: GroundPos; phase: number }[] = [];
+  private clock = 0;
   /** Walk-cycle textures for the player: index 0 is the standing pose. */
   private playerFrames: THREE.CanvasTexture[] = [];
   private gait = 0;
@@ -232,7 +233,10 @@ export class DioramaRenderer {
     const coats = ['#6B4F35', '#7A5C3E', '#5C6673', '#55627A', '#6E5B45'];
     npcPositions.forEach((pos, i) => {
       const mesh = mk(characterCutout(coats[i % coats.length], 202 + i * 101), -1.25);
-      this.npcs.push({ mesh, pos });
+      // Each idle runs on its own phase and rate, so a row of waiting figures
+      // never breathes in unison — which is what makes a crowd read as painted
+      // cardboard rather than as people.
+      this.npcs.push({ mesh, pos, phase: (i * 2.399) % (Math.PI * 2) });
     });
   }
 
@@ -299,10 +303,20 @@ export class DioramaRenderer {
     }
   }
 
-  setPlayerPos(pos: GroundPos): void {
+  setPlayerPos(pos: GroundPos, dt = 0): void {
+    this.clock += dt;
     this.place(this.player, pos);
     this.player.position.y += this.bob;
-    for (const n of this.npcs) this.place(n.mesh, n.pos);
+
+    for (const n of this.npcs) {
+      this.place(n.mesh, n.pos);
+      // A slow weight shift: a little rise and fall, and a lean that lags it.
+      const t = this.clock * 0.9 + n.phase;
+      const s = n.mesh.scale.x;
+      n.mesh.position.y += Math.sin(t) * 0.022 * s;
+      n.mesh.position.x += Math.sin(t * 0.62 + 1.1) * 0.030 * s;
+      n.mesh.rotation.z = Math.sin(t * 0.62 + 1.1) * 0.012;
+    }
 
     // Parallax breath on both axes. Walking across the frame slides the stack
     // sideways; walking into it pushes the near layers down and out, which is

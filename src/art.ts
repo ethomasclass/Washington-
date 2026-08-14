@@ -173,38 +173,12 @@ export function layerHouse(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(37);
   const hy = H * HORIZON;
-  const bx = W * 0.36;
-  const by = hy - 90;
-  const bw = W * 0.28;
-  const bh = 210;
 
-  // The ground: from the horizon to the bottom of the frame. The lawn falls
-  // away west toward the river, so the wash warms and darkens as it comes
-  // forward.
-  wash(
-    x,
-    [
-      [0, hy + 8],
-      [W, hy - 6],
-      [W, H],
-      [0, H],
-    ],
-    EARTH.YELLOW_OCHRE,
-    0.30,
-    rnd,
-  );
-  wash(
-    x,
-    [
-      [0, hy + 150],
-      [W, hy + 120],
-      [W, H],
-      [0, H],
-    ],
-    EARTH.BISTRE,
-    0.16,
-    rnd,
-  );
+  // The ground: horizon to the bottom of the frame. The lawn falls away west
+  // toward the river, so the wash warms and darkens as it comes forward.
+  wash(x, [[0, hy + 8], [W, hy - 6], [W, H], [0, H]], EARTH.YELLOW_OCHRE, 0.30, rnd);
+  wash(x, [[0, hy + 150], [W, hy + 120], [W, H], [0, H]], EARTH.BISTRE, 0.16, rnd);
+
   // Mown bands. Short broken strokes rather than full-width rules, so they
   // read as ground texture instead of as ruled lines across the plate.
   x.globalAlpha = 0.5;
@@ -219,140 +193,153 @@ export function layerHouse(): HTMLCanvasElement {
   }
   x.globalAlpha = 1;
 
-  // The house casts west across the lawn in the afternoon.
-  wash(
-    x,
-    [[W * 0.36, hy + 120], [W * 0.68, hy + 118], [W * 0.62, hy + 190], [W * 0.3, hy + 196]],
-    EARTH.RAW_UMBER,
-    0.12,
-    rnd,
-    3,
-  );
-
-  // Main block.
-  wash(
-    x,
-    [
-      [bx, by],
-      [bx + bw, by],
-      [bx + bw, by + bh],
-      [bx, by + bh],
-    ],
-    PAPER.SMOKED,
-    0.55,
-    rnd,
-  );
-  inkLine(
-    x,
-    [
-      [bx, by],
-      [bx + bw, by],
-      [bx + bw, by + bh],
-      [bx, by + bh],
-      [bx, by],
-    ],
-    rnd,
-    1.6,
-    0.1,
-  );
-
-  // Roof.
-  inkLine(
-    x,
-    [
-      [bx - 12, by],
-      [bx + bw / 2, by - 54],
-      [bx + bw + 12, by],
-    ],
-    rnd,
-    1.6,
-    0.08,
-  );
-  wash(
-    x,
-    [
-      [bx - 12, by],
-      [bx + bw / 2, by - 54],
-      [bx + bw + 12, by],
-    ],
-    EARTH.RAW_UMBER,
-    0.4,
-    rnd,
-  );
-
-  // Windows — two storeys.
-  for (let r = 0; r < 2; r++) {
-    for (let i = 0; i < 5; i++) {
-      const wx = bx + 26 + i * (bw - 52) / 4;
-      const wy = by + 34 + r * 84;
-      wash(x, [[wx, wy], [wx + 22, wy], [wx + 22, wy + 40], [wx, wy + 40]], INK.FADED, 0.5, rnd, 3);
-      inkLine(x, [[wx, wy], [wx + 22, wy], [wx + 22, wy + 40], [wx, wy + 40], [wx, wy]], rnd, 0.9, 0.2);
+  // A block: wash body, ink outline, roof, and a row of windows.
+  const block = (bx: number, by: number, bw: number, bh: number, wins: number, ridge: number) => {
+    wash(x, [[bx, by], [bx + bw, by], [bx + bw, by + bh], [bx, by + bh]], PAPER.SMOKED, 0.55, rnd);
+    inkLine(x, [[bx, by], [bx + bw, by], [bx + bw, by + bh], [bx, by + bh], [bx, by]], rnd, 1.5, 0.1);
+    wash(x, [[bx - 8, by], [bx + bw / 2, by - ridge], [bx + bw + 8, by]], EARTH.RAW_UMBER, 0.4, rnd);
+    inkLine(x, [[bx - 8, by], [bx + bw / 2, by - ridge], [bx + bw + 8, by]], rnd, 1.5, 0.08);
+    for (let r = 0; r < (bh > 90 ? 2 : 1); r++) {
+      for (let i = 0; i < wins; i++) {
+        const wx = bx + bw * 0.12 + (i * bw * 0.76) / Math.max(1, wins - 1);
+        const wy = by + 18 + r * bh * 0.42;
+        const ww = bw * 0.075;
+        const wh = bh * 0.2;
+        wash(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh]], INK.FADED, 0.5, rnd, 3);
+        inkLine(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh], [wx, wy]], rnd, 0.8, 0.2);
+      }
     }
-  }
+  };
 
-  // The north wing under construction, and its scaffolding.
+  // The mansion, smaller and higher than before so that walking the lawn reads
+  // as closing distance on something genuinely far off.
+  const bx = W * 0.40;
+  const bw = W * 0.20;
+  const by = hy - 66;
+  const bh = 150;
+  block(bx, by, bw, bh, 5, 40);
+
+  // The north wing, unfinished, and its scaffolding. In May 1775 this was an
+  // open building site — no piazza, no cupola, no weathervane.
   const sx = bx + bw;
-  wash(x, [[sx, by + 60], [sx + 130, by + 60], [sx + 130, by + bh], [sx, by + bh]], PAPER.SHADOW, 0.4, rnd);
+  wash(x, [[sx, by + 44], [sx + 92, by + 44], [sx + 92, by + bh], [sx, by + bh]], PAPER.SHADOW, 0.4, rnd);
   for (let i = 0; i <= 4; i++) {
-    const px = sx + i * 32;
-    inkLine(x, [[px, by + 30], [px, by + bh + 8]], rnd, 1.2, 0.05);
+    const px = sx + i * 23;
+    inkLine(x, [[px, by + 20], [px, by + bh + 6]], rnd, 1.0, 0.05);
   }
   for (let i = 0; i < 4; i++) {
-    const py = by + 44 + i * 46;
-    inkLine(x, [[sx - 10, py], [sx + 140, py - 3]], rnd, 1.1, 0.05);
+    inkLine(x, [[sx - 8, by + 32 + i * 34], [sx + 100, by + 29 + i * 34]], rnd, 0.9, 0.05);
   }
+
+  // Flanking dependencies — the kitchen and servants' hall stood apart from the
+  // house. They give the far ground something other than lawn.
+  block(bx - W * 0.13, by + 66, W * 0.085, 74, 2, 22);
+  block(bx + bw + W * 0.05, by + 70, W * 0.08, 70, 2, 20);
+
+  // The house throws its shadow west across the lawn in the afternoon.
+  wash(x, [[bx - 20, by + bh], [bx + bw + 40, by + bh - 6], [bx + bw + 10, by + bh + 74],
+           [bx - 60, by + bh + 80]], EARTH.RAW_UMBER, 0.12, rnd, 3);
   return c;
 }
 
-/** L3 — midground. The tree line that frames the west front. */
-export function layerTrees(): HTMLCanvasElement {
+/**
+ * L3 — the midground band.
+ *
+ * This is the layer that makes depth worth having. Objects sit across the whole
+ * width rather than only at the edges, so wherever the player walks deep,
+ * something passes in front of them. The middle is kept low and open — the
+ * mansion has to stay visible through it.
+ */
+export function layerMidground(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(51);
   const hy = H * HORIZON;
 
+  const shadow = (cx: number, base: number, r: number) =>
+    wash(x, [[cx - r, base], [cx + r, base - 4], [cx + r * 0.7, base + r * 0.24],
+             [cx - r * 0.8, base + r * 0.26]], EARTH.RAW_UMBER, 0.2, rnd, 3);
+
   const tree = (tx: number, base: number, th: number, spread: number) => {
-    // Trunk, tapering, with two limbs.
     inkLine(x, [[tx, base], [tx + (rnd() - 0.5) * 8, base - th * 0.55]], rnd, 3.4, 0.02);
     inkLine(x, [[tx, base - th * 0.5], [tx - spread * 0.5, base - th * 0.82]], rnd, 2.0, 0.06);
     inkLine(x, [[tx, base - th * 0.55], [tx + spread * 0.45, base - th * 0.86]], rnd, 2.0, 0.06);
-
-    // Canopy: a few overlapping pools, denser at the centre, lost at the edges.
     const cy = base - th * 0.82;
     for (let i = 0; i < 7; i++) {
       const ox = (rnd() - 0.5) * spread * 1.1;
       const oy = (rnd() - 0.5) * th * 0.22;
       const r = spread * (0.34 + rnd() * 0.3);
-      wash(
-        x,
-        [
-          [tx + ox - r, cy + oy],
-          [tx + ox - r * 0.4, cy + oy - r * 0.85],
-          [tx + ox + r * 0.5, cy + oy - r * 0.8],
-          [tx + ox + r, cy + oy + r * 0.2],
-          [tx + ox + r * 0.3, cy + oy + r * 0.7],
-          [tx + ox - r * 0.5, cy + oy + r * 0.6],
-        ],
-        EARTH.TERRE_VERTE,
-        0.17,
-        rnd,
-        4,
-      );
+      wash(x, [[tx + ox - r, cy + oy], [tx + ox - r * 0.4, cy + oy - r * 0.85],
+               [tx + ox + r * 0.5, cy + oy - r * 0.8], [tx + ox + r, cy + oy + r * 0.2],
+               [tx + ox + r * 0.3, cy + oy + r * 0.7], [tx + ox - r * 0.5, cy + oy + r * 0.6]],
+        EARTH.TERRE_VERTE, 0.17, rnd, 4);
     }
-    // A little shadow pooled at the root so the tree sits on the ground.
-    wash(
-      x,
-      [[tx - spread * 0.5, base], [tx + spread * 0.5, base - 4], [tx + spread * 0.35, base + 16], [tx - spread * 0.4, base + 18]],
-      EARTH.RAW_UMBER,
-      0.2,
-      rnd,
-      3,
-    );
+    shadow(tx, base, spread * 0.5);
   };
 
-  tree(W * 0.1, hy + 235, 300, 120);
-  tree(W * 0.22, hy + 165, 235, 92);
-  tree(W * 0.8, hy + 180, 255, 100);
-  tree(W * 0.92, hy + 250, 320, 130);
+  // A clipped box hedge — a long low mass to walk behind.
+  const hedge = (x0: number, x1: number, base: number, h: number) => {
+    const top: [number, number][] = [];
+    for (let i = 0; i <= 14; i++) {
+      const px = x0 + ((x1 - x0) * i) / 14;
+      top.push([px, base - h + Math.sin(i * 1.3) * 5 + rnd() * 4]);
+    }
+    wash(x, [...top, [x1, base], [x0, base]], EARTH.TERRE_VERTE, 0.3, rnd, 5);
+    inkLine(x, top, rnd, 1.3, 0.28);
+    shadow((x0 + x1) / 2, base, (x1 - x0) * 0.42);
+  };
+
+  // Stacked timber for the north wing — low, so it never blocks the house.
+  const timber = (cx: number, base: number, w: number) => {
+    for (let r = 0; r < 4; r++) {
+      const y = base - 9 - r * 11;
+      const jitter = (rnd() - 0.5) * 7;
+      wash(x, [[cx - w / 2 + jitter, y], [cx + w / 2 + jitter, y - 2],
+               [cx + w / 2 + jitter, y + 9], [cx - w / 2 + jitter, y + 11]],
+        EARTH.BISTRE, 0.42, rnd, 3);
+      inkLine(x, [[cx - w / 2 + jitter, y], [cx + w / 2 + jitter, y - 2]], rnd, 1.2, 0.12);
+    }
+    shadow(cx, base, w * 0.6);
+  };
+
+  // A two-wheeled farm cart, shafts down.
+  const cart = (cx: number, base: number, w: number) => {
+    const bodyY = base - w * 0.44;
+    wash(x, [[cx - w / 2, bodyY], [cx + w / 2, bodyY - 4], [cx + w / 2, bodyY + w * 0.26],
+             [cx - w / 2, bodyY + w * 0.3]], EARTH.RAW_UMBER, 0.5, rnd, 4);
+    inkLine(x, [[cx - w / 2, bodyY], [cx + w / 2, bodyY - 4], [cx + w / 2, bodyY + w * 0.26],
+                [cx - w / 2, bodyY + w * 0.3], [cx - w / 2, bodyY]], rnd, 1.6, 0.1);
+    inkLine(x, [[cx - w / 2, bodyY + 6], [cx - w * 1.05, base - 6]], rnd, 1.8, 0.06);
+    const wr = w * 0.24;
+    const wy = base - wr;
+    x.strokeStyle = INK.SETTLED;
+    x.lineWidth = 1.8;
+    x.globalAlpha = 0.85;
+    x.beginPath();
+    x.arc(cx + w * 0.1, wy, wr, 0, Math.PI * 2);
+    x.stroke();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      x.beginPath();
+      x.moveTo(cx + w * 0.1, wy);
+      x.lineTo(cx + w * 0.1 + Math.cos(a) * wr, wy + Math.sin(a) * wr);
+      x.stroke();
+    }
+    x.globalAlpha = 1;
+    shadow(cx, base, w * 0.6);
+  };
+
+  const base = hy + 196; // the midground stands at roughly z = 0.44
+
+  tree(W * 0.10, base + 34, 300, 122);
+  hedge(W * 0.185, W * 0.335, base + 12, 54);
+  timber(W * 0.475, base + 4, 96);
+  cart(W * 0.695, base + 20, 130);
+  tree(W * 0.885, base + 40, 320, 132);
+
+  // A few paling posts, to break the middle without hiding it.
+  for (const px of [W * 0.385, W * 0.415, W * 0.585, W * 0.615]) {
+    inkLine(x, [[px, base + 6], [px + (rnd() - 0.5) * 4, base - 34]], rnd, 2.2, 0.04);
+  }
   return c;
 }
 
@@ -384,83 +371,86 @@ export function layerForeground(): HTMLCanvasElement {
   return c;
 }
 
-/** A character cutout: ink silhouette with a wash fill, keyed on transparency. */
+/**
+ * A character cutout: ink silhouette over a wash fill, keyed on transparency.
+ *
+ * `phase` walks the legs around a cycle, 0..1. Pass -1 for a standing pose.
+ * The real pipeline segments a generated character sheet into a paper-puppet
+ * rig and rotates the limbs; this bakes a handful of frames instead, which is
+ * the same idea at placeholder fidelity.
+ */
 export function characterCutout(
   coat: string,
   seed: number,
   height = 320,
+  phase = -1,
 ): HTMLCanvasElement {
   const w = Math.round(height * 0.42);
   const { c, x } = surface(w, height);
   const rnd = mulberry(seed);
   const cx = w / 2;
 
+  const walking = phase >= 0;
+  const a = phase * Math.PI * 2;
+  const swing = walking ? Math.sin(a) * w * 0.38 : 0;
+  // The trailing leg lifts as it comes through; the leading one is planted.
+  const liftL = walking ? Math.max(0, -Math.sin(a)) * height * 0.05 : 0;
+  const liftR = walking ? Math.max(0, Math.sin(a)) * height * 0.05 : 0;
+  // Shoulders counter-rotate against the hips.
+  const lean = walking ? -Math.sin(a) * w * 0.06 : 0;
+
   // Cast shadow, so the figure sits on the ground rather than floating on it.
-  wash(
-    x,
-    [
-      [cx - w * 0.34, height * 0.985],
-      [cx + w * 0.3, height * 0.975],
-      [cx + w * 0.36, height],
-      [cx - w * 0.4, height],
-    ],
-    INK.SETTLED,
-    0.3,
-    rnd,
-    4,
-  );
+  wash(x, [[cx - w * 0.34, height * 0.985], [cx + w * 0.3, height * 0.975],
+           [cx + w * 0.36, height], [cx - w * 0.4, height]], INK.SETTLED, 0.3, rnd, 4);
+
+  const leg = (hipX: number, footDx: number, lift: number) => {
+    const hy = height * 0.70;
+    const fy = height - lift;
+    wash(x, [[hipX - w * 0.075, hy], [hipX + w * 0.075, hy],
+             [hipX + footDx + w * 0.075, fy], [hipX + footDx - w * 0.085, fy]],
+      EARTH.BISTRE, 0.78, rnd, 3);
+    inkLine(x, [[hipX, hy], [hipX + footDx, fy]], rnd, 1.3, 0.25);
+  };
+  leg(cx - w * 0.12, swing, liftL);
+  leg(cx + w * 0.12, -swing, liftR);
 
   // Coat.
-  wash(
-    x,
-    [
-      [cx - w * 0.3, height * 0.3],
-      [cx + w * 0.3, height * 0.3],
-      [cx + w * 0.34, height * 0.72],
-      [cx - w * 0.34, height * 0.72],
-    ],
-    coat,
-    0.85,
-    rnd,
-    4,
-  );
-  // Legs.
-  wash(x, [[cx - w * 0.2, height * 0.7], [cx - w * 0.04, height * 0.7], [cx - w * 0.06, height], [cx - w * 0.22, height]], EARTH.BISTRE, 0.75, rnd, 3);
-  wash(x, [[cx + w * 0.04, height * 0.7], [cx + w * 0.2, height * 0.7], [cx + w * 0.22, height], [cx + w * 0.06, height]], EARTH.BISTRE, 0.75, rnd, 3);
-  // Head and hat.
-  wash(x, [[cx - w * 0.13, height * 0.14], [cx + w * 0.13, height * 0.14], [cx + w * 0.13, height * 0.3], [cx - w * 0.13, height * 0.3]], PAPER.SMOKED, 0.9, rnd, 3);
-  wash(x, [[cx - w * 0.28, height * 0.14], [cx + w * 0.28, height * 0.14], [cx + w * 0.2, height * 0.05], [cx - w * 0.2, height * 0.05]], INK.SETTLED, 0.8, rnd, 3);
+  wash(x, [[cx - w * 0.3 + lean, height * 0.3], [cx + w * 0.3 + lean, height * 0.3],
+           [cx + w * 0.34, height * 0.72], [cx - w * 0.34, height * 0.72]],
+    coat, 0.85, rnd, 4);
 
-  // Outline: only the two falling sides and the shoulder line. Drawing the
-  // full rectangle reads as a box around the figure rather than as a coat.
-  inkLine(x, [[cx - w * 0.3, height * 0.31], [cx - w * 0.34, height * 0.72]], rnd, 1.6, 0.22);
-  inkLine(x, [[cx + w * 0.3, height * 0.31], [cx + w * 0.34, height * 0.72]], rnd, 1.6, 0.22);
-  inkLine(
-    x,
-    [
-      [cx - w * 0.3, height * 0.32],
-      [cx - w * 0.14, height * 0.29],
-      [cx + w * 0.14, height * 0.29],
-      [cx + w * 0.3, height * 0.32],
-    ],
-    rnd,
-    1.4,
-    0.15,
-  );
-  // Coat skirt.
-  inkLine(
-    x,
-    [
-      [cx - w * 0.34, height * 0.72],
-      [cx - w * 0.1, height * 0.75],
-      [cx + w * 0.12, height * 0.74],
-      [cx + w * 0.34, height * 0.72],
-    ],
-    rnd,
-    1.4,
-    0.3,
-  );
+  // Head and hat.
+  wash(x, [[cx - w * 0.13 + lean, height * 0.14], [cx + w * 0.13 + lean, height * 0.14],
+           [cx + w * 0.13 + lean, height * 0.3], [cx - w * 0.13 + lean, height * 0.3]],
+    PAPER.SMOKED, 0.9, rnd, 3);
+  wash(x, [[cx - w * 0.28 + lean, height * 0.14], [cx + w * 0.28 + lean, height * 0.14],
+           [cx + w * 0.2 + lean, height * 0.05], [cx - w * 0.2 + lean, height * 0.05]],
+    INK.SETTLED, 0.8, rnd, 3);
+
+  // Outline: the two falling sides and the shoulder line only. The full
+  // rectangle reads as a box around the figure rather than as a coat.
+  inkLine(x, [[cx - w * 0.3 + lean, height * 0.31], [cx - w * 0.34, height * 0.72]], rnd, 1.6, 0.22);
+  inkLine(x, [[cx + w * 0.3 + lean, height * 0.31], [cx + w * 0.34, height * 0.72]], rnd, 1.6, 0.22);
+  inkLine(x, [[cx - w * 0.3 + lean, height * 0.32], [cx - w * 0.14 + lean, height * 0.29],
+              [cx + w * 0.14 + lean, height * 0.29], [cx + w * 0.3 + lean, height * 0.32]],
+    rnd, 1.4, 0.15);
+  inkLine(x, [[cx - w * 0.34, height * 0.72], [cx - w * 0.1, height * 0.75],
+              [cx + w * 0.12, height * 0.74], [cx + w * 0.34, height * 0.72]], rnd, 1.4, 0.3);
   return c;
+}
+
+/** Frame 0 is the standing pose; the rest walk one full cycle. */
+export function characterFrames(
+  coat: string,
+  seed: number,
+  height = 320,
+  steps = 8,
+): HTMLCanvasElement[] {
+  const out = [characterCutout(coat, seed, height, -1)];
+  for (let i = 0; i < steps; i++) {
+    out.push(characterCutout(coat, seed, height, i / steps));
+  }
+  return out;
 }
 
 /** Placeholder portrait plate for the dialogue well. */

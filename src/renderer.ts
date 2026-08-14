@@ -15,11 +15,12 @@
 import * as THREE from 'three';
 import {
   characterCutout,
+  characterFrames,
   layerForeground,
   layerHills,
   layerHouse,
   layerSky,
-  layerTrees,
+  layerMidground,
   paperTexture,
 } from './art';
 import { MEANING, PAPER } from './palette';
@@ -142,6 +143,10 @@ export class DioramaRenderer {
   private layers: Layer[] = [];
   private player!: THREE.Mesh;
   private npcs: { mesh: THREE.Mesh; pos: GroundPos }[] = [];
+  /** Walk-cycle textures for the player: index 0 is the standing pose. */
+  private playerFrames: THREE.CanvasTexture[] = [];
+  private gait = 0;
+  private bob = 0;
 
 
   private target: THREE.WebGLRenderTarget;
@@ -162,7 +167,7 @@ export class DioramaRenderer {
     );
     this.camera.position.z = 20;
 
-    const plates = [layerSky(), layerHills(), layerHouse(), layerTrees(), layerForeground()];
+    const plates = [layerSky(), layerHills(), layerHouse(), layerMidground(), layerForeground()];
     plates.forEach((plate, i) => {
       const geo = new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14);
       const mat = new THREE.MeshBasicMaterial({
@@ -219,7 +224,10 @@ export class DioramaRenderer {
 
     // Washington is the only figure in Continental blue. Everyone else wears
     // the earth range, so the eye finds him in one pass without a marker.
-    this.player = mk(characterCutout(MEANING.CONTINENTAL_BLUE, 101), -1.2);
+    const frames = characterFrames(MEANING.CONTINENTAL_BLUE, 101);
+    this.playerFrames = frames.map(textureFrom);
+    this.player = mk(frames[0], -1.2);
+    (this.player.material as THREE.MeshBasicMaterial).map = this.playerFrames[0];
 
     const coats = ['#6B4F35', '#7A5C3E', '#5C6673', '#55627A', '#6E5B45'];
     npcPositions.forEach((pos, i) => {
@@ -267,9 +275,33 @@ export class DioramaRenderer {
     mesh.renderOrder = this.orderFor(pos.z);
   }
 
-  setPlayerPos(pos: GroundPos): void {
+  /**
+   * Advance the gait by distance walked, not by time — so the legs keep pace
+   * with the ground however fast or slow the figure moves, and stop dead when
+   * it does. `dist` is in ground units.
+   */
+  setGait(dist: number, dt: number): void {
+    const STRIDE = 0.055; // ground units per half-step
+    if (dist > 1e-5) {
+      this.gait = (this.gait + dist / STRIDE) % 1;
+      // The body rises at the passing position and drops at each footfall.
+      this.bob = 0.038 - Math.abs(Math.sin(this.gait * Math.PI * 2)) * 0.076;
+    } else {
+      this.gait = 0;
+      this.bob += (0 - this.bob) * Math.min(1, dt * 9);
+    }
+    const n = this.playerFrames.length - 1;
+    const idx = dist > 1e-5 ? 1 + (Math.floor(this.gait * n) % n) : 0;
+    const mat = this.player.material as THREE.MeshBasicMaterial;
+    if (mat.map !== this.playerFrames[idx]) {
+      mat.map = this.playerFrames[idx];
+      mat.needsUpdate = true;
+    }
+  }
 
+  setPlayerPos(pos: GroundPos): void {
     this.place(this.player, pos);
+    this.player.position.y += this.bob;
     for (const n of this.npcs) this.place(n.mesh, n.pos);
 
     // Parallax breath on both axes. Walking across the frame slides the stack

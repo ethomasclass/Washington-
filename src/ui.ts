@@ -20,7 +20,19 @@
 
 import { INK, PAPER, VOICE_INK, type VoiceId } from './palette';
 import { EMBLEM, LOCK_GLYPH } from './emblems';
-import { portraitPlate } from './art';
+import { grainTile, portraitPlate } from './art';
+
+/**
+ * Lay the paper.
+ *
+ * Generated once at startup and handed to CSS as a custom property, so every
+ * surface in the DOM layer shares one tile and the browser decodes it once.
+ * Called before the first paint; if it never runs, `var(--grain, none)` leaves
+ * the panels as plain paper rather than as broken ones.
+ */
+export function mountSheet(): void {
+  document.documentElement.style.setProperty('--grain', `url(${grainTile()})`);
+}
 
 export const CSS = `
 /* The briefing. Place and date read as a dateline, because that is what it is. */
@@ -56,9 +68,12 @@ export const CSS = `
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 10px; background: rgba(12, 9, 6, 0.9);
 }
+/* The two rings are the instrument — the barrel and its brass collar, drawn as
+   an object. The soft drop shadow that used to sit under them was not, and is
+   gone. */
 .glass .eye {
   border-radius: 50%;
-  box-shadow: 0 0 0 7px #23180F, 0 0 0 10px #4A3A24, 0 14px 40px rgba(0,0,0,0.6);
+  box-shadow: 0 0 0 7px #23180F, 0 0 0 10px #4A3A24;
 }
 .glass .eyecap {
   font-variant: small-caps; letter-spacing: 0.10em; font-size: 13px;
@@ -72,13 +87,15 @@ export const CSS = `
 
 /* The spyglass list: bearing on the left, what it proved to be on the right. */
 .survey { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+/* The bearing list is in-world UI — it is what the glass shows — so it obeys
+   the same discipline as everything else: square corners, a full-opacity ink
+   line, and no half-transparent fill. */
 .sopt {
   display: flex; justify-content: space-between; gap: 14px;
   font: inherit; text-align: left; cursor: pointer;
-  padding: 8px 12px; border: 1px solid #C3B79B; border-radius: 3px;
-  background: rgba(255, 253, 246, 0.6); color: #3B2E22;
+  padding: 8px 12px; color: #3B2E22;
 }
-.sopt:hover { background: #FFFDF6; border-color: #8A7550; }
+.sopt:hover { background-color: #FFFDF6; }
 .sopt.seen { cursor: default; opacity: 0.72; border-style: dashed; }
 .sopt .bear { font-style: italic; }
 .sopt .named { font-variant: small-caps; letter-spacing: 0.04em; }
@@ -109,6 +126,42 @@ export const CSS = `
 .devbar button:hover:not(:disabled) { background: #5E4E38; }
 .devbar button.here { background: #7A6242; border-color: #A8916B; }
 .devbar button:disabled { opacity: 0.38; cursor: default; }
+
+  /*
+   * THE SHEET.
+   *
+   * Every surface in the DOM layer is a piece of paper, and this is what makes
+   * it one: the grain tile multiplied over the paper value, and the chain lines
+   * of laid paper — 1px verticals at 96px, which is about the inch they
+   * actually sat at — at 5%. The chain lines are meant to be felt rather than
+   * seen, and on a panel this size perhaps four of them land.
+   *
+   * Both go on the background layers only, never on the element, so no text is
+   * ever blended. Type in this game is never textured (02 §6): the paper is
+   * behind the words, not on them.
+   *
+   * --grain is set at runtime by mountSheet(); if it has not been set the rule
+   * degrades to plain paper rather than to a broken url().
+   */
+  .journal, .panel, .bubble, .return, .codebar, .prompt, .intent, .hint, .sopt {
+    background-color: ${PAPER.BRIGHT};
+    background-image:
+      repeating-linear-gradient(90deg, rgba(110,97,82,.05) 0 1px, transparent 1px 96px),
+      var(--grain, none);
+    background-size: auto, 128px 128px;
+    background-blend-mode: normal, multiply;
+    /*
+     * THE LINE. 02 §8.1: every UI element carries an ink line at full opacity.
+     * This is the plates' outline discipline applied to the DOM, and it is most
+     * of why the chrome belongs to the game — these were INK-FADED hairlines,
+     * which is a web border wearing a period colour.
+     */
+    border: 1px solid ${INK.SETTLED};
+    /* No drop shadows anywhere (02 §8.1, §9.16). A sheet lies ON the sheet; it
+       does not hover above it casting a soft modern shadow. */
+    box-shadow: none;
+    border-radius: 0;
+  }
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: ${PAPER.WARM}; }
@@ -151,7 +204,6 @@ export const CSS = `
    * years that the figures were late and wrong.
    */
   .return { position: absolute; top: 22px; right: 26px; width: 268px;
-            background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED};
             padding: 11px 14px 12px; font-size: 15px; color: ${INK.SETTLED}; }
   .return .cap { font-variant: small-caps; letter-spacing: .10em; font-size: 12px;
                  color: ${INK.LIGHT}; padding-bottom: 6px; margin-bottom: 7px;
@@ -171,13 +223,21 @@ export const CSS = `
 
   /* Washington's own sense of what is unfinished. Not an objective marker —
      it is written as a thought, and it names people rather than tasks. */
-  .intent { margin-top: 15px; max-width: 40ch;
-            font-size: 16px; line-height: 1.5; font-style: italic; color: ${INK.FADED};
-            border-left: 2px solid ${PAPER.SHADOW}; padding-left: 12px; }
+  /*
+   * The standing sense of what is unfinished. It was italic ink printed
+   * directly onto the plate, and over Mount Vernon's pale sky it was close to
+   * unreadable — which is the failure 02 §8.1 is guarding against when it says
+   * a UI element is a physical object or it does not exist. Floating text is
+   * not an object. A slip of paper is.
+   *
+   * The heavy edge stays on the left only, as a memorandum ruled down one side.
+   */
+  .intent { margin-top: 14px; max-width: 40ch;
+            font-size: 16px; line-height: 1.5; font-style: italic; color: ${INK.SETTLED};
+            border-left-width: 3px; padding: 9px 13px; }
 
   .journal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-             width: min(680px, calc(100vw - 64px)); background: ${PAPER.BRIGHT};
-             border: 1px solid ${INK.FADED}; box-shadow: 0 18px 44px rgba(36,28,20,.22);
+             width: min(680px, calc(100vw - 64px));
              padding: 26px 30px; pointer-events: auto; }
   .journal h2 { margin: 0 0 4px; font-size: 20px; font-variant: small-caps;
                 letter-spacing: .08em; font-weight: 600; }
@@ -192,17 +252,27 @@ export const CSS = `
   .journal .strength { font-size: 17px; color: ${INK.SETTLED};
                        font-variant-numeric: tabular-nums; }
 
-  .hint { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
-          font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .04em; }
+  /* The control legend — the one piece of chrome with no fictional excuse, so
+     it is kept small, set on paper like everything else, and will be retired
+     when the game has taught its controls some other way. */
+  /* Bottom left rather than bottom centre: centred, it ran underneath the
+     passport code, and two paper objects overlapping reads as a bug in a game
+     whose whole claim is that these are physical things. */
+  .hint { position: absolute; bottom: 22px; left: 66px;
+          font-size: 13px; color: ${INK.SETTLED}; letter-spacing: .04em;
+          padding: 5px 12px; }
+  /* Once it had a paper ground of its own it started colliding with the panel
+     that sits over it. Nothing is being read from it while a panel is open, so
+     it goes away — and the frame is quieter for it. */
+  #overlay:has(.panel) .hint, #overlay:has(.journal) .hint,
+  #overlay:has(.panel) .codebar, #overlay:has(.journal) .codebar { display: none; }
 
   /* Speech is anchored to whoever is speaking. The figure is standing right
      there, so the bubble carries no portrait — the portrait well is for the
      deliberation panel, where there is no body on screen to look at. */
   .bubble { position: absolute; transform: translate(-50%, -100%);
             width: max-content; max-width: min(46ch, calc(100vw - 80px));
-            background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED};
-            padding: 13px 17px 14px; pointer-events: auto;
-            box-shadow: 0 12px 30px rgba(36,28,20,.20); }
+            padding: 13px 17px 14px; pointer-events: auto; }
   .bubble .who { font-variant: small-caps; letter-spacing: .1em; font-size: 13px;
                  color: ${INK.LIGHT}; margin-bottom: 5px; }
   .bubble .said { font-size: 18px; line-height: 1.5; }
@@ -213,7 +283,7 @@ export const CSS = `
                                     border-style: solid; }
   .bubble::before { left: var(--tail, 50%); margin-left: -10px; bottom: -13px;
                     border-width: 13px 10px 0 10px;
-                    border-color: ${INK.FADED} transparent transparent transparent; }
+                    border-color: ${INK.SETTLED} transparent transparent transparent; }
   .bubble::after  { left: var(--tail, 50%); margin-left: -9px; bottom: -11px;
                     border-width: 12px 9px 0 9px;
                     border-color: ${PAPER.BRIGHT} transparent transparent transparent; }
@@ -236,15 +306,14 @@ export const CSS = `
                               0 0 3px ${PAPER.BRIGHT}; }
 
   .prompt { position: absolute; transform: translate(-50%, 0); font-size: 14px;
-            letter-spacing: .05em; color: ${INK.SETTLED}; background: ${PAPER.BRIGHT};
-            border: 1px solid ${INK.FADED}; padding: 3px 10px; white-space: nowrap; }
+            letter-spacing: .05em; color: ${INK.SETTLED};
+            padding: 3px 10px; white-space: nowrap; }
 
   .panel { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%);
-           width: min(1080px, calc(100vw - 64px)); background: ${PAPER.BRIGHT};
-           border: 1px solid ${INK.FADED}; box-shadow: 0 18px 44px rgba(36,28,20,.22);
+           width: min(1080px, calc(100vw - 64px));
            padding: 22px 26px; pointer-events: auto; display: flex; gap: 22px; }
   .well { width: 300px; height: 400px; flex: 0 0 300px; display: flex; align-items: center;
-          justify-content: center; background: ${PAPER.COOL}; border: 1px solid ${INK.FADED}; }
+          justify-content: center; background: ${PAPER.COOL}; border: 1px solid ${INK.SETTLED}; }
   .well img { width: 288px; height: 384px; display: block; }
   .panel.compact .well { display: none; }
   .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -297,7 +366,7 @@ export const CSS = `
   /* Moved off the top-right corner, which now belongs to the return. The code
      is an end-of-period utility, not something played with. */
   .codebar { position: absolute; bottom: 20px; right: 26px; pointer-events: auto;
-             background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED}; padding: 10px 14px;
+             padding: 10px 14px;
              font-size: 13px; letter-spacing: .06em; color: ${INK.LIGHT}; }
   .codebar b { display: block; font-size: 16px; letter-spacing: .16em; color: ${INK.SETTLED};
                font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }

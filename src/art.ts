@@ -35,6 +35,55 @@ function mulberry(seed: number): () => number {
   };
 }
 
+/**
+ * The DOM layer's counterpart to the screen-space grain — the same tooth, for
+ * surfaces the shader never sees.
+ *
+ * Returned as a data URI because the panels are HTML: a briefing card and a
+ * speech bubble are plain accessible markup by design, and they were reading as
+ * flat web chrome laid over a watercolour because they carried none of the
+ * sheet's texture. With it they are sheets lying on the same sheet.
+ *
+ * Untinted, and composited with `multiply` rather than `overlay`. Overlay was
+ * the first instinct and it is the wrong one here: against paper values this
+ * close to white it compresses to nothing, and the tooth was invisible on
+ * screen. Multiplying a near-white tile darkens by a controllable few percent
+ * and leaves the hue to whatever it is laid on, which is how paper works.
+ */
+export function grainTile(size = 128, seed = 11): string {
+  const { c, x } = surface(size, size);
+  const rnd = mulberry(seed);
+  x.fillStyle = '#FFFFFF';
+  x.fillRect(0, 0, size, size);
+
+  const img = x.getImageData(0, 0, size, size);
+  for (let i = 0; i < img.data.length; i += 4) {
+    // Darkens by 0–7%. Enough tooth to catch the eye at a hand's distance from
+    // the screen, not enough to read as noise on a laptop in a classroom.
+    const n = rnd() * 18;
+    img.data[i] -= n;
+    img.data[i + 1] -= n;
+    img.data[i + 2] -= n * 0.85;
+  }
+  x.putImageData(img, 0, 0);
+
+  // A few long fibres, as in the plate texture. Real rag paper has them and
+  // their absence is what makes generated paper look like a gradient.
+  x.globalAlpha = 0.05;
+  x.strokeStyle = '#6B5B45';
+  x.lineWidth = 1;
+  for (let i = 0; i < 26; i++) {
+    const fx = rnd() * size;
+    const fy = rnd() * size;
+    x.beginPath();
+    x.moveTo(fx, fy);
+    x.lineTo(fx + (rnd() - 0.5) * 46, fy + (rnd() - 0.5) * 14);
+    x.stroke();
+  }
+  x.globalAlpha = 1;
+  return c.toDataURL('image/png');
+}
+
 /** Paper grain, applied as a screen-space overlay rather than baked per layer. */
 export function paperTexture(w = 512, h = 512, seed = 7): HTMLCanvasElement {
   const { c, x } = surface(w, h);

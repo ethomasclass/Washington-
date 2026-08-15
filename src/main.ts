@@ -14,7 +14,7 @@
 
 import { DioramaRenderer, type GroundPos } from './renderer';
 import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
-import { CSS, Overlay, type OptionView } from './ui';
+import { CSS, mountSheet, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
 import { councilFor, lockOn, rejoinderFor } from './council';
 import {
@@ -31,6 +31,7 @@ import { autosave, encode, loadAutosave } from './passport';
 const style = document.createElement('style');
 style.textContent = CSS;
 document.head.appendChild(style);
+mountSheet();
 
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
 const overlayRoot = document.getElementById('overlay') as HTMLElement;

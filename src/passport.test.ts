@@ -14,7 +14,8 @@ import { applyDelta, initialState, loudness, type StatId } from './state';
 import { sceneList } from './content';
 import { figureHalfW, frameX } from './ground';
 import { councilFor, lockOn, rejoinderFor } from './council';
-import type { VoiceId } from './palette';
+import { CSS } from './ui';
+import { INK, type VoiceId } from './palette';
 import type { Decision } from './types';
 
 let failures = 0;
@@ -402,6 +403,71 @@ console.log('\ncontent · across scenes');
   const withArmy = sceneList().filter((s) => s.strength);
   check(`the return is shown once there is an army (${withArmy.length} of ${sceneList().length})`,
     withArmy.every((s) => s.strength!.fit <= s.strength!.onRolls));
+}
+
+console.log('\nchrome · 02 §8.1');
+{
+  /*
+   * "A UI element is a physical object in the fiction, or it does not exist."
+   *
+   * The banned list is explicit in 02 §8.1 and §9.16, and every item on it is a
+   * thing a person adds at 1am because a panel looked flat. Checked here rather
+   * than remembered, because by the time anyone notices, four surfaces have it
+   * and the chrome has quietly become a web app laid over a watercolour.
+   *
+   * Two exemptions, both deliberate. The dev bar is meant to look like a tool
+   * that is not part of the game. The spyglass eyepiece uses spread-only
+   * shadows to draw the barrel and its brass collar — those are rings, an
+   * object, not a shadow cast by a floating pane.
+   */
+  const rules = CSS.split('}')
+    .map((r) => r.trim())
+    .filter((r) => r.includes('{'))
+    .filter((r) => !/\.devtab|\.devbar|\.glass \.eye/.test(r.split('{')[0]));
+
+  const sins: string[] = [];
+  for (const rule of rules) {
+    const sel = rule.split('{')[0].trim().replace(/\s+/g, ' ').slice(0, 40);
+    const body = rule.slice(rule.indexOf('{') + 1);
+    for (const decl of body.split(';')) {
+      const [propRaw, ...rest] = decl.split(':');
+      const prop = propRaw.trim();
+      const value = rest.join(':').trim();
+      if (!prop || !value) continue;
+      if (prop === 'backdrop-filter') sins.push(`${sel}: backdrop-filter`);
+      if (/\bblur\(/.test(value)) sins.push(`${sel}: blur()`);
+      if (prop === 'border-radius' && value !== '0') sins.push(`${sel}: border-radius ${value}`);
+      if (prop === 'box-shadow' && value !== 'none') {
+        // A shadow is legitimate only as a ring: zero offset AND zero blur, so
+        // all that is left is spread. Anything else is a drop shadow.
+        // Split on the commas BETWEEN shadows, not the ones inside rgba().
+        const shadows: string[] = [];
+        let depth = 0;
+        let cur = '';
+        for (const ch of value) {
+          if (ch === '(') depth++;
+          if (ch === ')') depth--;
+          if (ch === ',' && depth === 0) {
+            shadows.push(cur);
+            cur = '';
+          } else cur += ch;
+        }
+        shadows.push(cur);
+        for (const shadow of shadows) {
+          const nums = shadow.trim().match(/-?[\d.]+px/g) ?? [];
+          if (nums.length < 3 || nums.slice(0, 3).some((n) => parseFloat(n) !== 0))
+            sins.push(`${sel}: drop shadow "${shadow.trim()}"`);
+        }
+      }
+    }
+  }
+  check(`no banned chrome in ${rules.length} rules`, sins.length === 0, sins.join('; '));
+
+  // Every surface that sits on the plate must carry the ink line at full
+  // opacity — the DOM half of the outline discipline.
+  const surfaces = CSS.slice(CSS.indexOf('.journal, .panel'), CSS.indexOf('* { box-sizing'));
+  check('the surfaces carry a full-opacity ink line',
+    surfaces.includes(`border: 1px solid ${INK.SETTLED}`), surfaces.slice(0, 60));
 }
 
 console.log('\nthe council');

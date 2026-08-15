@@ -1510,25 +1510,126 @@ export function campHills(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(223);
   const hy = H * HORIZON;
-  const ridge: [number, number][] = [];
-  for (let i = 0; i <= 20; i++) ridge.push([(i / 20) * W, hy - 26 + Math.sin(i * 0.5) * 12 + rnd() * 8]);
-  wash(x, [...ridge, [W, hy + 24], [0, hy + 24]], EARTH.SHADOW_SLATE, 0.24, rnd);
 
-  // Boston: roofs and one spire, small and grey.
-  const bx = W * 0.44;
-  for (let i = 0; i < 16; i++) {
-    const rx = bx + i * 13 + rnd() * 5;
-    const rh = 10 + rnd() * 12;
-    solid(x, [[rx, hy - 10], [rx + 11, hy - 10], [rx + 11, hy - 10 - rh], [rx, hy - 10 - rh]],
-      rnd() < 0.35 ? '#9B8478' : '#8E939A', rnd);
+  /*
+   * What the army was looking at.
+   *
+   * This band was a grey ridge and sixteen anonymous roofs. It is the most
+   * legible piece of teaching in the scene and it was doing none of it: from
+   * the Cambridge lines in July 1775 you could see the whole argument at once —
+   * the town the enemy holds, the fleet that keeps them supplied, and the town
+   * they burned three weeks ago and did not rebuild.
+   *
+   * Left to right: the Charlestown peninsula, burned on 17 June and standing in
+   * chimneys, with the British redoubt on the hill above it; then the water;
+   * then Boston on its own peninsula with Beacon Hill and the spires.
+   */
+
+  // The far shore, a low continuous land mass behind everything.
+  const ridge: [number, number][] = [];
+  for (let i = 0; i <= 24; i++) {
+    ridge.push([(i / 24) * W, hy - 22 + Math.sin(i * 0.42) * 9 + rnd() * 6]);
   }
-  inkLine(x, [[bx + 96, hy - 14], [bx + 96, hy - 62], [bx + 100, hy - 76], [bx + 104, hy - 62],
-              [bx + 104, hy - 14]], rnd, 1.4, 0.1);
+  wash(x, [...ridge, [W, hy + 24], [0, hy + 24]], EARTH.SHADOW_SLATE, 0.22, rnd);
+
+  /* ---- Charlestown: burned, and its hill held against you ---- */
+  {
+    const cx0 = W * 0.115;
+    // Bunker Hill behind, with the redoubt the regulars dug after they took it.
+    const hill: [number, number][] = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14;
+      hill.push([cx0 - 90 + t * 300, hy - 20 - Math.sin(t * Math.PI) * 34]);
+    }
+    solid(x, [...hill, [cx0 + 210, hy + 4], [cx0 - 90, hy + 4]], '#8A8B80', rnd,
+      EARTH.SHADOW_SLATE, 0.3);
+    inkLine(x, hill, rnd, 1.1, 0.24);
+    // The redoubt: a squat parapet on the crown, and a colour over it.
+    const rx0 = cx0 + 42;
+    solid(x, [[rx0 - 34, hy - 50], [rx0 + 34, hy - 52], [rx0 + 30, hy - 38], [rx0 - 30, hy - 36]],
+      '#6F6A5C', rnd, EARTH.BISTRE, 0.3);
+    for (let i = 0; i < 5; i++) {
+      inkLine(x, [[rx0 - 30 + i * 15, hy - 50], [rx0 - 30 + i * 15, hy - 56]], rnd, 1.1, 0.1);
+    }
+    inkLine(x, [[rx0 + 40, hy - 40], [rx0 + 40, hy - 76]], rnd, 1.2, 0.06);
+    solid(x, [[rx0 + 40, hy - 76], [rx0 + 62, hy - 71], [rx0 + 40, hy - 64]], '#8E8477', rnd);
+
+    // The town below it: burned to the ground, chimneys left standing. Nothing
+    // else in the frame is drawn as an absence, and it should be.
+    solid(x, [[cx0 - 70, hy - 16], [cx0 + 150, hy - 18], [cx0 + 146, hy + 2], [cx0 - 74, hy + 4]],
+      '#57514A', rnd, INK.SETTLED, 0.34);
+    for (let i = 0; i < 15; i++) {
+      const sx0 = cx0 - 62 + i * 14 + rnd() * 5;
+      const sh = 8 + rnd() * 13;
+      solid(x, [[sx0, hy - 16], [sx0 + 4, hy - 16], [sx0 + 4, hy - 16 - sh], [sx0, hy - 16 - sh]],
+        '#6E6157', rnd);
+    }
+    // Smoke still going up off it, three weeks on.
+    for (const sm of [cx0 - 30, cx0 + 40, cx0 + 110]) {
+      for (let k = 0; k < 4; k++) {
+        const t = k / 4;
+        wash(x, [[sm - 6 - t * 14, hy - 20 - t * 40], [sm + 7 + t * 13, hy - 24 - t * 40],
+                 [sm + 5 + t * 17, hy - 44 - t * 40], [sm - 8 - t * 11, hy - 40 - t * 40]],
+          EARTH.WET_STONE, 0.11, rnd, 2);
+      }
+    }
+  }
+
+  /* ---- Boston, across the water ---- */
+  {
+    const bx0 = W * 0.50;
+    // Beacon Hill, with the mast the town is named for on top of it.
+    const bh: [number, number][] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      bh.push([bx0 - 20 + t * 190, hy - 18 - Math.sin(t * Math.PI) * 40]);
+    }
+    solid(x, [...bh, [bx0 + 170, hy + 2], [bx0 - 20, hy + 2]], '#948E80', rnd,
+      EARTH.SHADOW_SLATE, 0.26);
+    inkLine(x, [[bx0 + 74, hy - 57], [bx0 + 76, hy - 96]], rnd, 1.3, 0.05);
+    inkLine(x, [[bx0 + 68, hy - 90], [bx0 + 84, hy - 90]], rnd, 1.0, 0.1);
+
+    // Roofs along the waterfront, and four spires standing out of them. The
+    // spires are the whole silhouette of eighteenth-century Boston.
+    for (let i = 0; i < 30; i++) {
+      const rx = bx0 - 60 + i * 15 + rnd() * 5;
+      const rh = 8 + rnd() * 13;
+      solid(x, [[rx, hy - 8], [rx + 13, hy - 8], [rx + 13, hy - 8 - rh], [rx, hy - 8 - rh]],
+        rnd() < 0.35 ? '#9B8478' : '#8E939A', rnd);
+    }
+    for (const [sx0, sh] of [[bx0 + 22, 58], [bx0 + 128, 70], [bx0 + 232, 50], [bx0 + 300, 62]] as
+         [number, number][]) {
+      solid(x, [[sx0 - 7, hy - 10], [sx0 + 7, hy - 10], [sx0 + 5, hy - sh * 0.62],
+                [sx0 - 5, hy - sh * 0.62]], '#B6B0A0', rnd, EARTH.SHADOW_SLATE, 0.2);
+      solid(x, [[sx0 - 5, hy - sh * 0.62], [sx0 + 5, hy - sh * 0.62], [sx0, hy - sh]],
+        '#A49E8E', rnd, EARTH.SHADOW_SLATE, 0.24);
+      inkLine(x, [[sx0 - 7, hy - 10], [sx0 - 5, hy - sh * 0.62], [sx0, hy - sh],
+                  [sx0 + 5, hy - sh * 0.62], [sx0 + 7, hy - 10]], rnd, 1.1, 0.1);
+    }
+  }
+
   // The water between — opaque, and colder than the land.
-  solid(x, [[0, hy - 6], [W, hy - 10], [W, hy + 22], [0, hy + 26]], '#8D97A0', rnd,
+  solid(x, [[0, hy - 4], [W, hy - 8], [W, hy + 22], [0, hy + 26]], '#8D97A0', rnd,
     EARTH.SHADOW_SLATE, 0.28);
+
+  /* ---- the fleet, which is why the siege could not be closed ---- */
+  for (const [sx0, sc] of [[W * 0.335, 1.0], [W * 0.405, 0.82], [W * 0.60, 0.9], [W * 0.685, 0.72],
+                           [W * 0.80, 0.86], [W * 0.875, 0.66]] as [number, number][]) {
+    const wl = hy + 6 + (1 - sc) * 8;
+    solid(x, [[sx0 - 22 * sc, wl - 5 * sc], [sx0 + 22 * sc, wl - 5 * sc],
+              [sx0 + 16 * sc, wl + 3 * sc], [sx0 - 17 * sc, wl + 3 * sc]], '#5F5A50', rnd);
+    for (const [mx0, mh] of [[-9, 30], [1, 36], [11, 28]] as [number, number][]) {
+      inkLine(x, [[sx0 + mx0 * sc, wl - 5 * sc], [sx0 + mx0 * sc, wl - (5 + mh) * sc]],
+        rnd, 1.0 * sc, 0.05);
+      for (const yd of [0.42, 0.68]) {
+        inkLine(x, [[sx0 + (mx0 - 7) * sc, wl - (5 + mh * yd) * sc],
+                    [sx0 + (mx0 + 7) * sc, wl - (5 + mh * yd) * sc]], rnd, 0.8 * sc, 0.14);
+      }
+    }
+  }
+
   for (let i = 0; i < 22; i++) {
-    const wy2 = hy - 2 + rnd() * 24;
+    const wy2 = hy + 2 + rnd() * 22;
     inkLine(x, [[rnd() * W, wy2], [rnd() * W * 0.2 + rnd() * W * 0.7, wy2 + (rnd() - 0.5) * 3]],
       rnd, 0.6, 0.3);
   }
@@ -1536,7 +1637,6 @@ export function campHills(): HTMLCanvasElement {
   return c;
 }
 
-/** L2 — the lane itself, churned to mud, running away from the camera. */
 export function campGround(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(237);
@@ -1692,16 +1792,30 @@ export function campMidground(): HTMLCanvasElement {
     [0.246, 0.04, 1.28, 0.70], [0.284, 0.30, 1.32, 0.88], [0.318, -0.08, 1.26, 0.64],
     [0.452, 0.22, 1.30, 0.84], [0.492, 0.02, 1.28, 0.66], [0.60, 0.38, 1.32, 0.90],
   ];
-  // h is now in man-heights: a brush lean-to runs about three-quarters of a
-  // standing man at the ridge, and the biggest boarded ones a little over.
-  shanties.forEach(([fx, dy, wf, hf], i) => {
-    const b = base + dy * 120;
-    const hpx = man(b) * hf;
-    shanty(W * fx, b, hpx * wf, hpx, i);
-  });
+  /*
+   * Painted back to front, which they were not.
+   *
+   * A plate has no depth buffer: the only thing deciding what covers what is
+   * the order of the calls. The shelters were painted in the order they happen
+   * to be listed and the tent rows were painted near row first, so small far
+   * shelters were laid over large near ones. That reads exactly as tents
+   * stacked on top of each other, which is what it was.
+   *
+   * Sorting by baseline — smaller y is further away — is the whole fix, and
+   * doing it here rather than by hand-ordering the list means the arrays can be
+   * written for legibility and still come out right.
+   */
+  shanties
+    .map(([fx, dy, wf, hf], i) => ({ fx, b: base + dy * 120, wf, hf, i }))
+    .sort((a, b) => a.b - b.b)
+    .forEach(({ fx, b, wf, hf, i }) => {
+      const hpx = man(b) * hf;
+      shanty(W * fx, b, hpx * wf, hpx, i);
+    });
 
   // Greene's Rhode Islanders: ordered rows, straight streets, tents that match.
-  for (let row = 0; row < 3; row++) {
+  // Back row first, for the same reason.
+  for (let row = 2; row >= 0; row--) {
     for (let i = 0; i < 2; i++) {
       const b = base - row * 34 + 26;
       // Spaced off their own width, not off a guessed fraction of the frame.
@@ -1968,6 +2082,103 @@ export function campFarMidground(): HTMLCanvasElement {
       EARTH.RAW_UMBER, 0.3, rnd, 3);
     inkLine(x, [[px, base + 18], [px + 2, base - 6], [px + 28, base - 8], [px + 30, base + 16]],
       rnd, 1.2, 0.22);
+  }
+
+  /*
+   * The Vassall house — Washington's headquarters, July 1775 to April 1776, and
+   * later Longfellow's.
+   *
+   * A large Georgian frame mansion, pale yellow with white trim, standing on
+   * Brattle Street among the other Tory Row houses whose owners had fled. He
+   * did not sleep in a tent at Cambridge; he requisitioned a Loyalist's
+   * mansion, and that contrast — a gentleman's house at the top of a field of
+   * brush huts — is worth more to a student than any number.
+   *
+   * Set apart and up the slope from the camp, which is where it was.
+   *
+   * NOT sized in man-heights, and this is the one place that rule breaks. A
+   * two-and-a-half-storey Georgian mansion is about thirty-five feet, or a bit
+   * over six times a man — which drawn on the walkable curve at this depth comes
+   * out 740px tall on a 900px plate, filling the frame. The curve is truncated
+   * on purpose (FAR_SCALE 0.46, so a figure never shrinks past readable), and a
+   * truncated curve cannot represent a building a quarter mile off. Anything
+   * beyond the walkable band is scenery and gets sized by eye against its
+   * neighbours: here, clearly larger than the distant shelters around it and
+   * clearly smaller than the huts the player is standing among.
+   *
+   * The column is 596 because that is where a player at ground (0.10, 0.74) is
+   * drawn, and the interactable has to sit under the thing it names. Painted at
+   * a plain 0.245 of the plate it would have been at a ground x of about -0.16 —
+   * off the walkable band entirely, and unreachable.
+   */
+  {
+    const hxp = 596;
+    const hb = base - 4;
+    const unit = 44;
+    const hh = 106;
+    const hw = hh * 1.62;
+    const roof = hh * 0.34;
+    const top = hb - hh;
+
+    // Body, with the centre bay standing slightly proud.
+    solid(x, [[hxp - hw / 2, top], [hxp + hw / 2, top], [hxp + hw / 2, hb], [hxp - hw / 2, hb]],
+      '#D9CFA4', rnd, EARTH.YELLOW_OCHRE, 0.24);
+    inkLine(x, [[hxp - hw / 2, top], [hxp + hw / 2, top], [hxp + hw / 2, hb], [hxp - hw / 2, hb],
+                [hxp - hw / 2, top]], rnd, 1.6, 0.06);
+
+    // Hipped roof with a balustrade along the flat of it.
+    solid(x, [[hxp - hw / 2 - 4, top], [hxp - hw * 0.28, top - roof], [hxp + hw * 0.28, top - roof],
+              [hxp + hw / 2 + 4, top]], '#7E7A70', rnd, EARTH.SHADOW_SLATE, 0.24);
+    inkLine(x, [[hxp - hw / 2 - 4, top], [hxp - hw * 0.28, top - roof], [hxp + hw * 0.28, top - roof],
+                [hxp + hw / 2 + 4, top]], rnd, 1.4, 0.08);
+    for (let i = 0; i <= 8; i++) {
+      const bxp = hxp - hw * 0.28 + (i / 8) * hw * 0.56;
+      inkLine(x, [[bxp, top - roof], [bxp, top - roof - hh * 0.07]], rnd, 0.9, 0.14);
+    }
+    inkLine(x, [[hxp - hw * 0.28, top - roof - hh * 0.07], [hxp + hw * 0.28, top - roof - hh * 0.07]],
+      rnd, 1.1, 0.1);
+
+    // Two chimneys, and the central pediment over the door.
+    for (const f of [-0.34, 0.34]) {
+      const cxp = hxp + hw * f;
+      solid(x, [[cxp - hw * 0.028, top - roof * 1.5], [cxp + hw * 0.028, top - roof * 1.5],
+                [cxp + hw * 0.028, top - roof * 0.5], [cxp - hw * 0.028, top - roof * 0.5]],
+        '#9A8A72', rnd, EARTH.RAW_UMBER, 0.3);
+    }
+    solid(x, [[hxp - hw * 0.15, top + hh * 0.06], [hxp, top - hh * 0.08],
+              [hxp + hw * 0.15, top + hh * 0.06]], '#E6E0CC', rnd, EARTH.SHADOW_SLATE, 0.14);
+    inkLine(x, [[hxp - hw * 0.15, top + hh * 0.06], [hxp, top - hh * 0.08],
+                [hxp + hw * 0.15, top + hh * 0.06]], rnd, 1.3, 0.08);
+
+    // Pilasters, which are most of what says "gentleman's house" at this size.
+    for (const f of [-0.44, -0.16, 0.16, 0.44]) {
+      inkLine(x, [[hxp + hw * f, top + hh * 0.05], [hxp + hw * f, hb]], rnd, 1.2, 0.16);
+    }
+
+    // Windows: two ranks of five, and the door on the centre line.
+    for (let r = 0; r < 2; r++) {
+      for (let i = 0; i < 5; i++) {
+        if (r === 1 && i === 2) continue; // the door goes here
+        const wx0 = hxp - hw * 0.36 + (i * hw * 0.72) / 4;
+        const wy0 = top + hh * (0.18 + r * 0.38);
+        const ww = hw * 0.058;
+        const wh2 = hh * 0.20;
+        solid(x, [[wx0 - ww, wy0], [wx0 + ww, wy0], [wx0 + ww, wy0 + wh2], [wx0 - ww, wy0 + wh2]],
+          '#4A5250', rnd);
+        inkLine(x, [[wx0 - ww, wy0], [wx0 + ww, wy0], [wx0 + ww, wy0 + wh2], [wx0 - ww, wy0 + wh2],
+                    [wx0 - ww, wy0]], rnd, 0.9, 0.16);
+      }
+    }
+    solid(x, [[hxp - hw * 0.055, hb - hh * 0.30], [hxp + hw * 0.055, hb - hh * 0.30],
+              [hxp + hw * 0.055, hb], [hxp - hw * 0.055, hb]], '#3E3A30', rnd);
+
+    // A paling fence along the front, and one sentry's box beside the gate.
+    for (let i = 0; i <= 22; i++) {
+      const fxp = hxp - hw * 0.78 + (i / 22) * hw * 1.56;
+      inkLine(x, [[fxp, hb + unit * 0.14], [fxp, hb + unit * 0.02]], rnd, 0.9, 0.16);
+    }
+    inkLine(x, [[hxp - hw * 0.78, hb + unit * 0.05], [hxp + hw * 0.78, hb + unit * 0.05]],
+      rnd, 1.0, 0.1);
   }
 
   groundLitter(x, rnd, base + 20, base + 76, 34, 0.5);

@@ -57,6 +57,7 @@ export const FLAG_REGISTRY: string[] = [
   'task.a2.reed',
   'obs.a2.orders_issued',
   'obs.a2.marquee',
+  'obs.a2.headquarters',
 ];
 
 class BitWriter {
@@ -144,6 +145,22 @@ export function decode(code: string): GameState {
   let given = 0;
   for (let i = 0; i < CRC_BITS; i++) given = (given << 1) | bits[payloadLen + i];
   if (checksum(payload) !== given) throw new Error('that code has a typo in it');
+
+  /*
+   * The tail.
+   *
+   * Base32 packs five bits to a character, so the last character of a code
+   * almost always carries a few bits past the end of the checksum. They are
+   * written as zeroes. If they are not zeroes coming back in, the code was
+   * mistyped — and without this check a typo in the final character is silently
+   * accepted, because nothing downstream ever reads those bits. The state it
+   * decodes to happens to be right, but "happens to be right" is not a property
+   * to ship: the student should be told the code is wrong while they still have
+   * the paper in front of them.
+   */
+  for (let i = payloadLen + CRC_BITS; i < bits.length; i++) {
+    if (bits[i] !== 0) throw new Error('that code has a typo in it');
+  }
 
   let p = 0;
   const read = (width: number): number => {

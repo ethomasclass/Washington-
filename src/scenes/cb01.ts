@@ -289,14 +289,25 @@ export const CB01: Scene = {
     },
     {
       id: 'marquee',
-      label: "the general's marquee",
+      label: "the Rhode Island marquee",
       x: 0.90,
       z: 0.40,
       examine:
-        'Your own quarters, such as they are. A table, a camp bed, and the returns stacked where ' +
-        'you can reach them. Every man out there can see which tent is yours, which is the point ' +
-        'and also the difficulty.',
+        'Greene bought proper canvas out of his own colony\'s money before he marched. His men sleep ' +
+        'dry, in rows, and know where to stand. Nobody ordered him to do it, which is the part you ' +
+        'keep turning over.',
       grants: 'obs.a2.marquee',
+    },
+    {
+      id: 'headquarters',
+      label: 'the Vassall house',
+      x: 0.10,
+      z: 0.74,
+      examine:
+        'A Loyalist merchant\'s mansion, pale yellow, still furnished. He left in a hurry and you ' +
+        'sleep in his bedchamber. Your men are under brush a quarter mile down the slope, and you ' +
+        'are aware of the distance every time you walk up it.',
+      grants: 'obs.a2.headquarters',
     },
   ] as Interactable[],
 

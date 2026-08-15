@@ -2,8 +2,14 @@
 
 Read this first. It is the handoff, not the design — the design is in `docs/`.
 
-**Branch:** `claude/game-ideation-ucj49o`. Everything is committed and pushed.
-Deploys to GitHub Pages on every push to that branch.
+**Branch:** `claude/washington-game-story-playability-xa9mh8` (previous work is on
+`claude/game-ideation-ucj49o`). Everything is committed and pushed. Deploys to
+GitHub Pages on every push.
+
+**Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
+the player is working toward, the Return as the one visible number, the enlistment
+clock through Acts 1–3, and the player-facing writing register. Nothing in it is
+built yet; §9 is the build order and steps 1–3 are the cheap ones.
 
 **Run it:** `npm install && npm run dev`. `npm test` is the codec plus the
 content linter and must be green before any commit. `npm run build` before

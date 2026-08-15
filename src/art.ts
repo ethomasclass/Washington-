@@ -12,7 +12,7 @@
  */
 
 import { EARTH, INK, PAPER } from './palette';
-import { platePx } from './ground';
+import { platePx, zAtPlateY } from './ground';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -412,6 +412,63 @@ export function layerHouse(): HTMLCanvasElement {
     }
   };
 
+  // Where the house will stand, needed here because the ground has to be laid
+  // out to meet it.
+  const houseBaseY = 356;
+  const houseZ = zAtPlateY(houseBaseY, H);
+
+  /*
+   * The formal axis.
+   *
+   * Laid out with the same projection the player walks on, so the rows are a
+   * corridor he moves down rather than scenery he walks through. This is the
+   * part that would have been impossible before the ground curve was shared:
+   * painted by eye, the avenue and the walking would have disagreed, and the
+   * disagreement is exactly the kind that reads as "wrong" without anyone being
+   * able to say why.
+   *
+   * Laid before the buildings, for the same reason the palings are: a plate has
+   * no depth sorting of its own, so anything lying on the ground has to go down
+   * before anything standing on it.
+   */
+  const gravel: [number, number][] = [];
+  for (const z of [houseZ, 0.30]) {
+    const a = platePx({ x: 0.5 - 0.075, z }, W, H);
+    gravel.push([a.x, a.y]);
+  }
+  for (const z of [0.30, houseZ]) {
+    const a = platePx({ x: 0.5 + 0.075, z }, W, H);
+    gravel.push([a.x, a.y]);
+  }
+  // Low contrast on purpose. The first pass used a pale opaque trapezoid and it
+  // read as a spotlight thrown from the front door — a bright shape narrowing
+  // toward a building is a beam unless the edges are drawn.
+  wash(x, gravel, EARTH.YELLOW_OCHRE, 0.22, rnd, 4);
+  wash(x, gravel, PAPER.BRIGHT, 0.13, rnd, 3);
+  inkLine(x, [gravel[0], gravel[1]], rnd, 1.1, 0.22);
+  inkLine(x, [gravel[2], gravel[3]], rnd, 1.1, 0.22);
+
+  // Clipped yews down both sides, marching away. Size comes off the same curve
+  // as the path, so the file recedes at the rate a walking figure does.
+  for (let i = 0; i <= 13; i++) {
+    // Stops a little short of the doorstep rather than running onto it.
+    const z = 0.34 + (i / 13) * (houseZ - 0.07 - 0.34);
+    for (const side of [-1, 1]) {
+      // Wide enough to frame the court rather than to fence a corridor through
+      // it. At 0.185 the rows closed in on the middle of the play space and
+      // the NPCs stood in a hedge tunnel.
+      const p = platePx({ x: 0.5 + side * 0.30, z }, W, H);
+      const sh = 54 * p.scale * (0.62 + 0.38 * (1 - z));
+      const sw = sh * 0.42;
+      const cone: [number, number][] = [
+        [p.x, p.y - sh], [p.x + sw * 0.5, p.y - sh * 0.42], [p.x + sw * 0.42, p.y],
+        [p.x - sw * 0.42, p.y], [p.x - sw * 0.5, p.y - sh * 0.42],
+      ];
+      solid(x, cone, '#6E7A5C', rnd, EARTH.TERRE_VERTE, 0.3);
+      inkLine(x, [...cone, cone[0]], rnd, 1.0, 0.16);
+    }
+  }
+
   // Palings closing the court, drawn to the same curve so the fence lies on the
   // ground rather than across the picture — and drawn before anything is built
   // on that ground, because a plate has no depth sorting of its own and a fence
@@ -448,8 +505,18 @@ export function layerHouse(): HTMLCanvasElement {
    */
   const bx = W * 0.375;
   const bw = W * 0.25;
-  const by = hy - 96;
-  const bh = 196;
+  const bh = 184;
+  /*
+   * Where the house is planted, in the ground's own terms.
+   *
+   * This is the number the whole axis is measured from. The first cut put the
+   * foundation at z = 0.655 — inside the walkable band, so the player could
+   * stroll past the front of his own house — and then ran the avenue out to
+   * z = 0.86, so a third of its length stood behind the building and got
+   * painted over the facade. Anchoring the foundation once and deriving the
+   * rest from it is the only way the two stay agreed.
+   */
+  const by = houseBaseY - bh;
   block(bx, by, bw, bh, 5, 52);
 
   // The door, on the centre line, with a pediment over it. An axis has to end
@@ -557,50 +624,6 @@ export function layerHouse(): HTMLCanvasElement {
   // They sit forward of the centre block, which is what closes the court.
   wing(W * 0.145, W * 0.305, hy + 118, 146, W * 0.072, 3);
   wing(W * 0.855, W * 0.695, hy + 122, 142, W * 0.072, 3);
-
-  /*
-   * The formal axis.
-   *
-   * Laid out with the same projection the player walks on, so the rows are a
-   * corridor he moves down rather than scenery he walks through. This is the
-   * part that would have been impossible before the ground curve was shared:
-   * painted by eye, the avenue and the walking would have disagreed, and the
-   * disagreement is exactly the kind that reads as "wrong" without anyone being
-   * able to say why.
-   */
-  const gravel: [number, number][] = [];
-  for (const z of [0.86, 0.34]) {
-    const a = platePx({ x: 0.5 - 0.105, z }, W, H);
-    gravel.push([a.x, a.y]);
-  }
-  for (const z of [0.34, 0.86]) {
-    const a = platePx({ x: 0.5 + 0.105, z }, W, H);
-    gravel.push([a.x, a.y]);
-  }
-  // Low contrast on purpose. The first pass used a pale opaque trapezoid and it
-  // read as a spotlight thrown from the front door — a bright shape narrowing
-  // toward a building is a beam unless the edges are drawn.
-  wash(x, gravel, EARTH.YELLOW_OCHRE, 0.22, rnd, 4);
-  wash(x, gravel, PAPER.BRIGHT, 0.13, rnd, 3);
-  inkLine(x, [gravel[0], gravel[1]], rnd, 1.1, 0.22);
-  inkLine(x, [gravel[2], gravel[3]], rnd, 1.1, 0.22);
-
-  // Clipped yews down both sides, marching away. Size comes off the same curve
-  // as the path, so the file recedes at the rate a walking figure does.
-  for (let i = 0; i <= 13; i++) {
-    const z = 0.38 + (i / 13) * 0.48;
-    for (const side of [-1, 1]) {
-      const p = platePx({ x: 0.5 + side * 0.185, z }, W, H);
-      const sh = 54 * p.scale * (0.62 + 0.38 * (1 - z));
-      const sw = sh * 0.42;
-      const cone: [number, number][] = [
-        [p.x, p.y - sh], [p.x + sw * 0.5, p.y - sh * 0.42], [p.x + sw * 0.42, p.y],
-        [p.x - sw * 0.42, p.y], [p.x - sw * 0.5, p.y - sh * 0.42],
-      ];
-      solid(x, cone, '#6E7A5C', rnd, EARTH.TERRE_VERTE, 0.3);
-      inkLine(x, [...cone, cone[0]], rnd, 1.0, 0.16);
-    }
-  }
 
   // The house throws its shadow west across the lawn in the afternoon.
   wash(x, [[bx - 20, by + bh], [bx + bw + 40, by + bh - 6], [bx + bw + 10, by + bh + 84],

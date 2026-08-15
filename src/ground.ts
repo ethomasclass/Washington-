@@ -104,3 +104,19 @@ export const figureHalfW = (z: number): number =>
 
 /** Horizontal position in frame widths, measured from the centre. */
 export const frameX = (x: number, z: number): number => (x - 0.5) * 0.94 * spreadAt(z);
+
+/**
+ * The inverse of platePx's y: what depth a given plate row stands at.
+ *
+ * Needed whenever something painted has to agree with something else painted —
+ * an avenue that terminates at a doorstep, a fence that meets a wall. Placing
+ * the two by eye is how you end up with a row of hedges running across the
+ * front of the house it was supposed to lead to.
+ *
+ * Exact on the centre line, where the cross-slope term vanishes.
+ */
+export function zAtPlateY(y: number, h: number): number {
+  const v = (0.5 - y / h) * VIEW_H * OVERSCAN;
+  const f = (v - horizonY()) / (NEAR_Y - horizonY());
+  return 1 - Math.pow(Math.max(0, f), 1 / EASE);
+}

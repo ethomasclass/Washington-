@@ -70,7 +70,7 @@ const groundDist = (a: GroundPos, b: GroundPos): number =>
   Math.hypot(a.x - b.x, (a.z - b.z) * 0.75);
 
 interface Target {
-  kind: 'thing' | 'npc';
+  kind: 'thing' | 'npc' | 'task';
   id: string;
   label: string;
   pos: GroundPos;
@@ -84,6 +84,14 @@ function nearest(): Target | null {
     if (d < bestD) {
       bestD = d;
       best = { kind: 'thing', id: it.id, label: it.label, pos: { x: it.x, z: it.z } };
+    }
+  }
+  for (const t of SCENE.tasks) {
+    if (state.knowledge.has(t.grants)) continue; // done; nothing left to do here
+    const d = groundDist(pos, t);
+    if (d < bestD) {
+      bestD = d;
+      best = { kind: 'task', id: t.id, label: t.label, pos: { x: t.x, z: t.z } };
     }
   }
   for (const n of SCENE.npcs) {
@@ -125,7 +133,10 @@ function openJournal(): void {
   const noticed = SCENE.interactables
     .filter((i) => i.contradicts && state.knowledge.has(i.contradicts.grants))
     .map((i) => i.contradicts!.note);
-  overlay.showJournal(read, owed(), noticed, () => {
+  const doneTasks = SCENE.tasks
+    .filter((t) => state.knowledge.has(t.grants))
+    .map((t) => t.note);
+  overlay.showJournal(read, owed(), noticed, doneTasks, () => {
     busy = false;
   });
 }
@@ -242,6 +253,32 @@ function interact(): void {
 
   if (near.kind === 'npc') {
     runThread(SCENE.npcs.find((x) => x.id === near.id)!);
+    return;
+  }
+
+  if (near.kind === 'task') {
+    const t = SCENE.tasks.find((x) => x.id === near.id)!;
+    busy = true;
+    // Gated tasks say why rather than going quiet — nothing here refuses the
+    // player without explaining itself.
+    if (t.requires && !state.knowledge.has(t.requires)) {
+      overlay.showExamine(t.label, `Not yet — ${t.requiresNote ?? 'not now'}.`, () => {
+        busy = false;
+      });
+      return;
+    }
+    state.knowledge.add(t.grants);
+    let text = t.done;
+    if (SCENE.tasks.every((x) => state.knowledge.has(x.grants))) {
+      state.knowledge.add(SCENE.allTasksFlag);
+      text += '\n\nThat is the last of it. The place is in order, and there is nothing ' +
+        'left to do here but go.';
+    }
+    autosave(state);
+    refreshCode();
+    overlay.showExamine(t.label, text, () => {
+      busy = false;
+    });
     return;
   }
 

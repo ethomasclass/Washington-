@@ -131,10 +131,13 @@ console.log('\ncontent');
     if (it.contradicts) grants.add(it.contradicts.grants);
   }
   for (const n of SCENE.npcs) if (n.hearFlag) grants.add(n.hearFlag);
+  for (const t of SCENE.tasks) grants.add(t.grants);
+  grants.add(SCENE.allTasksFlag);
   for (const n of SCENE.npcs) {
     for (const o of n.decision?.options ?? []) if (o.requires) requires.add(o.requires);
   }
   for (const it of SCENE.interactables) if (it.contradicts) requires.add(it.contradicts.heard);
+  for (const t of SCENE.tasks) if (t.requires) requires.add(t.requires);
   const registry = new Set(FLAG_REGISTRY);
 
   const unregistered = [...grants, ...requires].filter((f) => !registry.has(f));
@@ -200,6 +203,10 @@ console.log('\ncontent');
   }
   check('every contradiction answers a claim someone makes', orphan.length === 0, orphan.join('; '));
 
+  // A gated task must say why it is not available yet.
+  const silent = SCENE.tasks.filter((t) => t.requires && !t.requiresNote).map((t) => t.id);
+  check('every gated task explains itself', silent.length === 0, silent.join(', '));
+
   const contras = SCENE.interactables.filter((i) => i.contradicts).length;
   check(`scene contains a document that answers back (${contras})`, contras >= 1);
 }
@@ -215,6 +222,7 @@ console.log('\ncontent');
   const pts = [
     ...SCENE.interactables.map((i) => ({ id: i.id, x: i.x, z: i.z })),
     ...SCENE.npcs.map((n) => ({ id: n.id, x: n.x, z: n.z })),
+    ...SCENE.tasks.map((t) => ({ id: t.id, x: t.x, z: t.z })),
   ];
   let worst = { a: '', b: '', d: 1 };
   for (let i = 0; i < pts.length; i++) {

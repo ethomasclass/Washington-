@@ -74,6 +74,35 @@ export interface Ambient {
   minLoudness: number;
 }
 
+/**
+ * Something he does, rather than something he looks at.
+ *
+ * Historically constrained: Washington was a planter, and the daily work of
+ * Mount Vernon was done by enslaved people and hired hands. He rode the farms,
+ * kept the weather diary, wrote letters, inspected, and gave instructions. He
+ * did not muck stalls or feed livestock, and a game that has him do so is
+ * lying about how the place ran.
+ *
+ * So where a task involves physical work, the result names who actually did it.
+ * That is the whole point of including tasks at all: the ordinary business of
+ * the morning is where the arrangement of the place shows itself.
+ */
+export interface Task {
+  id: string;
+  /** Phrased as an action — this is a thing done, not a thing read. */
+  label: string;
+  x: number;
+  z: number;
+  /** What happens when he does it. */
+  done: string;
+  grants: string;
+  /** How the journal records it. */
+  note: string;
+  /** Gate, if it needs something known or someone spoken to first. */
+  requires?: string;
+  requiresNote?: string;
+}
+
 export interface DialogueLine {
   speaker: string;
   portraitSeed: number;
@@ -205,6 +234,70 @@ export const SCENE = {
       x: 0.92, z: 0.31, r: 0.10, minLoudness: 0.38,
     },
   ] as Ambient[],
+
+  /**
+   * Completing every task grants this. Setting a house in order before leaving
+   * it for eight years is characterful, and the game should notice.
+   */
+  allTasksFlag: 'obs.a1.house_in_order',
+
+  tasks: [
+    {
+      id: 'task.instruments',
+      label: 'put up the instruments',
+      x: 0.10, z: 0.16,
+      done:
+        'Chain, compass and the Ohio field books go back in the chest, and the chest goes under ' +
+        'the stair. You will not be laying out any ground this year.',
+      grants: 'task.a1.instruments',
+      note: 'Put up the surveying instruments',
+    },
+    {
+      id: 'task.weather',
+      label: 'make the weather entry',
+      x: 0.21, z: 0.14,
+      done:
+        'Fair. Wind southerly. Mercury at sixty-four at sunrise. You have written this line ' +
+        'nearly every morning for sixteen years, and it takes you longer today than it should.',
+      grants: 'task.a1.weather',
+      note: 'Made the morning weather entry',
+    },
+    {
+      id: 'task.letter',
+      label: 'write to Burwell Bassett',
+      x: 0.37, z: 0.14,
+      done:
+        'To your brother-in-law, because he will not repeat it. You write that you are going to ' +
+        'Philadelphia, and that you do not know what you will be when you come back. Then you ' +
+        'seal it before you can read it over.',
+      grants: 'task.a1.letter',
+      note: 'Wrote to Burwell Bassett — the first time you have said it in writing',
+    },
+    {
+      id: 'task.orders',
+      label: 'leave standing orders',
+      x: 0.555, z: 0.13,
+      done:
+        'Wheat in the middle field, the fishery to run as it did last year, and nothing sold ' +
+        'below its worth. Lund writes it all down. Neither of you says how long the orders are ' +
+        'meant to cover.',
+      grants: 'task.a1.orders',
+      note: 'Left standing orders for the estate',
+      requires: 'heard.a1.lund',
+      requiresNote: 'you have not spoken to Lund yet',
+    },
+    {
+      id: 'task.nelson',
+      label: 'look over Nelson',
+      x: 0.84, z: 0.16,
+      done:
+        'Sound, shod, and already fed. Somebody was up before dawn seeing to that, and it was ' +
+        'not you. You run a hand down his foreleg and find nothing wrong, which you knew before ' +
+        'you bent down.',
+      grants: 'task.a1.nelson',
+      note: 'Looked over Nelson — sound, and already seen to',
+    },
+  ] as Task[],
 
   interactables: [
     {

@@ -218,7 +218,13 @@ export class Overlay {
   }
 
   /** What he has looked at, noticed, and still owes. Opened on demand. */
-  showJournal(read: string[], owed: string[], noticed: string[], onDone: () => void): void {
+  showJournal(
+    read: string[],
+    owed: string[],
+    noticed: string[],
+    done: string[],
+    onDone: () => void,
+  ): void {
     this.clearPanel();
     const j = document.createElement('div');
     j.className = 'journal';
@@ -228,6 +234,9 @@ export class Overlay {
       (owed.length
         ? `<ul>${owed.map((o) => `<li>${o}</li>`).join('')}</ul>`
         : '<div class="none">Nothing. You may go when you please.</div>') +
+      (done.length
+        ? `<h3>Done this morning</h3><ul>${done.map((d) => `<li>${d}</li>`).join('')}</ul>`
+        : '') +
       (noticed.length
         ? `<h3>Noticed</h3><ul>${noticed.map((n) => `<li>${n}</li>`).join('')}</ul>`
         : '') +

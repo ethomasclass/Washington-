@@ -83,13 +83,25 @@ export interface SurveyTarget {
  */
 export interface Ambient {
   id: string;
-  voice: VoiceId;
-  line: string;
+  /**
+   * The voices with something to say about this place, and what each says.
+   *
+   * A slot is an OPPORTUNITY, not a line (07 §3.5.2). Two or three voices are
+   * authored per slot and the engine speaks the loudest one that clears the
+   * threshold — so the same shelter, the same graves, the same spyglass draw a
+   * different thought out of a different Washington, and two students walking
+   * the same ground hear a different man thinking.
+   *
+   * This carried a single hardcoded voice until it was changed, which meant the
+   * brush shelters were *always* Restraint's thought for every player in every
+   * classroom, and the interior said nothing about who anyone had become.
+   */
+  variants: Partial<Record<VoiceId, string>>;
   x: number;
   z: number;
   /** Ground radius that triggers it. */
   r: number;
-  /** Minimum loudness for this voice to speak here. */
+  /** How loud a voice must be to take this slot. */
   minLoudness: number;
 }
 

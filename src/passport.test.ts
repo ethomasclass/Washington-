@@ -262,14 +262,27 @@ for (const scene of sceneList()) {
   check('every gated task explains itself', silentTasks.length === 0, silentTasks.join(', '));
 
   const badAmbient: string[] = [];
+  let variantTotal = 0;
   for (const a of scene.ambient) {
-    if (!a.line.trim()) badAmbient.push(`${a.id}: empty`);
+    const spoken = Object.entries(a.variants).filter(([, l]) => l && l.trim());
+    variantTotal += spoken.length;
+    /*
+     * A slot is an opportunity, not a line (07 §3.5.2). One voice is a slot
+     * that says the same thing to every player in every classroom, which is
+     * what these all were before — and it is invisible in review, because a
+     * single-voice slot reads perfectly well on the page.
+     */
+    if (spoken.length < 2) badAmbient.push(`${a.id}: ${spoken.length} voice(s), needs 2+`);
+    for (const [v, line] of spoken) {
+      if (line.split(/\s+/).length > 30) badAmbient.push(`${a.id}/${v}: over 30 words`);
+    }
     if (a.x < BOUND.x0 || a.x > BOUND.x1 || a.z < BOUND.z0 || a.z > BOUND.z1)
       badAmbient.push(`${a.id}: out of bounds`);
     if (a.r < 0.06) badAmbient.push(`${a.id}: radius under a walking step`);
     if (a.minLoudness > 0.62) badAmbient.push(`${a.id}: threshold unreachable`);
   }
-  check('ambient voices reachable and authored', badAmbient.length === 0, badAmbient.join('; '));
+  check(`ambient slots carry a choice of voices (${scene.ambient.length} slots, ` +
+    `${variantTotal} lines)`, badAmbient.length === 0, badAmbient.join('; '));
 
   check(`a document answers back (${scene.interactables.filter((i) => i.contradicts).length})`,
     scene.interactables.some((i) => i.contradicts));

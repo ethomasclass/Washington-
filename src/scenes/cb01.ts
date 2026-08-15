@@ -108,33 +108,48 @@ export const CB01: Scene = {
   ambient: [
     {
       id: 'amb2.tents',
-      voice: 'restraint',
-      line: 'One regiment in ordered rows, and nine thousand men in brush piles. Start there.',
       x: 0.865, z: 0.58, r: 0.11, minLoudness: 0.34,
+      variants: {
+        restraint: 'One regiment in ordered rows, and nine thousand men in brush piles. Start there.',
+        duty: 'Those rows are a colonel who read his orders. Find out his name before you find out anyone else\u2019s.',
+        temper: 'Nine thousand men housed like poachers, and four colonies each certain the fault is the other three.',
+      },
     },
     {
       id: 'amb2.shelters',
-      voice: 'temper',
-      line: 'They elected their officers. Their officers shave them for sixpence and call it discipline.',
       x: 0.22, z: 0.60, r: 0.11, minLoudness: 0.30,
+      variants: {
+        temper: 'They elected their officers. Their officers shave them for sixpence and call it discipline.',
+        duty: 'An officer his men can vote out is not an officer. Say so in orders, once, and mean it.',
+        restraint: 'Break the elections this week and you will have no officers at all by Friday.',
+      },
     },
     {
       id: 'amb2.boston',
-      voice: 'ambition',
-      line: 'Howe has six thousand regulars in that town and no notion of what you do not have.',
       x: 0.50, z: 0.78, r: 0.11, minLoudness: 0.32,
+      variants: {
+        ambition: 'Howe has six thousand regulars in that town and no notion of what you do not have.',
+        restraint: 'He is fed by sea and you cannot reach the sea. Nothing you do to that town matters until that changes.',
+        vanity: 'The country is waiting to read that you drove them out. It has been waiting since June.',
+      },
     },
     {
       id: 'amb2.kettle',
-      voice: 'duty',
-      line: 'Eight men to a kettle, and the kettle is theirs, not yours. Nothing here belongs to the army.',
       x: 0.36, z: 0.20, r: 0.10, minLoudness: 0.32,
+      variants: {
+        duty: 'Eight men to a kettle, and the kettle is theirs, not yours. Nothing here belongs to the army.',
+        restraint: 'Men who own their own kettle will carry it home in December, and the mess with it.',
+        temper: 'Congress voted an army and sent no kettles. Ask them what they thought the men would eat from.',
+      },
     },
     {
       id: 'amb2.necessary',
-      voice: 'vanity',
-      line: 'You are a general officer of the united colonies, legislating where men may relieve themselves.',
       x: 0.66, z: 0.17, r: 0.10, minLoudness: 0.30,
+      variants: {
+        vanity: 'You are a general officer of the united colonies, legislating where men may relieve themselves.',
+        duty: 'It goes in general orders because everything goes in general orders. That is what the book is.',
+        restraint: 'Camp fever will take more of them this summer than Howe will. This is the order that matters.',
+      },
     },
   ] as Ambient[],
 

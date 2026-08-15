@@ -155,39 +155,55 @@ export const MV01: Scene = {
   ambient: [
     {
       id: 'amb.braddock',
-      voice: 'temper',
-      line: 'Twenty years you asked them for a royal commission. Twenty years they gave you nothing.',
       x: 0.71, z: 0.19, r: 0.10, minLoudness: 0.30,
+      variants: {
+        temper: 'Twenty years you asked them for a royal commission. Twenty years they gave you nothing.',
+        ambition: 'Braddock died in your arms and you were twenty-three. Nobody else here has been shot at.',
+        vanity: 'They printed the Great Meadows in London. Give them something else to print.',
+      },
     },
     {
       id: 'amb.survey',
-      voice: 'ambition',
-      line: 'You surveyed that country at seventeen. Nobody in Philadelphia has seen a mile of it.',
       x: 0.133, z: 0.30, r: 0.10, minLoudness: 0.34,
+      variants: {
+        ambition: 'You surveyed that country at seventeen. Nobody in Philadelphia has seen a mile of it.',
+        duty: 'You were paid to draw those lines and you drew them true. That is the whole of your record.',
+        restraint: 'You know what a hundred miles of it costs a column. Remember that when they ask for speed.',
+      },
     },
     {
       id: 'amb.house',
-      voice: 'restraint',
-      line: 'Sixteen years and it is not finished. You are not a man who leaves things half-built.',
       x: 0.553, z: 0.79, r: 0.11, minLoudness: 0.36,
+      variants: {
+        restraint: 'Sixteen years and it is not finished. You are not a man who leaves things half-built.',
+        vanity: 'It is the north end that shows from the river. Of course it is the north end that is open.',
+        duty: 'Lund will write to you about the roof, and you will answer from a tent, and it will get done.',
+      },
     },
     {
       id: 'amb.river',
-      voice: 'duty',
-      line: 'The herring will come up in April whether you are here to count them or not.',
       x: 0.30, z: 0.78, r: 0.11, minLoudness: 0.32,
+      variants: {
+        duty: 'The herring will come up in April whether you are here to count them or not.',
+        restraint: 'Everything here runs on a season. An army does not, and you have not learned that yet.',
+      },
     },
     {
       id: 'amb.chariot',
-      voice: 'vanity',
-      line: 'They will watch you arrive. Whatever you are wearing will be the first thing said of you.',
       x: 0.80, z: 0.45, r: 0.10, minLoudness: 0.30,
+      variants: {
+        vanity: 'They will watch you arrive. Whatever you are wearing will be the first thing said of you.',
+        ambition: 'Two days to Philadelphia. The vote will not wait for a man who sets out on Thursday.',
+        temper: 'Ride in like a petitioner and they will treat you like one for four years.',
+      },
     },
     {
       id: 'amb.mill',
-      voice: 'duty',
-      line: 'Every acre of this runs because you stand over it. That will be true of an army too.',
       x: 0.92, z: 0.31, r: 0.10, minLoudness: 0.38,
+      variants: {
+        duty: 'Every acre of this runs because you stand over it. That will be true of an army too.',
+        restraint: 'You can be absent from a mill for a season. Ask what an army does in a season alone.',
+      },
     },
   ] as Ambient[],
 

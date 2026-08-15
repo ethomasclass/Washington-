@@ -116,33 +116,49 @@ export const CB03: Scene = {
   ambient: [
     {
       id: 'amb.glass',
-      voice: 'duty',
-      line: 'You can see everything they have. Seeing it and reaching it are different trades.',
       x: 0.80, z: 0.24, r: 0.11, minLoudness: 0.30,
+      variants: {
+        duty: 'You can see everything they have. Seeing it and reaching it are different trades.',
+        ambition: 'Seven positions, and the ice will carry men to four of them by January.',
+        restraint: 'Count them again in a week. What you can see from here changes with the weather, and so does what it means.',
+      },
     },
     {
       id: 'amb.graves',
-      voice: 'restraint',
-      line: 'Not one of those men was shot. The camp did it, and the camp is yours to order.',
       x: 0.14, z: 0.62, r: 0.11, minLoudness: 0.34,
+      variants: {
+        restraint: 'Not one of those men was shot. The camp did it, and the camp is yours to order.',
+        duty: 'Their names are in a return you signed. That is the only place they are written down.',
+        temper: 'Camp fever, and a commissary who has never once been asked to explain himself.',
+      },
     },
     {
       id: 'amb.december',
-      voice: 'temper',
-      line: 'They will go home in December because a piece of paper says they may. Paper.',
       x: 0.46, z: 0.72, r: 0.11, minLoudness: 0.32,
+      variants: {
+        temper: 'They will go home in December because a piece of paper says they may. Paper.',
+        duty: 'They signed for eight months and they have served eight months. The paper is the whole quarrel.',
+        ambition: 'Six weeks. Whatever this army is going to do, it does it before the tenth or not at all.',
+        restraint: 'Every man who goes tells a county what this was like. Mind what you send home with them.',
+      },
     },
     {
       id: 'amb.charlestown',
-      voice: 'ambition',
-      line: 'They burned a town to take a hill. Let the country see it and count the cost for you.',
       x: 0.63, z: 0.16, r: 0.10, minLoudness: 0.30,
+      variants: {
+        ambition: 'They burned a town to take a hill. Let the country see it and count the cost for you.',
+        vanity: 'Every account of this war will begin with that hill. You were not on it.',
+        temper: 'Howe watched it burn from a boat and called it a regrettable necessity.',
+      },
     },
     {
       id: 'amb.works',
-      voice: 'vanity',
-      line: 'Every officer who rides up here writes home about the works. Let them find them good.',
       x: 0.30, z: 0.30, r: 0.10, minLoudness: 0.36,
+      variants: {
+        vanity: 'Every officer who rides up here writes home about the works. Let them find them good.',
+        duty: 'You have never spared the spade. It is the one thing you have always been able to give them.',
+        restraint: 'Works are for holding ground you mean to leave. Do not fall in love with them.',
+      },
     },
   ] as Ambient[],
 

@@ -17,6 +17,7 @@ import { setPlateLight } from './art';
 import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
 import { CSS, mountSheet, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
+import type { VoiceId } from './palette';
 import { councilFor, lockOn, rejoinderFor } from './council';
 import { timePasses } from './transition';
 import {
@@ -248,16 +249,35 @@ function checkAmbient(): void {
   for (const a of scene.ambient) {
     if (heardAmbient.has(a.id)) continue;
     if (groundDist(pos, a) > a.r) continue;
-    // A voice that has just spoken holds off, so no one part of him narrates a
-    // whole scene by virtue of standing nearest the door.
-    if (now - (lastVoiceAt.get(a.voice) ?? -Infinity) < VOICE_GAP) continue;
+
+    /*
+     * The opportunity is spent on arrival, whether or not anyone speaks.
+     *
+     * Marking it heard before testing the voices is deliberate: a player who
+     * walks past the graves in silence has walked past them, and should not be
+     * able to pace back and forth until some part of him is loud enough to
+     * comment. The thought that did not come is the readout.
+     */
     heardAmbient.add(a.id);
-    if (loudness(a.voice, state.stats) < a.minLoudness) continue; // too quiet to speak
-    overlay.showThought(a.voice, a.line);
+
+    // The loudest voice authored here that clears the threshold and is not
+    // still cooling down, so no one part of him narrates a whole scene by
+    // virtue of standing nearest the door.
+    let pick: { voice: VoiceId; line: string; l: number } | null = null;
+    for (const [voice, line] of Object.entries(a.variants) as [VoiceId, string][]) {
+      if (!line) continue;
+      if (now - (lastVoiceAt.get(voice) ?? -Infinity) < VOICE_GAP) continue;
+      const l = loudness(voice, state.stats);
+      if (l < a.minLoudness) continue;
+      if (!pick || l > pick.l) pick = { voice, line, l };
+    }
+    if (!pick) return; // nobody here had it in them today
+
+    overlay.showThought(pick.voice, pick.line);
     const me = renderer.screenPos(pos);
     overlay.setThoughtAnchor(me.x, me.y - 6);
     lastAmbientAt = now;
-    lastVoiceAt.set(a.voice, now);
+    lastVoiceAt.set(pick.voice, now);
     spokenThisScene++;
     return;
   }

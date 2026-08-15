@@ -135,3 +135,16 @@ export function zAtPlateY(y: number, h: number): number {
 export function xAtPlateX(px: number, z: number, w: number): number {
   return 0.5 + ((px / w - 0.5) * OVERSCAN) / (0.94 * spreadAt(z));
 }
+
+/**
+ * How tall a standing man is, in plate pixels, at a given plate row.
+ *
+ * The unit painted structures should be measured in. A wedge tent's ridge is
+ * about a man's height; a lean-to you crawl into is a bit under one. Sizing
+ * them by eye instead produced a camp of tents a third of a man tall, which
+ * read as kennels and made the whole scene look like it was being viewed from
+ * far away rather than stood in.
+ */
+export function figureAtPlateY(y: number, h: number): number {
+  return scaleAt(zAtPlateY(y, h)) * FIGURE_H * (h / (VIEW_H * OVERSCAN));
+}

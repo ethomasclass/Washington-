@@ -12,7 +12,7 @@
  */
 
 import { EARTH, INK, PAPER } from './palette';
-import { platePx, xAtPlateX, zAtPlateY } from './ground';
+import { figureAtPlateY, platePx, xAtPlateX, zAtPlateY } from './ground';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -546,7 +546,7 @@ export function layerHouse(): HTMLCanvasElement {
     inkLine(x, [[dx - dw * 1.7, dy - 2], [dx, dy - dh * 0.42], [dx + dw * 1.7, dy - 2],
                 [dx - dw * 1.7, dy - 2]], rnd, 1.3, 0.06);
     // Steps down to the track.
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       const sw = dw * (1.6 + i * 0.32);
       inkLine(x, [[dx - sw, dy + dh + i * 5], [dx + sw, dy + dh + i * 5]], rnd, 1.1, 0.08);
     }
@@ -1675,23 +1675,117 @@ export function campMidground(): HTMLCanvasElement {
     shadow(cx, b, w * 0.5);
   };
 
+  /*
+   * Everything below is sized in man-heights off the ground curve rather than
+   * in pixels. Drawn by eye, the tents came out at about a third of the height
+   * of a man standing beside them — which is most of why the camp read as a
+   * model seen from a distance instead of a place the player is standing in.
+   */
+  const man = (b: number) => figureAtPlateY(b, H);
+
   // The shanty town, ragged and unaligned, on the left and centre.
   // Clustered, not spaced. Men from the same town built next to each other and
   // left gaps everywhere else; an even row of huts reads as a fence.
+  // x, depth offset, width as a multiple of its own height, height in man-heights.
   const shanties: [number, number, number, number][] = [
-    [0.048, 0.34, 126, 96], [0.104, 0.16, 92, 70], [0.132, 0.46, 142, 108],
-    [0.246, 0.04, 86, 66], [0.284, 0.30, 116, 88], [0.318, -0.08, 74, 58],
-    [0.452, 0.22, 108, 82], [0.492, 0.02, 82, 62], [0.60, 0.38, 118, 90],
+    [0.048, 0.34, 1.34, 0.95], [0.104, 0.16, 1.30, 0.74], [0.132, 0.46, 1.36, 1.04],
+    [0.246, 0.04, 1.28, 0.70], [0.284, 0.30, 1.32, 0.88], [0.318, -0.08, 1.26, 0.64],
+    [0.452, 0.22, 1.30, 0.84], [0.492, 0.02, 1.28, 0.66], [0.60, 0.38, 1.32, 0.90],
   ];
-  shanties.forEach(([fx, dy, w, h], i) => shanty(W * fx, base + dy * 120, w, h, i));
+  // h is now in man-heights: a brush lean-to runs about three-quarters of a
+  // standing man at the ridge, and the biggest boarded ones a little over.
+  shanties.forEach(([fx, dy, wf, hf], i) => {
+    const b = base + dy * 120;
+    const hpx = man(b) * hf;
+    shanty(W * fx, b, hpx * wf, hpx, i);
+  });
 
   // Greene's Rhode Islanders: ordered rows, straight streets, tents that match.
   for (let row = 0; row < 3; row++) {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
       const b = base - row * 34 + 26;
-      const cx = W * (0.755 + i * 0.052) + row * 12;
-      tent(cx, b, 76 - row * 9, 60 - row * 7);
+      // Spaced off their own width, not off a guessed fraction of the frame.
+      // Sized correctly they are twice as wide as they were, and the old
+      // spacing packed them into one continuous ridge of canvas.
+      const b0 = base - row * 34 + 26;
+      const cx = W * 0.575 + i * figureAtPlateY(b0, H) * 1.42 + row * 26;
+      // A common wedge tent stood about as high at the ridge as the man who
+      // slept in it, and was a little wider than it was tall.
+      const th = man(b) * 1.02;
+      tent(cx, b, th * 1.28, th);
     }
+  }
+
+  /*
+   * The headquarters marquee.
+   *
+   * A wall tent, not a wedge: vertical sides you can stand up inside, a ridge
+   * over them, and a fly out front on its own poles to work under. Set apart
+   * from the lines with a sentry on it, and half again the height of anything
+   * else in the camp — which is the whole point of it. A general's quarters
+   * that reads as one more tent is not doing its job.
+   *
+   * HISTORICAL NOTE: on 3 July 1775 Washington's quarters at Cambridge were a
+   * house, not a marquee — Wadsworth House first, then the Vassall house from
+   * about the 15th. The marquee is right from 1776 onward in the field. This is
+   * drawn here because the scene needs a command post the player can walk to;
+   * swapping it for the Vassall house is a change to this block alone.
+   */
+  {
+    const mx = W * 0.862;
+    const mb = base + 8;
+    const mh = man(mb) * 1.40;
+    const mw = mh * 1.30;
+    const wallY = mb - mh * 0.52; // where the vertical side wall stops
+
+    // Guy ropes first, so the canvas covers their tops.
+    for (const d of [-1.05, -0.72, 0.72, 1.05]) {
+      inkLine(x, [[mx + mw * d * 0.5, mb - mh * (d < 0 ? 0.86 : 0.86)],
+                  [mx + mw * d * 0.92, mb + 6]], rnd, 1.2, 0.1);
+    }
+
+    // Body: side walls up to the eaves, then the ridge above them.
+    const body: [number, number][] = [
+      [mx - mw / 2, mb], [mx - mw / 2, wallY], [mx - mw * 0.30, mb - mh],
+      [mx + mw * 0.30, mb - mh], [mx + mw / 2, wallY], [mx + mw / 2, mb],
+    ];
+    solid(x, body, '#E4DFCD', rnd);
+    // One lit face and one in shade, or a big pale tent reads as a cut-out.
+    wash(x, [[mx + mw * 0.06, mb - mh], [mx + mw * 0.30, mb - mh], [mx + mw / 2, wallY],
+             [mx + mw / 2, mb], [mx + mw * 0.06, mb]], EARTH.SHADOW_SLATE, 0.2, rnd, 3);
+    inkLine(x, [...body, body[0]], rnd, 2.2, 0.03);
+    inkLine(x, [[mx - mw / 2, wallY], [mx + mw / 2, wallY]], rnd, 1.3, 0.24); // eaves
+    // Ridge pole ends, sticking out past the canvas at both gables.
+    inkLine(x, [[mx - mw * 0.34, mb - mh], [mx + mw * 0.34, mb - mh]], rnd, 2.0, 0.06);
+
+    // The door, hooked back — a dark opening, which is what says a tent is
+    // somewhere a man goes in rather than a shape on the ground.
+    const dw = mw * 0.125;
+    solid(x, [[mx - dw, mb], [mx - dw * 0.85, mb - mh * 0.66], [mx + dw * 0.85, mb - mh * 0.66],
+              [mx + dw, mb]], '#3A322A', rnd);
+    // A table just inside it, so the opening reads as a room and not a hole.
+    solid(x, [[mx - dw * 0.7, mb - mh * 0.30], [mx + dw * 0.7, mb - mh * 0.30],
+              [mx + dw * 0.7, mb - mh * 0.24], [mx - dw * 0.7, mb - mh * 0.24]],
+      '#6B5A44', rnd);
+    inkLine(x, [[mx - dw * 0.55, mb - mh * 0.24], [mx - dw * 0.55, mb - mh * 0.06]], rnd, 1.1, 0.1);
+    inkLine(x, [[mx + dw * 0.55, mb - mh * 0.24], [mx + dw * 0.55, mb - mh * 0.06]], rnd, 1.1, 0.1);
+    solid(x, [[mx + dw * 0.85, mb - mh * 0.62], [mx + dw * 2.0, mb - mh * 0.54],
+              [mx + dw * 1.8, mb], [mx + dw * 0.8, mb]], '#D9D3BF', rnd, EARTH.SHADOW_SLATE, 0.22);
+    inkLine(x, [[mx + dw * 0.85, mb - mh * 0.62], [mx + dw * 2.0, mb - mh * 0.54],
+                [mx + dw * 1.8, mb]], rnd, 1.4, 0.1);
+
+    // The fly, forward on two poles: the roof councils were held under.
+    const fyTop = mb - mh * 0.84;
+    const flyF = mb - mh * 0.56;
+    solid(x, [[mx - mw * 0.40, fyTop], [mx + mw * 0.40, fyTop],
+              [mx + mw * 0.52, flyF], [mx - mw * 0.52, flyF]], '#DCD6C2', rnd,
+      EARTH.SHADOW_SLATE, 0.14);
+    inkLine(x, [[mx - mw * 0.40, fyTop], [mx + mw * 0.40, fyTop], [mx + mw * 0.52, flyF],
+                [mx - mw * 0.52, flyF], [mx - mw * 0.40, fyTop]], rnd, 1.6, 0.08);
+    for (const d of [-0.52, 0.52]) {
+      inkLine(x, [[mx + mw * d, flyF], [mx + mw * d * 1.02, mb + 4]], rnd, 2.2, 0.04);
+    }
+    shadow(mx, mb, mw * 0.62);
   }
 
   // A flagless pole, a cook fire with a kettle on a tripod, and stacked arms.
@@ -1886,15 +1980,49 @@ export function campForeground(): HTMLCanvasElement {
   const rnd = mulberry(267);
   const y = H * 0.95;
 
+  /*
+   * Shelter at the player's own scale, cropped by the frame.
+   *
+   * Correcting the sizes further back made the camp the right size but did not
+   * make it somewhere you are standing — everything still sat in one band in
+   * the middle distance, with the near third empty, which is the composition of
+   * looking at a camp from outside it. Two shelters running off the edges at
+   * the scale of the man walking between them is what puts him inside it. They
+   * are on the nearest plate, so he passes behind them.
+   */
+  const nearShelter = (edge: number, dir: number) => {
+    const b = H * 1.02;
+    const hgt = figureAtPlateY(H * 0.9, H) * 1.5;
+    const wd = hgt * 1.5;
+    const ridgeX = edge + dir * wd * 0.30;
+    const backX = edge + dir * wd;
+    const body: [number, number][] = [
+      [edge, b], [edge, b - hgt * 0.86], [ridgeX, b - hgt],
+      [backX, b - hgt * 0.44], [backX, b],
+    ];
+    solid(x, body, '#9C917A', rnd, EARTH.BISTRE, 0.32);
+    inkLine(x, [[edge, b - hgt * 0.86], [ridgeX, b - hgt], [backX, b - hgt * 0.44]], rnd, 3.0, 0.02);
+    inkLine(x, [[backX, b - hgt * 0.44], [backX, b]], rnd, 2.4, 0.06);
+    // Boards down the slope, and a guy rope out to a stake in the dirt.
+    for (let i = 1; i < 7; i++) {
+      const t = i / 7;
+      inkLine(x, [[edge + (ridgeX - edge) * t, b - hgt * (0.86 + 0.14 * t)],
+                  [backX - dir * wd * 0.08, b - hgt * (0.44 + 0.42 * (1 - t))]], rnd, 1.2, 0.24);
+    }
+    inkLine(x, [[ridgeX, b - hgt], [ridgeX + dir * wd * 0.62, b - hgt * 0.1]], rnd, 1.4, 0.12);
+  };
+  nearShelter(-40, 1);
+  nearShelter(W + 40, -1);
+
   // A stack of firewood and two leaning muskets at the frame edge.
   for (let i = 0; i < 5; i++) {
     const yy = y - i * 13 - 8;
-    wash(x, [[10, yy], [190 - i * 8, yy - 4], [190 - i * 8, yy + 11], [10, yy + 13]],
-      EARTH.BISTRE, 0.44, rnd, 3);
-    inkLine(x, [[10, yy], [190 - i * 8, yy - 4]], rnd, 1.3, 0.14);
+    solid(x, [[210, yy], [390 - i * 8, yy - 4], [390 - i * 8, yy + 11], [210, yy + 13]],
+      '#6E5A42', rnd, EARTH.BISTRE, 0.24);
+    inkLine(x, [[210, yy], [390 - i * 8, yy - 4]], rnd, 1.3, 0.14);
   }
-  inkLine(x, [[W - 150, H], [W - 108, y - 128]], rnd, 2.6, 0.05);
-  inkLine(x, [[W - 118, H], [W - 96, y - 132]], rnd, 2.6, 0.05);
+  inkLine(x, [[W - 420, H], [W - 378, y - 128]], rnd, 2.6, 0.05);
+  inkLine(x, [[W - 388, H], [W - 366, y - 132]], rnd, 2.6, 0.05);
 
   // Trodden ground and a scatter of stakes across the very bottom.
   for (let i = 0; i < 60; i++) {

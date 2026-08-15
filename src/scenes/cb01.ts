@@ -287,6 +287,17 @@ export const CB01: Scene = {
         'Up past the Vassall house, where the returns are, and the dispatches, and the map ' +
         'table with the whole war laid flat on it.',
     },
+    {
+      id: 'marquee',
+      label: "the general's marquee",
+      x: 0.90,
+      z: 0.40,
+      examine:
+        'Your own quarters, such as they are. A table, a camp bed, and the returns stacked where ' +
+        'you can reach them. Every man out there can see which tent is yours, which is the point ' +
+        'and also the difficulty.',
+      grants: 'obs.a2.marquee',
+    },
   ] as Interactable[],
 
   npcs: [

@@ -23,10 +23,57 @@ import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { portraitPlate } from './art';
 
 export const CSS = `
+/* The briefing. Place and date read as a dateline, because that is what it is. */
+.brief .stamp {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px; padding-bottom: 8px; margin-bottom: 12px;
+  border-bottom: 1px solid #C3B79B;
+}
+.brief .place { font-variant: small-caps; letter-spacing: 0.09em; font-size: 19px; }
+.brief .date { font-style: italic; opacity: 0.72; }
+.brief .head {
+  font-variant: small-caps; letter-spacing: 0.11em; font-size: 12px;
+  opacity: 0.62; margin: 16px 0 6px;
+}
+.brief .line { margin-bottom: 7px; }
+.brief .line.quiet { opacity: 0.78; font-style: italic; }
+.brief .objectives { margin: 0; padding-left: 22px; }
+.brief .objectives li { margin-bottom: 5px; }
+.journal .stamp {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1px solid #C3B79B;
+}
+.journal .place { font-variant: small-caps; letter-spacing: 0.08em; }
+.journal .date { font-style: italic; opacity: 0.7; }
+.journal .objectives { margin: 0 0 14px; padding-left: 20px; }
+.journal .objectives li { margin-bottom: 4px; }
+
+/* The spyglass. Everything goes dark but the circle. */
+.glass {
+  /* pointer-events: auto, because the overlay root disables them so the game
+     can be clicked through everywhere else. */
+  position: fixed; inset: 0; z-index: 60; pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; background: rgba(12, 9, 6, 0.9);
+}
+.glass .eye {
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px #23180F, 0 0 0 10px #4A3A24, 0 14px 40px rgba(0,0,0,0.6);
+}
+.glass .eyecap {
+  font-variant: small-caps; letter-spacing: 0.10em; font-size: 13px;
+  color: #D8CDB6; opacity: 0.85;
+}
+.glass .bearings {
+  display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+  max-width: min(880px, 92vw);
+}
+.glass .continue { color: #C3B79B; opacity: 0.62; }
+
 /* The spyglass list: bearing on the left, what it proved to be on the right. */
 .survey { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
 .sopt {
-  display: flex; justify-content: space-between; gap: 16px; width: 100%;
+  display: flex; justify-content: space-between; gap: 14px;
   font: inherit; text-align: left; cursor: pointer;
   padding: 8px 12px; border: 1px solid #C3B79B; border-radius: 3px;
   background: rgba(255, 253, 246, 0.6); color: #3B2E22;
@@ -260,17 +307,42 @@ export class Overlay {
   }
 
   /** Arrival card — the situation, before the player has control. */
-  showOpening(title: string, subtitle: string, lines: string[], onDone: () => void): void {
+  /**
+   * The briefing.
+   *
+   * Place and date at the top in a form a student can copy into a notebook,
+   * then what has happened, then what he is here to do — numbered, because an
+   * objective that is not numbered reads as more atmosphere.
+   */
+  showOpening(
+    brief: {
+      where: string;
+      when: string;
+      situation: string[];
+      objectives: string[];
+      opening: string[];
+    },
+    onDone: () => void,
+  ): void {
     const p = this.makePanel(true);
     p.innerHTML =
-      `<div class="body"><div class="speaker">${title} · ${subtitle}</div>` +
-      lines.map((l) => `<div class="line" style="margin-bottom:10px">${l}</div>`).join('') +
+      '<div class="body brief">' +
+      `<div class="stamp"><span class="place">${brief.where}</span>` +
+      `<span class="date">${brief.when}</span></div>` +
+      `<div class="head">Where things stand</div>` +
+      brief.situation.map((l) => `<div class="line">${l}</div>`).join('') +
+      brief.opening.map((l) => `<div class="line quiet">${l}</div>`).join('') +
+      `<div class="head">What you are here to do</div>` +
+      '<ol class="objectives">' +
+      brief.objectives.map((o) => `<li>${o}</li>`).join('') +
+      '</ol>' +
       '<div class="continue">press <b>Space</b> to begin</div></div>';
     this.waitForDismiss(onDone);
   }
 
   /** What he has looked at, noticed, and still owes. Opened on demand. */
   showJournal(
+    brief: { where: string; when: string; objectives: string[] },
     purpose: string,
     strength: string,
     read: string[],
@@ -284,7 +356,15 @@ export class Overlay {
     j.className = 'journal';
     j.innerHTML =
       '<h2>What remains</h2>' +
+      `<div class="stamp"><span class="place">${brief.where}</span>` +
+      `<span class="date">${brief.when}</span></div>` +
       `<div class="purpose">${purpose}</div>` +
+      // The objectives again, because a player who put the game down on Tuesday
+      // has no idea what they were doing by Thursday.
+      '<h3>What you are here to do</h3>' +
+      '<ol class="objectives">' +
+      brief.objectives.map((o) => `<li>${o}</li>`).join('') +
+      '</ol>' +
       `<h3>The army</h3><div class="strength">${strength}</div>` +
       '<h3>Owed an answer</h3>' +
       (owed.length
@@ -360,41 +440,127 @@ export class Overlay {
   }
 
   /**
-   * The spyglass panel.
+   * The spyglass.
    *
-   * A list of bearings, each of which can be looked at once. Named ones stay
-   * listed with what they turned out to be, so the panel doubles as the record
-   * of what has been scouted — the player can see at a glance that two bearings
-   * are still unexamined without the game nagging about it.
+   * Not a list with a picture beside it — a view through the instrument. The
+   * screen goes dark except for one circle, and inside that circle is a
+   * magnified crop of the actual scene taken off the game canvas, swung to
+   * whichever bearing is being looked at. Sweeping between bearings pans the
+   * glass across the water.
+   *
+   * The crop is a still, grabbed once when the glass is raised. That is not a
+   * shortcut, it is the right behaviour: a man with his eye to a glass is
+   * holding still, and the whole frame going quiet is most of what makes it
+   * feel like an instrument rather than a menu.
+   *
+   * The circle is drawn with the eyepiece's own faults — the image falls off
+   * toward the rim, and there is a fringe of colour at the edge where cheap
+   * eighteenth-century glass could not bring every wavelength to the same
+   * focus. Both are period-correct and both are what the eye reads as "lens".
    */
   showSurvey(
     label: string,
-    targets: { id: string; bearing: string; name: string; done: boolean }[],
+    source: HTMLCanvasElement,
+    targets: { id: string; at: number; bearing: string; name: string; done: boolean }[],
     onPick: (id: string) => void,
     onDone: () => void,
   ): void {
-    const p = this.makePanel(true);
-    const left = targets.filter((t) => !t.done).length;
-    p.innerHTML =
-      `<div class="body"><div class="speaker">${label}</div>` +
-      `<div class="line">Sweep the glass across the water. ` +
-      (left ? `${left} bearing${left === 1 ? '' : 's'} not yet made out.` : 'All of it named.') +
-      `</div><div class="survey">` +
-      targets
+    this.clearPanel();
+    const wrap = document.createElement('div');
+    wrap.className = 'glass';
+
+    const D = Math.round(Math.min(innerWidth, innerHeight) * 0.56);
+    const eye = document.createElement('canvas');
+    eye.className = 'eye';
+    eye.width = D;
+    eye.height = D;
+    const g = eye.getContext('2d')!;
+
+    /** Swing the glass to a bearing and redraw what is in it. */
+    const look = (at: number): void => {
+      const ZOOM = 3.4;
+      const sw = source.width / ZOOM;
+      const sh = source.height / ZOOM;
+      // Clamped so the glass cannot swing off the edge of the world.
+      const sx = Math.max(0, Math.min(source.width - sw, at * source.width - sw / 2));
+      // Held on the horizon, which is the only band with anything in it.
+      const sy = Math.max(0, Math.min(source.height - sh, source.height * 0.30 - sh / 2));
+
+      g.save();
+      g.clearRect(0, 0, D, D);
+      g.beginPath();
+      g.arc(D / 2, D / 2, D / 2 - 2, 0, Math.PI * 2);
+      g.clip();
+      g.drawImage(source, sx, sy, sw, sh, 0, 0, D, D);
+
+      // Chromatic fringe: the same crop offset a whisker and tinted, which is
+      // what an uncorrected lens does at the edges.
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = 0.16;
+      g.drawImage(source, sx, sy, sw, sh, -3, 0, D + 6, D);
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 1;
+
+      // Fall-off toward the rim.
+      const vig = g.createRadialGradient(D / 2, D / 2, D * 0.20, D / 2, D / 2, D / 2);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(0.62, 'rgba(20,16,10,0.10)');
+      vig.addColorStop(1, 'rgba(14,11,7,0.82)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, D, D);
+
+      // A hair of a reticle. Two short strokes, not a rifle sight.
+      g.strokeStyle = 'rgba(38,30,20,0.5)';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(D / 2 - 16, D / 2);
+      g.lineTo(D / 2 + 16, D / 2);
+      g.moveTo(D / 2, D / 2 - 16);
+      g.lineTo(D / 2, D / 2 + 16);
+      g.stroke();
+      g.restore();
+    };
+
+    const caption = document.createElement('div');
+    caption.className = 'eyecap';
+
+    const list = document.createElement('div');
+    list.className = 'bearings';
+
+    const render = (): void => {
+      const left = targets.filter((t) => !t.done).length;
+      caption.textContent = left
+        ? `${label} · ${left} bearing${left === 1 ? '' : 's'} not yet made out`
+        : `${label} · all of it named`;
+      list.innerHTML = targets
         .map(
           (t, i) =>
             `<button class="sopt${t.done ? ' seen' : ''}" data-i="${i}">` +
             `<span class="bear">${t.bearing}</span>` +
             `<span class="named">${t.done ? t.name : '—'}</span></button>`,
         )
-        .join('') +
-      `</div><div class="continue">press <b>Space</b> to lower the glass</div></div>`;
-    for (const b of Array.from(p.querySelectorAll<HTMLButtonElement>('.sopt'))) {
-      b.onclick = () => {
+        .join('');
+      for (const b of Array.from(list.querySelectorAll<HTMLButtonElement>('.sopt'))) {
         const t = targets[Number(b.dataset.i)];
-        if (!t.done) onPick(t.id);
-      };
-    }
+        // Hovering swings the glass, which makes the list feel like an
+        // instrument being aimed rather than a set of buttons.
+        b.onmouseenter = () => look(t.at);
+        b.onclick = () => {
+          look(t.at);
+          if (!t.done) onPick(t.id);
+        };
+      }
+    };
+
+    const hint = document.createElement('div');
+    hint.className = 'continue';
+    hint.innerHTML = 'press <b>Space</b> to lower the glass';
+
+    wrap.append(eye, caption, list, hint);
+    this.root.append(wrap);
+    this.panel = wrap;
+    render();
+    look(targets.find((t) => !t.done)?.at ?? 0.5);
     this.waitForDismiss(onDone);
   }
 

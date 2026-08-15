@@ -181,7 +181,9 @@ function openJournal(): void {
     ? `Return of ${scene.strength.dated}: ${scene.strength.fit.toLocaleString()} present and ` +
       `fit for duty, of ${scene.strength.onRolls.toLocaleString()} on the rolls.`
     : scene.noStrength;
-  overlay.showJournal(scene.purpose, strength, read, owed(), noticed, doneTasks, () => {
+  overlay.showJournal(
+    { where: scene.where, when: scene.when, objectives: scene.objectives },
+    scene.purpose, strength, read, owed(), noticed, doneTasks, () => {
     busy = false;
   });
 }
@@ -344,12 +346,17 @@ function interact(): void {
     const openGlass = (): void => {
       const rows = it.survey!.map((t) => ({
         id: t.id,
+        at: t.at,
         bearing: t.bearing,
         name: t.name,
         done: state.knowledge.has(t.grants),
       }));
       overlay.showSurvey(
         it.label,
+        // A still of the frame on screen. Grabbed through snapshot() rather
+        // than read off the canvas, because a WebGL buffer is gone by the time
+        // any later code could look at it.
+        renderer.snapshot(),
         rows,
         (id) => {
           const t = it.survey!.find((v) => v.id === id)!;
@@ -513,9 +520,18 @@ function enterScene(id: string): void {
   refreshIntent();
 
   busy = true;
-  overlay.showOpening(scene.title, scene.subtitle, [...scene.opening, scene.purpose], () => {
-    busy = false;
-  });
+  overlay.showOpening(
+    {
+      where: scene.where,
+      when: scene.when,
+      situation: scene.situation,
+      objectives: scene.objectives,
+      opening: scene.opening,
+    },
+    () => {
+      busy = false;
+    },
+  );
 }
 
 refreshCode();
@@ -526,9 +542,18 @@ requestAnimationFrame(frame);
 // Chromebook next period should not sit through the scene-setting again.
 if (!resumed) {
   busy = true;
-  overlay.showOpening(scene.title, scene.subtitle, [...scene.opening, scene.purpose], () => {
-    busy = false;
-  });
+  overlay.showOpening(
+    {
+      where: scene.where,
+      when: scene.when,
+      situation: scene.situation,
+      objectives: scene.objectives,
+      opening: scene.opening,
+    },
+    () => {
+      busy = false;
+    },
+  );
 }
 
 

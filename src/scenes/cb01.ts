@@ -47,6 +47,32 @@ export const CB01: Scene = {
   strength: { fit: 13743, onRolls: 16770, dated: '3 July 1775' },
   noStrength: '',
 
+  where: 'Cambridge, Massachusetts — the camp before Boston',
+  when: 'July 1775',
+
+  /*
+   * The gap between the commission and the thing commissioned.
+   *
+   * Congress appointed him on 15 June and he reached Cambridge on 2 July. What
+   * he found was not an army: it was the militia of four separate colonies,
+   * each obeying its own officers, camped where it liked, on enlistments that
+   * ran out at the end of the year. The whole of Act 2 is the work of turning
+   * that into something that can still be there in the spring.
+   */
+  situation: [
+    'On the fifteenth of June the Congress made you commander-in-chief of an army it had not ' +
+      'yet raised. You rode north for a fortnight and arrived on the second of July.',
+    'Bunker Hill was fought three weeks ago. The British hold Boston and Charlestown; they ' +
+      'burned Charlestown to the ground taking it, and their fleet feeds them by sea.',
+    'What is camped here is the militia of four colonies, each obeying its own officers, on ' +
+      'enlistments that expire at the end of December.',
+  ],
+  objectives: [
+    'Walk the camp and find out what you actually command.',
+    'Settle with Greene what is to be done about the powder.',
+    'Get the general orders out — one army, one set of rules, starting today.',
+  ],
+
   opening: [
     'Sixteen thousand men are sitting in front of Boston, and every one of them ' +
       'believes he is already a soldier.',

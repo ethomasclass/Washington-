@@ -100,7 +100,34 @@ export const MV01: Scene = {
   strength: null as { fit: number; onRolls: number; dated: string } | null,
   noStrength: 'There is no army. That is the whole of the difficulty.',
 
-  /** Shown once, on arrival, before the player has control. */
+  where: 'Mount Vernon, Virginia',
+  when: 'May 1775',
+
+  /*
+   * What a student needs before they can play this.
+   *
+   * The shooting has already started and most of them will not know that.
+   * Lexington and Concord were three weeks ago; the Second Continental
+   * Congress is sitting in Philadelphia right now and has to decide whether the
+   * militia camped around Boston is an army and, if so, whose. Washington is
+   * forty-three, has not held a command in sixteen years, and is one of the few
+   * men in the colonies who has ever commanded anything at all.
+   */
+  situation: [
+    'Three weeks ago, at Lexington and Concord, British regulars and Massachusetts militia ' +
+      'shot at each other. Nobody has called it a war yet.',
+    'Fifteen thousand New England men are now camped around Boston with no commander, no ' +
+      'supply and no authority over one another.',
+    'The Congress in Philadelphia has to decide whether that is an army. You have been in ' +
+      'uniform to every session, which is not an accident, and everyone there has noticed.',
+  ],
+  objectives: [
+    'Answer Martha. She has asked you a question you have been avoiding for a week.',
+    'Answer the messenger, who is carrying your reply back to Philadelphia.',
+    'Set the estate in order before you go — you do not know for how long.',
+  ],
+
+  /** Two lines of atmosphere, after the facts. */
   opening: [
     'You have been home since the autumn, and you have not been still for a day of it.',
     'A rider came up from the ferry this morning with a letter from Philadelphia, and the ' +

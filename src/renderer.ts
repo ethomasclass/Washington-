@@ -714,6 +714,27 @@ export class DioramaRenderer {
     this.target.setSize(w * dpr, h * dpr);
   }
 
+  /**
+   * A still of the current frame, safe to draw from.
+   *
+   * A WebGL drawing buffer is cleared the moment the browser composites, so
+   * reading the canvas from any later task gives an empty image — which is
+   * exactly what the spyglass got on its first attempt: a perfect brass rim
+   * around nothing. Rendering and copying inside one call is valid, and costs
+   * nothing when nobody is looking through a glass. The alternative,
+   * preserveDrawingBuffer, taxes every frame of the game for the sake of the
+   * few that get grabbed.
+   */
+  snapshot(): HTMLCanvasElement {
+    this.render();
+    const src = this.renderer.domElement;
+    const out = document.createElement('canvas');
+    out.width = src.width;
+    out.height = src.height;
+    out.getContext('2d')!.drawImage(src, 0, 0);
+    return out;
+  }
+
   render(): void {
     this.renderer.setRenderTarget(this.target);
     this.renderer.render(this.scene, this.camera);

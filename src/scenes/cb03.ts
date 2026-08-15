@@ -65,6 +65,32 @@ export const CB03: Scene = {
     'The weekly return has not come in. Four regiments cannot say what they have, and the rest ' +
     'are counting men whose time is up in December.',
 
+  where: 'The works above Charlestown, before Boston',
+  when: 'November 1775',
+
+  /*
+   * Four months on, and the problem has changed shape.
+   *
+   * The siege holds — nobody has broken it in either direction — but a siege is
+   * only as long as the men holding it, and the paper they signed runs out in
+   * December. Knox has gone to Ticonderoga for the guns and nobody knows
+   * whether he will get them over the mountains. This scene is Washington doing
+   * the two things he could do that autumn: look at the enemy, and count.
+   */
+  situation: [
+    'The siege has held since July. Nobody has broken out and nobody has broken in, and the ' +
+      'fleet still feeds the town, so the noose is a fence.',
+    'Henry Knox has gone west to Ticonderoga to fetch the captured guns three hundred miles ' +
+      'over the mountains in winter. Nobody knows whether he can.',
+    'And the enlistments run out in December. Not a mutiny and not desertion — the paper ' +
+      'these men signed simply ends, and they may lawfully walk home.',
+  ],
+  objectives: [
+    'Read the ground: sweep the glass across the water and name what is over there.',
+    'Answer Sergeant Starr, and through him the eleven hundred men behind him.',
+    'Put the works in order before the weather closes in.',
+  ],
+
   opening: [
     'The works run along the crown of the hill for half a mile, and every yard of them was dug ' +
       'by men who were not paid to dig.',
@@ -174,6 +200,7 @@ export const CB03: Scene = {
       survey: [
         {
           id: 'charlestown',
+          at: 0.14,
           bearing: 'directly across the water',
           name: 'Charlestown',
           text:
@@ -184,6 +211,7 @@ export const CB03: Scene = {
         },
         {
           id: 'bunker',
+          at: 0.11,
           bearing: 'the high ground behind it',
           name: "Bunker's Hill",
           text:
@@ -194,6 +222,7 @@ export const CB03: Scene = {
         },
         {
           id: 'copps',
+          at: 0.52,
           bearing: 'the north point of the town',
           name: "Copp's Hill battery",
           text:
@@ -203,6 +232,7 @@ export const CB03: Scene = {
         },
         {
           id: 'north_church',
+          at: 0.47,
           bearing: 'the tallest spire in the north end',
           name: 'Christ Church',
           text:
@@ -213,6 +243,7 @@ export const CB03: Scene = {
         },
         {
           id: 'beacon',
+          at: 0.56,
           bearing: 'the hill above the town',
           name: 'Beacon Hill',
           text:
@@ -223,6 +254,7 @@ export const CB03: Scene = {
         },
         {
           id: 'ferry',
+          at: 0.24,
           bearing: 'the near shore, below the ruins',
           name: 'the Charlestown ferry ways',
           text:
@@ -232,6 +264,7 @@ export const CB03: Scene = {
         },
         {
           id: 'shipping',
+          at: 0.78,
           bearing: 'the anchorage beyond',
           name: 'the men-of-war',
           text:

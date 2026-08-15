@@ -64,6 +64,8 @@ export interface Interactable {
 
 export interface SurveyTarget {
   id: string;
+  /** Where across the frame it lies, 0..1. The glass swings to it. */
+  at: number;
   /** What the player sees in the list before naming it. */
   bearing: string;
   /** What it turns out to be. */
@@ -233,6 +235,25 @@ export interface Scene {
   strength: { fit: number; onRolls: number; dated: string } | null;
   /** Shown in place of the return when there is nothing to count. */
   noStrength: string;
+
+  /*
+   * The briefing, shown on arrival and repeatable from the journal.
+   *
+   * A scene used to open on two lines of atmosphere and a one-line purpose,
+   * which reads well and tells a fourteen-year-old almost nothing. They need
+   * four things before they can play: where they are, when it is, what has
+   * already happened to put them there, and what they are supposed to do about
+   * it. Atmosphere is what you write once those are answered, not instead of
+   * answering them.
+   */
+  where: string;
+  when: string;
+  /** What has happened to bring him here. Two or three sentences of it. */
+  situation: string[];
+  /** What he is trying to do, concretely. Three at most, or it is a chore list. */
+  objectives: string[];
+
+  /** The two lines of atmosphere, which now come after the facts. */
   opening: string[];
   business: Business[];
   /** Interactable that ends the scene. */

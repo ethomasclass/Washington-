@@ -256,15 +256,44 @@ export function setPlateLight(sunX: number, sunY: number, k = 1): void {
  * `source-atop` so only painted pixels take the air — a layer is mostly
  * transparent and tinting the holes would fill the sky with fog.
  */
-const AIR = '#9AA3A0';
+/** The colour of distance: a cool, slightly green grey, the sky seen edge-on. */
+const AIR = [154, 163, 160] as const;
+const air = (a: number): string => `rgba(${AIR[0]},${AIR[1]},${AIR[2]},${a})`;
 
+/*
+ * Air is a GRADIENT keyed to the horizon, not a flat tint, and that is what
+ * makes it correct.
+ *
+ * The first version filled each plate with a wash of sky colour scaled by the
+ * layer's distance. It could not work, and the reason is worth keeping: on a
+ * ground plane, distance IS height in the frame. The ground plate runs from the
+ * horizon to the player's feet, so a flat tint hazes grass a yard away exactly
+ * as hard as the far shore — it greyed the lawn and cost the picture its
+ * colour. The workaround was to air only the two furthest plates, which left
+ * the ground plate with no recession at all.
+ *
+ * Keyed to the horizon, one rule covers every layer honestly. The far shore on
+ * the ground plate takes the full weight and the grass underfoot takes none,
+ * from the same fill, with no per-layer special cases. `depth` now scales the
+ * gradient rather than choosing who gets one.
+ */
 function recede(c: HTMLCanvasElement, depth: number): HTMLCanvasElement {
   if (depth <= 0.02) return c;
   const x = c.getContext('2d')!;
+  const hy = c.height * HORIZON;
+  const heavy = Math.min(0.42, 0.08 + depth * 0.34);
+
+  // The hue stays one air throughout; only its weight changes with height, so
+  // the falloff lives in the alpha ramp rather than in the colour stops.
+  const ramp = x.createLinearGradient(0, hy - c.height * 0.05, 0, c.height * 0.92);
+  ramp.addColorStop(0, air(heavy));
+  ramp.addColorStop(0.3, air(heavy * 0.5));
+  ramp.addColorStop(0.62, air(heavy * 0.16));
+  ramp.addColorStop(1, air(0));
+
   x.save();
   x.globalCompositeOperation = 'source-atop';
-  x.globalAlpha = Math.min(0.30, depth * 0.30);
-  x.fillStyle = AIR;
+  x.fillStyle = ramp;
   x.fillRect(0, 0, c.width, c.height);
   x.restore();
   return c;
@@ -3358,8 +3387,16 @@ export const PLATE_DEPTHS: Record<string, number[]> = {
  * belongs where the depth actually is — the hills and the water — and the rest
  * of the picture keeps its colour.
  */
-const withAir = (_name: string, layers: HTMLCanvasElement[]): HTMLCanvasElement[] =>
-  layers.map((c, i) => recede(c, i === 1 ? 1 : i === 2 ? 0.3 : 0));
+const withAir = (_name: string, layers: HTMLCanvasElement[]): HTMLCanvasElement[] => {
+  const last = layers.length - 1;
+  return layers.map((c, i) =>
+    // Layer 0 is the sky: not seen THROUGH atmosphere, it IS the atmosphere.
+    // Every other layer takes the horizon-keyed ramp, weighted by how far back
+    // it sits — so a near plate gets a whisper of it along the skyline and
+    // nothing at all lower down, where its content is at the viewer's feet.
+    i === 0 ? c : recede(c, last > 1 ? 0.32 + 0.68 * (1 - (i - 1) / (last - 1)) : 1),
+  );
+};
 
 /**
  * How far back the player may walk in a given set, derived from its plates.

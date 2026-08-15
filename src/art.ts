@@ -146,14 +146,79 @@ function wash(
   x.globalAlpha = 1;
 }
 
-/**
- * An opaque form with a washed surface.
+/* ------------------------------------------------------------------ colour
  *
- * Buildings have to stop the light. `wash` is many low-alpha passes, which is
- * right for foliage and ground but leaves a wall you can see the hills through,
- * and nothing breaks a painted set faster. So: lay an opaque ground first,
- * then wash over it for tone. Slight edge jitter keeps it from reading as a
- * vector shape.
+ * Enough colour arithmetic to vary a stroke. Everything below works in sRGB
+ * bytes, which is wrong colour science and completely adequate for nudging a
+ * mass a few percent warmer or darker.
+ */
+
+function rgbOf(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+const clamp255 = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+
+/**
+ * Shift a colour by lightness and by temperature.
+ *
+ * `dl` moves toward white or black; `warm` pushes red up and blue down, which
+ * is the cheapest convincing stand-in for a painter reaching for a warmer or
+ * cooler version of the same pigment. Both are small numbers: this varies a
+ * stroke, it does not recolour a thing.
+ */
+function vary(hex: string, dl: number, warm: number): string {
+  const [r, g, b] = rgbOf(hex);
+  const l = dl * 255;
+  return (
+    '#' +
+    [
+      clamp255(r + l + warm * 26),
+      clamp255(g + l + warm * 6),
+      clamp255(b + l - warm * 24),
+    ]
+      .map((v) => v.toString(16).padStart(2, '0'))
+      .join('')
+  );
+}
+
+/**
+ * The accents (09 §2).
+ *
+ * A muted earth ground carrying a very small number of unnaturally saturated
+ * notes that do not belong to the natural light. They are rare by construction
+ * — a low per-mass probability — because the failure mode of this technique is
+ * scattering them until the picture is a fruit bowl.
+ *
+ * None of them may carry meaning: Group D is the meaning channel, and an accent
+ * that could be mistaken for a fact about a uniform is a bug.
+ */
+const ACCENTS = [
+  '#7E8A3C', // sour green
+  '#6B4A72', // bruised violet
+  '#C2622A', // hot orange
+  '#4E6B6B', // cold verdigris
+];
+
+/**
+ * A mass, painted rather than filled.
+ *
+ * Was: one flat fill with a 1.6px edge jitter, which is the "outline plus flat
+ * fill" that 02 §9.13 banned and that the whole build shipped anyway. Now: an
+ * opaque base coat, then a dozen or more overlapping strokes at a consistent
+ * angle in varied tints of the same pigment, then a few strokes that cross the
+ * boundary so no edge is cut cleanly all the way round (09 §1.1).
+ *
+ * Still opaque, and that is deliberate. 09 asks for thin passages where the
+ * ground shows, but a wall you can see the hills through breaks a painted set
+ * faster than anything else — the lesson is in STATE.md and it was paid for.
+ * So the variation is carried by the strokes on top of an opaque coat rather
+ * than by transparency, and the "thin passage" reads as a darker stroke.
  */
 function solid(
   x: Ctx,
@@ -163,21 +228,201 @@ function solid(
   tint?: string,
   tintAlpha = 0.3,
 ): void {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const [px, py] of pts) {
+    x0 = Math.min(x0, px);
+    y0 = Math.min(y0, py);
+    x1 = Math.max(x1, px);
+    y1 = Math.max(y1, py);
+  }
+  const w = x1 - x0;
+  const h = y1 - y0;
+  const span = Math.max(w, h);
+
+  const path = (jit: number): void => {
+    x.beginPath();
+    x.moveTo(pts[0][0] + (rnd() - 0.5) * jit, pts[0][1] + (rnd() - 0.5) * jit);
+    for (let i = 1; i < pts.length; i++) {
+      x.lineTo(pts[i][0] + (rnd() - 0.5) * jit, pts[i][1] + (rnd() - 0.5) * jit);
+    }
+    x.closePath();
+  };
+
   x.save();
   x.globalAlpha = 1;
-  x.fillStyle = base;
-  x.beginPath();
-  x.moveTo(pts[0][0] + (rnd() - 0.5) * 1.6, pts[0][1] + (rnd() - 0.5) * 1.6);
-  for (let i = 1; i < pts.length; i++) {
-    x.lineTo(pts[i][0] + (rnd() - 0.5) * 1.6, pts[i][1] + (rnd() - 0.5) * 1.6);
-  }
-  x.closePath();
+
+  // The base coat. Opaque, and a touch darker than the nominal colour so the
+  // strokes laid over it read as light rather than as noise.
+  x.fillStyle = vary(base, -0.035, 0);
+  path(1.6);
   x.fill();
+
+  /*
+   * Below a hand's width, stop.
+   *
+   * A figure at this scale is read by its silhouette — STATE.md's art rule, and
+   * it is why hats and builds vary. Working a brush into a twenty-pixel cuff
+   * does not make it painterly, it makes it moth-eaten, which is exactly what
+   * the first cut of this function did to every person on the lawn.
+   */
+  if (span < 20) {
+    x.restore();
+    x.globalAlpha = 1;
+    if (tint) wash(x, pts, tint, tintAlpha, rnd, 3);
+    return;
+  }
+
+  // Strokes are clipped to the mass; the edge-breakers below are not.
+  path(1.2);
+  x.clip();
+
+  // One angle per mass, mostly diagonal — a painter holds the brush one way for
+  // one form and does not re-grip between strokes.
+  const ang = -0.42 + (rnd() - 0.5) * 0.8;
+  const dx = Math.cos(ang);
+  const dy = Math.sin(ang);
+
+  /*
+   * The brush is a fixed size.
+   *
+   * The first cut scaled stroke width and length off the mass, which is wrong
+   * in both directions at once: a hand two dozen pixels across came out
+   * moth-eaten, and the lawn came out streaked with 600px scratches. A painter
+   * does not fit the brush to the subject — a big field takes more strokes of
+   * the same brush, not longer ones. So width and length are near-absolute, and
+   * the count is whatever it takes to work the area.
+   */
+  const width = Math.max(2.2, Math.min(9, span / 13));
+  const len = Math.max(11, Math.min(78, span * 0.34));
+  const n = Math.max(3, Math.min(260, Math.round((w * h) / (len * width * 0.85))));
+
+  /** `high` biases the stroke toward the top of the form, where light falls. */
+  const laySt = (l: number, colour: string, wid: number, alpha: number, high = false): void => {
+    const cx = x0 + rnd() * w;
+    const cy = y0 + rnd() * h * (high ? 0.5 : 1);
+    x.strokeStyle = colour;
+    x.lineWidth = wid;
+    x.globalAlpha = alpha;
+    x.beginPath();
+    x.moveTo(cx - dx * l * 0.5, cy - dy * l * 0.5);
+    x.lineTo(cx + dx * l * 0.5, cy + dy * l * 0.5);
+    x.stroke();
+  };
+
+  x.lineCap = 'round';
+
+  /*
+   * Two passes, and the second one is the whole style.
+   *
+   * The first is the worked ground: many overlapping strokes at low opacity,
+   * which builds a surface that is not flat. On its own it is not enough — lay
+   * enough translucent strokes over each other and they average back out into
+   * the smooth field you were trying to escape, which is what the second cut of
+   * this function did.
+   *
+   * The second pass is the loaded brush: a few near-opaque strokes, wider and
+   * lighter, that stay visible AS strokes. 09 §1.1 — "thick and visibly worked
+   * where the light falls", "the mark stays visible as a mark". These are the
+   * marks a viewer actually reads as paint, and there are deliberately few of
+   * them, because a picture that is all impasto is a picture with no light in
+   * it.
+   */
+  for (let i = 0; i < n; i++) {
+    laySt(
+      len * (0.6 + rnd() * 0.7),
+      vary(base, (rnd() - 0.45) * 0.2, (rnd() - 0.5) * 1.1),
+      width * (0.55 + rnd() * 0.9),
+      0.14 + rnd() * 0.3,
+    );
+  }
+
+  /*
+   * The loaded strokes go UP, where the light is.
+   *
+   * Scattered evenly they are not paint, they are scratches — the previous cut
+   * put bright tan slashes across the dark near-field tents, because a lifted
+   * stroke on a dark mass with no reason to be there reads as damage. Biased to
+   * the top half of the form they read as the light catching a raised edge,
+   * which is what they are meant to be.
+   */
+  const loaded = Math.max(2, Math.min(8, Math.round(n * 0.07)));
+  for (let i = 0; i < loaded; i++) {
+    laySt(
+      len * (0.5 + rnd() * 0.6),
+      vary(base, 0.045 + rnd() * 0.085, 0.25 + rnd() * 0.5),
+      width * (1.05 + rnd() * 0.6),
+      0.4 + rnd() * 0.3,
+      true,
+    );
+  }
+
+  // One accent, rarely, and never on something small enough that it would read
+  // as a detail rather than as a note of colour.
+  if (span > 26 && rnd() < 0.13) {
+    x.strokeStyle = ACCENTS[Math.floor(rnd() * ACCENTS.length)];
+    x.lineWidth = width * 0.7;
+    x.globalAlpha = 0.13 + rnd() * 0.16;
+    const cx = x0 + rnd() * w;
+    const cy = y0 + rnd() * h;
+    const len = span * 0.3;
+    x.beginPath();
+    x.moveTo(cx - dx * len * 0.5, cy - dy * len * 0.5);
+    x.lineTo(cx + dx * len * 0.5, cy + dy * len * 0.5);
+    x.stroke();
+  }
   x.restore();
+
+  /*
+   * The broken edge.
+   *
+   * A few strokes straddling the boundary, painted unclipped, so the mass does
+   * not end on a clean vector boundary. This is the single change that stops
+   * the plates reading as cut paper, and it is why the clip above is inset
+   * slightly from the fill.
+   */
+  if (span > 30) {
+    x.save();
+    x.lineCap = 'round';
+    const breaks = Math.max(2, Math.min(7, Math.round(span / 34)));
+    for (let i = 0; i < breaks; i++) {
+      const t = rnd() * pts.length;
+      const a = pts[Math.floor(t) % pts.length];
+      const b = pts[(Math.floor(t) + 1) % pts.length];
+      const f = t % 1;
+      const ex = a[0] + (b[0] - a[0]) * f;
+      const ey = a[1] + (b[1] - a[1]) * f;
+      const len = Math.min(span * 0.2, 15) * (0.5 + rnd());
+      x.strokeStyle = vary(base, (rnd() - 0.5) * 0.1, (rnd() - 0.5) * 0.6);
+      x.lineWidth = Math.max(1.4, width * 0.5);
+      x.globalAlpha = 0.3 + rnd() * 0.35;
+      x.beginPath();
+      x.moveTo(ex - dx * len * 0.5, ey - dy * len * 0.5);
+      x.lineTo(ex + dx * len * 0.5, ey + dy * len * 0.5);
+      x.stroke();
+    }
+    x.restore();
+  }
+
+  x.globalAlpha = 1;
   if (tint) wash(x, pts, tint, tintAlpha, rnd, 3);
 }
 
-/** A drawn line with a little wobble and a lost edge or two. */
+/**
+ * A thin dark form — a rail, a rope, a tent pole, a mast.
+ *
+ * 09 §1.1 abolishes the contour: there is no outline, and structure is carried
+ * by mass and value. But 314 call sites are not outlines. A fence rail IS a
+ * thin dark thing, and deleting the primitive would delete the fences.
+ *
+ * So it is repurposed rather than removed. It no longer draws one even
+ * iron-gall contour; it lays a short dark stroke of varying weight and warmth,
+ * broken more often than before, so a rail reads as painted rather than drawn.
+ * The distinction that matters: use this for something that IS thin, never to
+ * put a line around something that is not.
+ */
 function inkLine(
   x: Ctx,
   pts: [number, number][],
@@ -185,15 +430,17 @@ function inkLine(
   weight = 1.4,
   lost = 0.15,
 ): void {
-  x.strokeStyle = INK.SETTLED;
-  x.lineWidth = weight;
   x.lineCap = 'round';
+  // More breaks than the drawn line had. A brush skips; a quill does not.
+  const drop = lost + 0.12;
   for (let i = 0; i < pts.length - 1; i++) {
-    if (rnd() < lost) continue; // lost edge — the line breaks and the eye closes it
+    if (rnd() < drop) continue;
+    x.strokeStyle = vary(INK.SETTLED, (rnd() - 0.35) * 0.14, (rnd() - 0.5) * 0.7);
+    x.lineWidth = weight * (0.7 + rnd() * 0.85);
     x.beginPath();
-    x.moveTo(pts[i][0] + (rnd() - 0.5), pts[i][1] + (rnd() - 0.5));
-    x.lineTo(pts[i + 1][0] + (rnd() - 0.5), pts[i + 1][1] + (rnd() - 0.5));
-    x.globalAlpha = 0.65 + rnd() * 0.35;
+    x.moveTo(pts[i][0] + (rnd() - 0.5) * 1.4, pts[i][1] + (rnd() - 0.5) * 1.4);
+    x.lineTo(pts[i + 1][0] + (rnd() - 0.5) * 1.4, pts[i + 1][1] + (rnd() - 0.5) * 1.4);
+    x.globalAlpha = 0.5 + rnd() * 0.45;
     x.stroke();
   }
   x.globalAlpha = 1;

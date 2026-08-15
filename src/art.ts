@@ -12,6 +12,7 @@
  */
 
 import { EARTH, INK, PAPER } from './palette';
+import { platePx } from './ground';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -411,40 +412,199 @@ export function layerHouse(): HTMLCanvasElement {
     }
   };
 
-  // The mansion, smaller and higher than before so that walking the lawn reads
-  // as closing distance on something genuinely far off.
-  const bx = W * 0.40;
-  const bw = W * 0.20;
-  const by = hy - 66;
-  const bh = 150;
-  block(bx, by, bw, bh, 5, 40);
+  // Palings closing the court, drawn to the same curve so the fence lies on the
+  // ground rather than across the picture — and drawn before anything is built
+  // on that ground, because a plate has no depth sorting of its own and a fence
+  // painted last runs straight through the first storey of the house.
+  for (const side of [-1, 1]) {
+    const near = platePx({ x: 0.5 + side * 0.34, z: 0.93 }, W, H);
+    const far = platePx({ x: 0.5 + side * 1.6, z: 0.93 }, W, H);
+    const n = 16;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const px = near.x + (far.x - near.x) * t;
+      const py = near.y + (far.y - near.y) * t;
+      inkLine(x, [[px, py], [px, py - 15]], rnd, 0.9, 0.14);
+    }
+    inkLine(x, [[near.x, near.y - 11], [far.x, far.y - 11]], rnd, 1.0, 0.08);
+    inkLine(x, [[near.x, near.y - 4], [far.x, far.y - 4]], rnd, 0.9, 0.12);
+  }
+
+  /*
+   * Staging, after the period plates.
+   *
+   * The engraved views of a Virginia seat — the Bodleian plate of the College
+   * being the one everybody knows — all use the same arrangement, and it is a
+   * better one than a row of buildings seen flat: the principal house dead
+   * frontal on the centre line, the dependencies turned inward so their long
+   * faces run away toward the same vanishing point, and a formal axis marching
+   * out of the picture toward the viewer. The eye is put low and close, so the
+   * house fills the frame rather than sitting in it.
+   *
+   * It suits Mount Vernon better than it suits most places, because the west
+   * front is a five-part Palladian composition already — a centre block with
+   * two dependencies standing off it. The plate was not inventing a courtyard;
+   * it was drawing one.
+   */
+  const bx = W * 0.375;
+  const bw = W * 0.25;
+  const by = hy - 96;
+  const bh = 196;
+  block(bx, by, bw, bh, 5, 52);
+
+  // The door, on the centre line, with a pediment over it. An axis has to end
+  // on something or the eye runs off the top of the building — this is the
+  // whole reason the arrangement works in the plates.
+  {
+    const dx = bx + bw / 2;
+    const dw = bw * 0.075;
+    const dh = bh * 0.30;
+    const dy = by + bh - dh;
+    solid(x, [[dx - dw, dy], [dx + dw, dy], [dx + dw, dy + dh], [dx - dw, dy + dh]], '#3A362C', rnd);
+    inkLine(x, [[dx - dw, dy], [dx + dw, dy], [dx + dw, dy + dh], [dx - dw, dy + dh],
+                [dx - dw, dy]], rnd, 1.3, 0.06);
+    solid(x, [[dx - dw * 1.7, dy - 2], [dx, dy - dh * 0.42], [dx + dw * 1.7, dy - 2]],
+      '#D8D1BC', rnd, EARTH.SHADOW_SLATE, 0.14);
+    inkLine(x, [[dx - dw * 1.7, dy - 2], [dx, dy - dh * 0.42], [dx + dw * 1.7, dy - 2],
+                [dx - dw * 1.7, dy - 2]], rnd, 1.3, 0.06);
+    // Steps down to the gravel.
+    for (let i = 0; i < 3; i++) {
+      const sw = dw * (1.6 + i * 0.32);
+      inkLine(x, [[dx - sw, dy + dh + i * 5], [dx + sw, dy + dh + i * 5]], rnd, 1.1, 0.08);
+    }
+  }
 
   // The north wing, unfinished, and its scaffolding. In May 1775 this was an
   // open building site — no piazza, no cupola, no weathervane.
   const sx = bx + bw;
-  wash(x, [[sx, by + 44], [sx + 92, by + 44], [sx + 92, by + bh], [sx, by + bh]], PAPER.SHADOW, 0.4, rnd);
+  wash(x, [[sx, by + 58], [sx + 110, by + 58], [sx + 110, by + bh], [sx, by + bh]], PAPER.SHADOW, 0.4, rnd);
   for (let i = 0; i <= 4; i++) {
-    const px = sx + i * 23;
-    inkLine(x, [[px, by + 20], [px, by + bh + 6]], rnd, 1.0, 0.05);
+    const px = sx + i * 27;
+    inkLine(x, [[px, by + 28], [px, by + bh + 8]], rnd, 1.1, 0.05);
   }
-  for (let i = 0; i < 4; i++) {
-    inkLine(x, [[sx - 8, by + 32 + i * 34], [sx + 100, by + 29 + i * 34]], rnd, 0.9, 0.05);
+  for (let i = 0; i < 5; i++) {
+    inkLine(x, [[sx - 10, by + 42 + i * 38], [sx + 118, by + 38 + i * 38]], rnd, 1.0, 0.05);
   }
 
-  // Flanking dependencies — the kitchen and servants' hall stood apart from the
-  // house. They give the far ground something other than lawn.
-  block(bx - W * 0.13, by + 66, W * 0.085, 74, 2, 22);
-  block(bx + bw + W * 0.05, by + 70, W * 0.08, 70, 2, 20);
-  // Warm shingle over the two dependencies, so the roofline is not all slate.
-  for (const [rx, rw, ry] of [[bx - W * 0.13, W * 0.085, by + 66], [bx + bw + W * 0.05, W * 0.08, by + 70]]) {
-    solid(x, [[rx - 7, ry], [rx + rw / 2, ry - 21], [rx + rw + 7, ry]], '#9C8065', rnd,
-      EARTH.MADDER_LAKE, 0.16);
-    inkLine(x, [[rx - 7, ry], [rx + rw / 2, ry - 21], [rx + rw + 7, ry]], rnd, 1.4, 0.1);
+  /**
+   * A dependency turned to face the central axis.
+   *
+   * Two faces and a hipped roof. The gable end is taken as frontal; the long
+   * face runs away inward, and everything on it — the eaves, the sill line, the
+   * spacing of the windows — converges on the horizon. `k` is how far the far
+   * end is foreshortened, and it is the only number here doing any work: it
+   * fixes where the building's vanishing point lands, and it has to be the same
+   * for both wings or the courtyard pulls apart.
+   */
+  const wing = (outer: number, inner: number, baseY: number, h: number, gw: number, wins: number) => {
+    const dir = Math.sign(inner - outer);
+    const corner = outer + dir * gw;
+    const topY = baseY - h;
+    const k = 0.74;
+    const conv = (yy: number) => hy + (yy - hy) * k; // toward the horizon
+    const farTop = conv(topY);
+    const farBot = conv(baseY);
+
+    // Long face, running away toward the centre. In shade on the left wing and
+    // catching the light on the right, since the sun is off to the west.
+    const lit = dir < 0;
+    const face: [number, number][] = [
+      [corner, topY], [inner, farTop], [inner, farBot], [corner, baseY],
+    ];
+    solid(x, face, '#D8CDB4', rnd, lit ? EARTH.YELLOW_OCHRE : EARTH.SHADOW_SLATE, lit ? 0.09 : 0.17);
+    inkLine(x, [...face, face[0]], rnd, 1.5, 0.08);
+
+    // Gable end, taken as frontal, and always the darker of the two so the turn
+    // reads as a turn rather than as a seam.
+    const end: [number, number][] = [[outer, topY], [corner, topY], [corner, baseY], [outer, baseY]];
+    solid(x, end, '#C9BEA4', rnd, EARTH.SHADOW_SLATE, lit ? 0.22 : 0.12);
+    inkLine(x, [...end, end[0]], rnd, 1.5, 0.06);
+
+    // Hipped roof: a ridge running back along the face, hipped over the end.
+    const ridge = h * 0.22;
+    const nearRidge: [number, number] = [corner + dir * gw * 0.3, topY - ridge];
+    const farRidge: [number, number] = [inner - dir * 14, conv(topY - ridge)];
+    const slope: [number, number][] = [[corner, topY], nearRidge, farRidge, [inner, farTop]];
+    solid(x, slope, '#9C8065', rnd, EARTH.MADDER_LAKE, 0.16);
+    inkLine(x, [...slope, slope[0]], rnd, 1.4, 0.08);
+    const hip: [number, number][] = [[outer - dir * 6, topY], [corner, topY], nearRidge];
+    solid(x, hip, '#8A6F58', rnd, EARTH.BISTRE, 0.14);
+    inkLine(x, [...hip, hip[0]], rnd, 1.4, 0.08);
+
+    // Windows, spaced projectively — evenly along the wall is not evenly across
+    // the picture, and getting that wrong is what makes a turned building look
+    // like a sheared rectangle.
+    for (let i = 0; i < wins; i++) {
+      const u = (i + 0.6) / (wins + 0.2);
+      const t = (u * k) / (u * k + (1 - u));
+      const wx0 = corner + (inner - corner) * t;
+      const localH = h * (1 + (k - 1) * t);
+      const ww = gw * 0.19 * (1 + (k - 1) * t);
+      const wy = baseY - localH * 0.74;
+      const wh = localH * 0.30;
+      solid(x, [[wx0, wy], [wx0 + dir * ww, wy], [wx0 + dir * ww, wy + wh], [wx0, wy + wh]],
+        '#4C5450', rnd);
+      inkLine(x, [[wx0, wy], [wx0 + dir * ww, wy], [wx0 + dir * ww, wy + wh], [wx0, wy + wh],
+                  [wx0, wy]], rnd, 0.9, 0.14);
+    }
+    // Eaves and sill lines, converging. Two ruled lines do more for the turn
+    // than any amount of shading.
+    inkLine(x, [[corner, topY + 6], [inner, conv(topY + 6)]], rnd, 0.9, 0.2);
+    inkLine(x, [[corner, baseY - h * 0.2], [inner, conv(baseY - h * 0.2)]], rnd, 0.7, 0.35);
+  };
+
+  // The kitchen and the servants' hall, standing off the house and turned in.
+  // They sit forward of the centre block, which is what closes the court.
+  wing(W * 0.145, W * 0.305, hy + 118, 146, W * 0.072, 3);
+  wing(W * 0.855, W * 0.695, hy + 122, 142, W * 0.072, 3);
+
+  /*
+   * The formal axis.
+   *
+   * Laid out with the same projection the player walks on, so the rows are a
+   * corridor he moves down rather than scenery he walks through. This is the
+   * part that would have been impossible before the ground curve was shared:
+   * painted by eye, the avenue and the walking would have disagreed, and the
+   * disagreement is exactly the kind that reads as "wrong" without anyone being
+   * able to say why.
+   */
+  const gravel: [number, number][] = [];
+  for (const z of [0.86, 0.34]) {
+    const a = platePx({ x: 0.5 - 0.105, z }, W, H);
+    gravel.push([a.x, a.y]);
+  }
+  for (const z of [0.34, 0.86]) {
+    const a = platePx({ x: 0.5 + 0.105, z }, W, H);
+    gravel.push([a.x, a.y]);
+  }
+  // Low contrast on purpose. The first pass used a pale opaque trapezoid and it
+  // read as a spotlight thrown from the front door — a bright shape narrowing
+  // toward a building is a beam unless the edges are drawn.
+  wash(x, gravel, EARTH.YELLOW_OCHRE, 0.22, rnd, 4);
+  wash(x, gravel, PAPER.BRIGHT, 0.13, rnd, 3);
+  inkLine(x, [gravel[0], gravel[1]], rnd, 1.1, 0.22);
+  inkLine(x, [gravel[2], gravel[3]], rnd, 1.1, 0.22);
+
+  // Clipped yews down both sides, marching away. Size comes off the same curve
+  // as the path, so the file recedes at the rate a walking figure does.
+  for (let i = 0; i <= 13; i++) {
+    const z = 0.38 + (i / 13) * 0.48;
+    for (const side of [-1, 1]) {
+      const p = platePx({ x: 0.5 + side * 0.185, z }, W, H);
+      const sh = 54 * p.scale * (0.62 + 0.38 * (1 - z));
+      const sw = sh * 0.42;
+      const cone: [number, number][] = [
+        [p.x, p.y - sh], [p.x + sw * 0.5, p.y - sh * 0.42], [p.x + sw * 0.42, p.y],
+        [p.x - sw * 0.42, p.y], [p.x - sw * 0.5, p.y - sh * 0.42],
+      ];
+      solid(x, cone, '#6E7A5C', rnd, EARTH.TERRE_VERTE, 0.3);
+      inkLine(x, [...cone, cone[0]], rnd, 1.0, 0.16);
+    }
   }
 
   // The house throws its shadow west across the lawn in the afternoon.
-  wash(x, [[bx - 20, by + bh], [bx + bw + 40, by + bh - 6], [bx + bw + 10, by + bh + 74],
-           [bx - 60, by + bh + 80]], EARTH.RAW_UMBER, 0.12, rnd, 3);
+  wash(x, [[bx - 20, by + bh], [bx + bw + 40, by + bh - 6], [bx + bw + 10, by + bh + 84],
+           [bx - 70, by + bh + 92]], EARTH.RAW_UMBER, 0.12, rnd, 3);
   return c;
 }
 

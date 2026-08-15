@@ -18,13 +18,16 @@ import {
   PLATE_SETS, paperTexture,
 } from './art';
 import { MEANING, PAPER } from './palette';
+import {
+  FIGURE_H, groundView, VIEW_H, VIEW_W,
+} from './ground';
+export type { GroundPos } from './ground';
+import type { GroundPos } from './ground';
 
 /** Parallax coefficients, L0..L5. */
 const PARALLAX = [0.1, 0.26, 0.5, 0.74, 1.06, 1.6];
 const PARALLAX_MAX_PX = 64; // "breath", not a camera move
 
-const VIEW_W = 16;
-const VIEW_H = 9;
 
 const MOOD_FRAG = /* glsl */ `
   precision highp float;
@@ -126,24 +129,11 @@ interface Layer {
   depth: number;
 }
 
-/**
- * The ground plane.
- *
- * Actors live at (x, z): x runs across the frame, z runs into it — 0 at the
- * near edge, 1 at the horizon. Both the vertical placement and the scale come
- * from z through the same easing curve, which is what makes walking "up" the
- * lawn read as walking away rather than as sliding upward.
+/*
+ * The ground plane — actors live at (x, z), x across the frame and z into it —
+ * is defined in ground.ts, because the plate painter and the content linter
+ * need exactly the same curve.
  */
-const HORIZON = 0.34; // fraction of frame height, locked project-wide
-const NEAR_Y = -3.45; // view-space y of the near edge of walkable ground
-const FIGURE_H = 2.6; // world height of a figure at scale 1
-const NEAR_SCALE = 1.0;
-const FAR_SCALE = 0.46;
-/** How much the walkable width narrows toward the horizon. */
-const FAR_SPREAD = 0.40;
-/** The lawn falls away west toward the river. */
-const SLOPE = 0.22;
-const EASE = 1.55;
 
 /**
  * Standing figures shift their weight occasionally. Set false for a completely
@@ -160,11 +150,6 @@ const IDLE_SHIFTS = true;
  */
 const LAYER_DEPTH = [1.0, 0.94, 0.80, 0.62, 0.38, 0.02];
 
-export interface GroundPos {
-  x: number;
-  z: number;
-}
-
 /** A figure on the ground plane, with the build that distinguishes them. */
 export interface Actor extends GroundPos {
   coat: string;
@@ -174,7 +159,6 @@ export interface Actor extends GroundPos {
   seed: number;
 }
 
-const horizonY = (): number => 9 / 2 - HORIZON * 9;
 
 export class DioramaRenderer {
   readonly renderer: THREE.WebGLRenderer;
@@ -463,12 +447,7 @@ export class DioramaRenderer {
    * in size also rises toward the horizon by the matching amount.
    */
   private project(pos: GroundPos): { x: number; y: number; scale: number } {
-    const f = Math.pow(1 - pos.z, EASE);
-    const scale = FAR_SCALE + (NEAR_SCALE - FAR_SCALE) * f;
-    const spread = FAR_SPREAD + (1 - FAR_SPREAD) * f;
-    const x = (pos.x - 0.5) * VIEW_W * 0.94 * spread;
-    const y = horizonY() + (NEAR_Y - horizonY()) * f - SLOPE * (0.5 - pos.x) * f;
-    return { x, y, scale };
+    return groundView(pos);
   }
 
   /** Screen pixels for a ground position, for placing DOM prompts. */

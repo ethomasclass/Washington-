@@ -12,6 +12,7 @@ import { decode, encode, FLAG_REGISTRY } from './passport';
 import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState } from './state';
 import { sceneList } from './content';
+import { figureHalfW, frameX } from './ground';
 
 let failures = 0;
 
@@ -218,16 +219,13 @@ for (const scene of sceneList()) {
    * Figures only. Interactables are painted into the plates and have no cutout
    * to collide with.
    */
-  const ease = (z: number) => Math.pow(1 - z, 1.55); // EASE, from the renderer
-  const frameX = (x: number, z: number) => (x - 0.5) * 0.94 * (0.40 + 0.60 * ease(z));
-  // A cutout is 0.46 of its height wide, and a figure is 2.6 of 16 view widths tall.
-  const halfW = (z: number) => ((0.46 + 0.54 * ease(z)) * 2.6 * 0.46) / 16 / 2;
   let tight = { a: '', b: '', gap: 1 };
   for (let i = 0; i < scene.npcs.length; i++) {
     for (let j = i + 1; j < scene.npcs.length; j++) {
       const a = scene.npcs[i];
       const c = scene.npcs[j];
-      const gap = Math.abs(frameX(a.x, a.z) - frameX(c.x, c.z)) - halfW(a.z) - halfW(c.z);
+      const gap = Math.abs(frameX(a.x, a.z) - frameX(c.x, c.z))
+        - figureHalfW(a.z) - figureHalfW(c.z);
       if (gap < tight.gap) tight = { a: a.id, b: c.id, gap };
     }
   }

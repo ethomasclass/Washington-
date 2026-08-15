@@ -80,6 +80,23 @@ export const CSS = `
                     border-width: 12px 9px 0 9px;
                     border-color: ${PAPER.BRIGHT} transparent transparent transparent; }
 
+  /* An interior voice. Deliberately not a speech bubble: no border, no tail,
+     no keypress. It arrives while you are walking and leaves on its own. */
+  /* Parked off-screen until the first anchor lands, so a new thought never
+     flashes at its static position for a frame before it is placed. */
+  .thought { position: absolute; left: -9999px; top: 0;
+             transform: translate(-50%, -100%); pointer-events: none;
+             width: max-content; max-width: min(40ch, calc(100vw - 90px));
+             padding: 2px 0 0; opacity: 0; transition: opacity .5s ease; }
+  .thought.in { opacity: 1; }
+  .thought .vn { font-variant: small-caps; letter-spacing: .12em; font-size: 13px;
+                 font-weight: 700; display: flex; align-items: center; gap: 7px;
+                 margin-bottom: 2px; }
+  .thought .vl { font-style: italic; font-size: 18px; line-height: 1.45;
+                 color: ${INK.SETTLED};
+                 text-shadow: 0 0 7px ${PAPER.BRIGHT}, 0 0 14px ${PAPER.BRIGHT},
+                              0 0 3px ${PAPER.BRIGHT}; }
+
   .prompt { position: absolute; transform: translate(-50%, 0); font-size: 14px;
             letter-spacing: .05em; color: ${INK.SETTLED}; background: ${PAPER.BRIGHT};
             border: 1px solid ${INK.FADED}; padding: 3px 10px; white-space: nowrap; }
@@ -159,6 +176,7 @@ type Portrait = { seed: number; coat: string };
 export class Overlay {
   private root: HTMLElement;
   private panel: HTMLElement | null = null;
+  private thought: HTMLElement | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(root: HTMLElement, title: string, subtitle: string) {
@@ -199,8 +217,8 @@ export class Overlay {
     this.waitForDismiss(onDone);
   }
 
-  /** What he has looked at, and what is still owed. Opened on demand. */
-  showJournal(read: string[], owed: string[], onDone: () => void): void {
+  /** What he has looked at, noticed, and still owes. Opened on demand. */
+  showJournal(read: string[], owed: string[], noticed: string[], onDone: () => void): void {
     this.clearPanel();
     const j = document.createElement('div');
     j.className = 'journal';
@@ -210,6 +228,9 @@ export class Overlay {
       (owed.length
         ? `<ul>${owed.map((o) => `<li>${o}</li>`).join('')}</ul>`
         : '<div class="none">Nothing. You may go when you please.</div>') +
+      (noticed.length
+        ? `<h3>Noticed</h3><ul>${noticed.map((n) => `<li>${n}</li>`).join('')}</ul>`
+        : '') +
       '<h3>Looked at today</h3>' +
       (read.length
         ? `<ul>${read.map((r) => `<li>${r}</li>`).join('')}</ul>`
@@ -264,7 +285,11 @@ export class Overlay {
   showExamine(label: string, text: string, onDone: () => void): void {
     const p = this.makePanel(true);
     p.innerHTML =
-      `<div class="body"><div class="speaker">${label}</div><div class="line">${text}</div>` +
+      `<div class="body"><div class="speaker">${label}</div>` +
+      text
+        .split('\n\n')
+        .map((para, i) => `<div class="line"${i ? ' style="margin-top:12px"' : ''}>${para}</div>`)
+        .join('') +
       `<div class="continue">press <b>Space</b> to continue</div></div>`;
     this.waitForDismiss(onDone);
   }
@@ -284,6 +309,39 @@ export class Overlay {
     this.root.appendChild(b);
     this.panel = b;
     this.waitForDismiss(onDone);
+  }
+
+  /**
+   * An interior voice, over Washington's own head. Non-blocking: the player
+   * keeps walking, and it fades on its own. Only one at a time — a second
+   * thought replaces the first rather than stacking.
+   */
+  showThought(voice: VoiceId, line: string, ms = 5200): void {
+    this.root.querySelector('.thought')?.remove();
+    const t = document.createElement('div');
+    t.className = 'thought';
+    t.innerHTML =
+      `<div class="vn" style="color:${VOICE_INK[voice]}">${EMBLEM[voice]}${voice}</div>` +
+      `<div class="vl">${line}</div>`;
+    this.root.appendChild(t);
+    this.thought = t;
+    requestAnimationFrame(() => t.classList.add('in'));
+    setTimeout(() => {
+      t.classList.remove('in');
+      setTimeout(() => {
+        if (this.thought === t) this.thought = null;
+        t.remove();
+      }, 600);
+    }, ms);
+  }
+
+  setThoughtAnchor(x: number, y: number): void {
+    const t = this.thought;
+    if (!t) return;
+    const half = t.offsetWidth / 2;
+    const cx = Math.max(20 + half, Math.min(innerWidth - 20 - half, x));
+    t.style.left = `${cx}px`;
+    t.style.top = `${Math.max(t.offsetHeight + 20, y - 10)}px`;
   }
 
   /** Point the open bubble at a screen position, keeping it inside the frame. */

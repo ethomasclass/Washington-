@@ -126,10 +126,15 @@ console.log('\ncontent');
 {
   const grants = new Set<string>();
   const requires = new Set<string>();
-  for (const it of SCENE.interactables) if (it.grants) grants.add(it.grants);
+  for (const it of SCENE.interactables) {
+    if (it.grants) grants.add(it.grants);
+    if (it.contradicts) grants.add(it.contradicts.grants);
+  }
+  for (const n of SCENE.npcs) if (n.hearFlag) grants.add(n.hearFlag);
   for (const n of SCENE.npcs) {
     for (const o of n.decision?.options ?? []) if (o.requires) requires.add(o.requires);
   }
+  for (const it of SCENE.interactables) if (it.contradicts) requires.add(it.contradicts.heard);
   const registry = new Set(FLAG_REGISTRY);
 
   const unregistered = [...grants, ...requires].filter((f) => !registry.has(f));
@@ -172,6 +177,31 @@ console.log('\ncontent');
   check('option emblems only cite voices present at that decision', orphans.length === 0,
     orphans.join('; '));
   check('every gated option explains its lock', unnoted.length === 0, unnoted.join(', '));
+}
+
+{
+  // Ambient voices must be reachable, in-bounds, and actually authored.
+  const bad: string[] = [];
+  for (const a of SCENE.ambient) {
+    if (!a.line.trim()) bad.push(`${a.id}: empty line`);
+    if (a.x < 0.05 || a.x > 0.95 || a.z < 0.1 || a.z > 0.82) bad.push(`${a.id}: outside bounds`);
+    if (a.r < 0.06) bad.push(`${a.id}: radius ${a.r} is smaller than a walking step`);
+    if (a.minLoudness > 0.62) bad.push(`${a.id}: threshold ${a.minLoudness} is near-unreachable`);
+  }
+  check('every ambient voice is reachable and authored', bad.length === 0, bad.join('; '));
+
+  // Contradictions need a claim that some NPC actually makes.
+  const heard = new Set(SCENE.npcs.map((n) => n.hearFlag).filter(Boolean) as string[]);
+  const orphan: string[] = [];
+  for (const it of SCENE.interactables) {
+    const c = it.contradicts;
+    if (!c) continue;
+    if (!heard.has(c.heard)) orphan.push(`${it.id} answers a claim nobody makes (${c.heard})`);
+  }
+  check('every contradiction answers a claim someone makes', orphan.length === 0, orphan.join('; '));
+
+  const contras = SCENE.interactables.filter((i) => i.contradicts).length;
+  check(`scene contains a document that answers back (${contras})`, contras >= 1);
 }
 
 {

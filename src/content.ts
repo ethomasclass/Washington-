@@ -22,6 +22,26 @@
 import type { StatId } from './state';
 import type { VoiceId } from './palette';
 
+/**
+ * A document that contradicts something a person said.
+ *
+ * The binding rule from reference-game-analysis.md: every scene must contain at
+ * least one object whose examine text contradicts an NPC. It is the mechanic
+ * that teaches source-checking without ever naming it — but it only lands if
+ * the claim was heard first, so the extra line is gated on having spoken to
+ * them.
+ */
+export interface Contradiction {
+  /** Flag set when the person makes the claim. */
+  heard: string;
+  /** Appended to the examine text once the claim has been heard. */
+  line: string;
+  /** Set once the player has both heard the claim and seen the document. */
+  grants: string;
+  /** How the journal records it. */
+  note: string;
+}
+
 export interface Interactable {
   id: string;
   label: string;
@@ -32,6 +52,26 @@ export interface Interactable {
   examine: string;
   /** Reading this sets a knowledge flag. Documents never move stats. */
   grants?: string;
+  contradicts?: Contradiction;
+}
+
+/**
+ * An interior voice, spoken unprompted as Washington passes something.
+ *
+ * Gated on the voice being loud enough to speak, so which thoughts a player
+ * hears at all depends on the man they are building. A quiet Temper simply
+ * never says the bitter thing about the royal commission.
+ */
+export interface Ambient {
+  id: string;
+  voice: VoiceId;
+  line: string;
+  x: number;
+  z: number;
+  /** Ground radius that triggers it. */
+  r: number;
+  /** Minimum loudness for this voice to speak here. */
+  minLoudness: number;
 }
 
 export interface DialogueLine {
@@ -69,6 +109,8 @@ export interface Decision {
 
 export interface NpcThread {
   id: string;
+  /** Set once their lines have been heard, so documents can contradict them. */
+  hearFlag?: string;
   /** Shown on the interaction prompt. "speak" tells the player nothing. */
   name: string;
   x: number;
@@ -121,6 +163,49 @@ export const SCENE = {
   /** What Washington thinks when there is nothing left to settle. */
   settled: 'Nothing is left here to settle. The chariot is packed.',
 
+  /**
+   * Interior voices, spoken as he passes. Each fires once. Placed on the
+   * ground rather than on objects, so they can catch him crossing open lawn.
+   */
+  ambient: [
+    {
+      id: 'amb.braddock',
+      voice: 'temper',
+      line: 'Twenty years you asked them for a royal commission. Twenty years they gave you nothing.',
+      x: 0.71, z: 0.19, r: 0.10, minLoudness: 0.30,
+    },
+    {
+      id: 'amb.survey',
+      voice: 'ambition',
+      line: 'You surveyed that country at seventeen. Nobody in Philadelphia has seen a mile of it.',
+      x: 0.133, z: 0.30, r: 0.10, minLoudness: 0.34,
+    },
+    {
+      id: 'amb.house',
+      voice: 'restraint',
+      line: 'Sixteen years and it is not finished. You are not a man who leaves things half-built.',
+      x: 0.553, z: 0.79, r: 0.11, minLoudness: 0.36,
+    },
+    {
+      id: 'amb.landing',
+      voice: 'duty',
+      line: 'The herring will come up in April whether you are here to count them or not.',
+      x: 0.08, z: 0.72, r: 0.11, minLoudness: 0.32,
+    },
+    {
+      id: 'amb.chariot',
+      voice: 'vanity',
+      line: 'They will watch you arrive. Whatever you are wearing will be the first thing said of you.',
+      x: 0.763, z: 0.55, r: 0.10, minLoudness: 0.30,
+    },
+    {
+      id: 'amb.mill',
+      voice: 'duty',
+      line: 'Every acre of this runs because you stand over it. That will be true of an army too.',
+      x: 0.92, z: 0.31, r: 0.10, minLoudness: 0.38,
+    },
+  ] as Ambient[],
+
   interactables: [
     {
       id: 'scaffolding',
@@ -152,6 +237,14 @@ export const SCENE = {
         'Wheat, herring, flour to the West Indies, in your own hand. Every entry assumes you will ' +
         'be here in the autumn to make the next one.',
       grants: 'doc.a1.ledger',
+      contradicts: {
+        heard: 'heard.a1.martha',
+        line:
+          'The last entry is three weeks old. You stopped writing them the week the news came ' +
+          'from Boston — before the uniform came down from the press, and before you said nothing.',
+        grants: 'obs.a1.ledger_stops',
+        note: 'The ledger stops the week the Boston news came — you decided earlier than you have admitted',
+      },
     },
     {
       id: 'commission',
@@ -202,6 +295,14 @@ export const SCENE = {
         'What the estate owes and what it is owed. The joiners are unpaid. Whoever runs this ' +
         'place next will be running it on credit.',
       grants: 'doc.a1.accounts',
+      contradicts: {
+        heard: 'heard.a1.lund',
+        line:
+          'He has been paying the joiners out of his own wages since February. He did not ' +
+          'mention that when he said he could hold the place.',
+        grants: 'obs.a1.lund_pays',
+        note: 'Lund said he could hold the estate — his own accounts say he is already paying for it',
+      },
     },
     {
       id: 'dock',
@@ -252,6 +353,7 @@ export const SCENE = {
     {
       id: 'martha',
       name: 'Martha',
+      hearFlag: 'heard.a1.martha',
       x: 0.238,
       z: 0.38,
       lines: [
@@ -312,8 +414,8 @@ export const SCENE = {
               'Say that you had it made because you expect to be asked, and that you do not know ' +
               'whether you should be.',
             favoured: ['restraint', 'temper'],
-            requires: 'obs.a1.uniform',
-            lockNote: 'you have not looked at it yourself',
+            requires: 'obs.a1.ledger_stops',
+            lockNote: 'you have not admitted to yourself when you decided',
             effects: { character: 7, loyalty: 2 },
             result:
               'It is the first time you have said it aloud. She does not tell you it will be all ' +
@@ -333,6 +435,7 @@ export const SCENE = {
     {
       id: 'lund',
       name: 'Lund',
+      hearFlag: 'heard.a1.lund',
       x: 0.658,
       z: 0.46,
       lines: [

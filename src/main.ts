@@ -46,6 +46,8 @@ takeSnapshot(state);
 
 /** Interactables looked at this session, for the journal. */
 const seen = new Set<string>();
+/** Ambient voices already spoken, so none repeats. */
+const heardAmbient = new Set<string>();
 
 /** Player position on the ground plane. */
 const pos: GroundPos = { x: 0.5, z: 0.34 };
@@ -120,9 +122,31 @@ function refreshIntent(): void {
 function openJournal(): void {
   busy = true;
   const read = SCENE.interactables.filter((i) => seen.has(i.id)).map((i) => i.label);
-  overlay.showJournal(read, owed(), () => {
+  const noticed = SCENE.interactables
+    .filter((i) => i.contradicts && state.knowledge.has(i.contradicts.grants))
+    .map((i) => i.contradicts!.note);
+  overlay.showJournal(read, owed(), noticed, () => {
     busy = false;
   });
+}
+
+/**
+ * Interior voices, spoken as he passes. Each fires once, and only if that voice
+ * is loud enough to speak — so which thoughts a player hears at all depends on
+ * the man they are building.
+ */
+function checkAmbient(): void {
+  if (busy) return;
+  for (const a of SCENE.ambient) {
+    if (heardAmbient.has(a.id)) continue;
+    if (groundDist(pos, a) > a.r) continue;
+    heardAmbient.add(a.id);
+    if (loudness(a.voice, state.stats) < a.minLoudness) continue; // too quiet to speak
+    overlay.showThought(a.voice, a.line);
+    const me = renderer.screenPos(pos);
+    overlay.setThoughtAnchor(me.x, me.y - 6);
+    return;
+  }
 }
 
 /**
@@ -192,6 +216,12 @@ function runThread(n: NpcThread): void {
       anchorSpeech();
       return;
     }
+    // Their claim has now been made, so documents can contradict it.
+    if (n.hearFlag) {
+      state.knowledge.add(n.hearFlag);
+      autosave(state);
+      refreshCode();
+    }
     if (n.decision && !state.decisions.has(n.decision.id)) {
       // Deliberation is not speech: the council and the choice get the panel,
       // with the portrait, because there is no body on screen to look at.
@@ -236,7 +266,19 @@ function interact(): void {
     return;
   }
 
-  overlay.showExamine(it.label, it.examine, () => {
+  // A document that answers back to something a person said. The extra line
+  // only appears once the claim has actually been heard — an inconsistency you
+  // were not present for is not a discovery.
+  let text = it.examine;
+  const c = it.contradicts;
+  if (c && state.knowledge.has(c.heard)) {
+    text = `${text}\n\n${c.line}`;
+    state.knowledge.add(c.grants);
+    autosave(state);
+    refreshCode();
+  }
+
+  overlay.showExamine(it.label, text, () => {
     busy = false;
   });
 }
@@ -310,6 +352,9 @@ function frame(now: number): void {
   }
 
   anchorSpeech();
+  if (!busy) checkAmbient();
+  const me = renderer.screenPos(pos);
+  overlay.setThoughtAnchor(me.x, me.y - 6);
   renderer.render();
   requestAnimationFrame(frame);
 }

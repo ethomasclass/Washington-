@@ -29,6 +29,10 @@ export const FLAG_REGISTRY: string[] = [
   'obs.a1.scaffolding',
   'obs.a1.uniform',
   'obs.a1.surveying',
+  'heard.a1.martha',
+  'heard.a1.lund',
+  'obs.a1.ledger_stops',
+  'obs.a1.lund_pays',
 ];
 
 class BitWriter {

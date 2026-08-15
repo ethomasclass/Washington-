@@ -37,8 +37,17 @@ export const CSS = `
 .sopt .named { font-variant: small-caps; letter-spacing: 0.04em; }
 
 /* The dev scene picker. Plain, out of the way, and obviously a tool. */
+.devtab {
+  position: fixed; left: 10px; bottom: 10px; z-index: 9998;
+  font: 11px/1 ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: #C3B79B; background: rgba(30, 24, 18, 0.55);
+  border: 1px solid rgba(150, 132, 102, 0.5); border-radius: 3px;
+  padding: 5px 9px; cursor: pointer; opacity: 0.55;
+}
+.devtab:hover { opacity: 1; background: rgba(30, 24, 18, 0.9); }
 .devbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999;
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   padding: 10px 14px; background: rgba(30, 24, 18, 0.92);
   border-top: 1px solid #6B5B45;

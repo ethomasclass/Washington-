@@ -424,7 +424,8 @@ addEventListener('keydown', (e) => {
     e.preventDefault();
     interact();
   }
-  if (e.key === '`' || e.key === '~') {
+  // Backtick is the convention, F2 is the one that exists on every keyboard.
+  if (e.key === '`' || e.key === '~' || e.key === 'F2') {
     e.preventDefault();
     toggleDevBar();
   }
@@ -533,19 +534,34 @@ if (!resumed) {
 
 /* ------------------------------------------------------------------ dev bar
  *
- * A scene picker, on the backtick key.
+ * A scene picker.
  *
  * Reaching Act 2 means settling two threads and walking to the chariot, which
  * is right for a player and unbearable for anybody checking whether a tree
  * looks correct. This jumps straight to any scene.
  *
- * It is deliberately not hidden behind a build flag. A teacher who finds it has
+ * It has a visible handle, and that is the point of this note. The first cut
+ * opened on the backtick key and nothing else — no button, no hint, nothing on
+ * screen — so the only way to know it existed was to be told, and being told is
+ * not a feature. A tool nobody can find is a tool that does not exist. There is
+ * a tab in the corner now; the key still works for anyone who prefers it.
+ *
+ * Deliberately not behind a build flag either. A teacher who finds this has
  * found a way to show a class the camp without playing to it, which is useful
  * rather than dangerous — there is nothing to cheat at in a game with no fail
- * state. It stays out of the way until somebody presses the key, and it says
- * plainly what it is.
+ * state.
  */
 let devBar: HTMLDivElement | null = null;
+
+/** The always-visible handle. Small, quiet, and unmistakably a tool. */
+function mountDevTab(): void {
+  const tab = document.createElement('button');
+  tab.className = 'devtab';
+  tab.textContent = 'dev';
+  tab.title = 'Jump to any scene (` or F2)';
+  tab.onclick = () => toggleDevBar();
+  document.body.append(tab);
+}
 
 function toggleDevBar(): void {
   if (devBar) {
@@ -579,7 +595,9 @@ function toggleDevBar(): void {
 
   const note = document.createElement('span');
   note.className = 'note';
-  note.textContent = '` to close · stats and flags are kept';
+  note.textContent = '` or F2 to close · stats and flags are kept';
   devBar.append(note);
   document.body.append(devBar);
 }
+
+mountDevTab();

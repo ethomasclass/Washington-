@@ -1,0 +1,33 @@
+negative-oil-v1.txt — appended to EVERY generation, world and character alike.
+Spec: docs/09-painterly-direction.md §6.
+
+THE ONE THAT MATTERS. Nineteenth-century history painting and golden-age
+illustration are oil paintings of this exact subject. Pen and wash made them
+hard to reach by accident; alla prima puts them one adjective away. This list
+is now the only thing standing between the project and Washington Crossing the
+Delaware, and it goes in every single call.
+
+NEGATIVE:
+Leutze, Washington Crossing the Delaware, Trumbull rotunda, Spirit of 76,
+Currier and Ives, bicentennial, N.C. Wyeth, Howard Pyle, Norman Rockwell,
+19th century history painting, heroic history painting, patriotic tableau,
+flag as backdrop, eagle, bunting, fife and drum, thirteen stars in a ring,
+concept art, keyframe illustration, splash art, trading card art, book cover,
+hero shot, epic, cinematic lighting, dramatic upward camera on a figure
+against a sky, Frazetta, fantasy oil, romanticism,
+digital painting with smooth underpainting, rendered then textured, brushstroke
+filter over a photograph, photobash, 3d render, cgi, photoreal, hdr,
+evenly finished, fully rendered, every edge closed, tight detail throughout,
+polished, glossy, varnished, museum-clean,
+cel shading, anime, manga, comic ink, flat vector, outline plus flat fill,
+sepia, monochrome brown, history filter, golden hour over everything, warm
+nostalgic glow, instagram preset, oversaturated, neon,
+glow, bloom, rim light, lens flare, depth of field, bokeh,
+gore, viscera, mud-and-blood war film grade, grimdark, desaturated to grey,
+Napoleonic, Waterloo, Regency, Victorian, Civil War, Gettysburg, shako,
+tailcoat, high stiff standing collar, kepi, sack coat, percussion lock,
+Assassins Creed, hooded figure, tomahawk, wolf pelt, eagle vision,
+Gilbert Stuart Athenaeum portrait, dollar bill, banknote engraving, powdered
+wig, periwig, beard, moustache, stubble, hand tucked into waistcoat, white
+horse, three stars,
+signature, lettering, text, watermark, nameplate, cartouche, gilt frame

@@ -28,6 +28,14 @@ Four channels, four jobs, no overlap. Every rule in this document is that senten
 
 # 1. THE THESIS
 
+> ### ⚠ SUPERSEDED — 15 August 2026
+> **The medium described in this section is retired.** The project is made in alla prima
+> oil, not pen and wash. See `09-painterly-direction.md`, which replaces the medium, §4 and
+> both style anchors. Everything else in this document — §2 palette structure, §3 the mood
+> controller, §5 composition and camera, §6 portraits except their medium clauses, §7 type,
+> §8 UI, §9 anti-references as amended — remains in force. Read this section for its
+> reasoning about registers and its historical argument, not for what to paint.
+
 ## 1.1 The visual argument, in one paragraph
 
 *In Washington's Shoes* is drawn in the medium the war was actually drawn in: iron-gall ink laid down with a quill over faint graphite, tinted with transparent watercolour in three values, on warm laid rag paper left largely bare. This was not a style in the eighteenth century — it was a *competence*, taught to British and French officers at Woolwich and its equivalents so they could record ground they might have to fight over, and practised by the men who actually stood at Cambridge, on the Brooklyn line, and in the Yorktown trenches. Thomas Davies drew this war in it. Archibald Robertson drew it. Berthier mapped it. De Verger drew four American soldiers in it, from life, in 1781, and that single sheet is the reason we know what the Continental Army looked like at all. Choosing that medium is therefore not decoration and not nostalgia — it is an **epistemological claim**: *this is what could be seen and recorded by someone who was there.* The bare paper is the argument. A trained officer with a pen and a box of cakes has forty minutes and no reason to fill the sheet; he draws the fort, indicates the ground, tints the sky, and leaves the rest alone, because what he leaves alone is what he did not have time to look at, could not see, or did not think mattered. Our game's compositions are 35–55% untouched paper for exactly that reason. **The unpainted half of the frame is the part of the past we do not have.**
@@ -385,6 +393,14 @@ Specified in the reference analysis (R12, R13) and restated here only as the art
 ---
 
 # 4. LINE AND WASH RULES
+
+> ### ⚠ SUPERSEDED — 15 August 2026
+> **The medium described in this section is retired.** The project is made in alla prima
+> oil, not pen and wash. See `09-painterly-direction.md`, which replaces the medium, §4 and
+> both style anchors. Everything else in this document — §2 palette structure, §3 the mood
+> controller, §5 composition and camera, §6 portraits except their medium clauses, §7 type,
+> §8 UI, §9 anti-references as amended — remains in force. Read this section for its
+> reasoning about registers and its historical argument, not for what to paint.
 
 ## 4.1 Line weight
 
@@ -805,7 +821,7 @@ An explicit anti-reference list. Every item here is something a well-meaning con
 
 1. **Not pixel art.** Not "pixel art with a watercolour filter." Not a low-res palette. That decision is dead and nothing in the game references it.
 2. **Not top-down, not isometric, not free-roaming.** No tile grid, no Zelda camera, no orbit, no player zoom.
-3. **Not oil impasto.** No thick paint, no visible brush loading, no palette-knife texture, no canvas weave. Disco Elysium's *feel*, never its surface.
+3. ~~**Not oil impasto.**~~ **REVERSED 15 Aug 2026 — see `09-painterly-direction.md` §6.** The project is now made in alla prima oil. Note that §9.4 and §9.5 below are thereby made *more* dangerous, not less: nineteenth-century history painting and golden-age illustration are oil paintings of this subject, and the negative list is now the only defence against them.
 
 **Wrong centuries:**
 

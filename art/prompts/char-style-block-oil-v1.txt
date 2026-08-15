@@ -1,0 +1,15 @@
+char-style-block-oil-v1.txt — the character anchor.
+Replaces char-style-block.txt. Spec: docs/09-painterly-direction.md §1.2.
+
+CHARACTER STYLE: an alla prima oil portrait study, painted wet-into-wet on a mid-toned
+ground and left unfinished. The head is found with a loaded brush — the planes of the
+brow, the cheekbone, the nose and the jaw stated as flat masses of colour laid side by
+side and not blended into one another. The paint is thick and worked where the light
+crosses the face and thins to bare ground in the shadow, which stays transparent and
+coloured. The cloth is stated in three or four strokes and is never rendered: the coat is
+described, not painted. The sitter is set down plainly and is not flattered — stiffer,
+blunter and more literal than fashionable portraiture, closer to a working study than to a
+commission. One hard low-angle light source only, with no reflected fill, no second key
+and no rim light. The ground behind the head is a flat scumbled field worked with the same
+brush, with no scenery, no drapery, no column, no sky and no frame. Some edge of the head
+is lost entirely into that ground. Nothing is pure black and nothing is pure white.

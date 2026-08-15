@@ -12,6 +12,26 @@ clock through Acts 1–3, and the player-facing writing register. **Steps 1–3 
 build order are done** (interface strings rewritten, the Return on the HUD, the
 two-line header). Step 4 — the ledger — is the next real work.
 
+**ART DIRECTION PIVOT — 15 Aug 2026.** The project is no longer pen and wash. It
+is alla prima oil: painterly, loaded brush, wet-into-wet, left unfinished, on a
+mid-toned ground. `docs/09-painterly-direction.md` is the new medium spec and
+supersedes `02` §1, §4 and both style anchors; §1 and §4 of `02` carry banners
+saying so, and §9.3's "not oil impasto" is struck. Everything else in `02` — the
+palette's meaning logic, the mood controller, composition, the portrait rules,
+type, UI, and the rest of the anti-reference list — is still in force.
+
+The live prompt substrate is in `art/prompts/`: `style-anchor-oil-v1.txt`,
+`char-style-block-oil-v1.txt`, `negative-oil-v1.txt`, and one assembled
+ready-to-paste sheet. **The negative list goes in every single generation** —
+nineteenth-century history painting is an oil painting of this exact subject and
+is now one adjective away.
+
+Not yet done, in order: the bodies of `03a`/`03b`/`03c` still carry dead style
+blocks (their subject lines are fine and unchanged); `src/art.ts` is 3,800 lines
+of procedural placeholder that the pivot makes due for replacement by real
+generated plates; the shader's paper uniforms want the redefinitions in `09` §3.
+The DOM chrome stays paper and stays as built — see `09` §8.1 before touching it.
+
 **The Council now matches `07-stat-and-voice-system.md` §3.** The five loudness
 formulas were audited against the spec and three were wrong (Duty read no
 Legitimacy at all); they are corrected. R4's floor of two, insistence/rejoinders,

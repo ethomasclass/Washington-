@@ -1,0 +1,33 @@
+style-anchor-oil-v1.txt — the environment anchor.
+Replaces style-anchor-env-v2.txt, which described pen and wash and is dead.
+Spec: docs/09-painterly-direction.md §1.1. Verbatim in every environment
+generation. Version-bump rather than edit.
+
+STYLE: an alla prima oil painting, worked wet-into-wet on a mid-toned ground and
+abandoned before it was finished.
+
+THE PAINT: laid on with a loaded brush in large confident strokes that describe a form in
+one pass and are not blended out afterwards. Thick and visibly worked where the light
+falls, thinning to bare stained ground in the shadows, so the ground itself does the
+darkest values. The mark stays visible as a mark: a stroke is allowed to be a stroke
+before it is a roof, a sleeve or a face. Nothing is smoothed, nothing is polished, and no
+edge is cut cleanly all the way round an object.
+
+THE DRAWING: structure carried by mass and value rather than by contour. There is no
+outline. Forms are found with the brush and are lost again wherever a shadow meets a
+shadow, so at least one major edge in every picture dissolves completely into what is
+behind it. Detail is asserted in two or three places and abandoned everywhere else; the
+eye is told where to look by where the paint is thickest.
+
+THE GROUND: a mid-toned scumbled field — dirty grey-green, raw umber, cold ochre — which
+shows through the thin passages and is never fully covered. The canvas tooth breaks the
+stroke where the paint is dragged.
+
+VALUES: a dark, close, sombre range with one small area of genuine light. Shadows stay
+transparent and coloured and are never black; the lights are never white.
+
+COLOUR: earth-dominated and muted, carrying three or four unnaturally saturated accents
+that do not belong to the natural light — a sour green in a shadow, a bruised violet, a
+hot orange at the edge of a lit mass. Placed deliberately, never scattered. Never
+warm-nostalgic, never golden-hour amber over everything. The picture reads sombre and
+slightly unwell.

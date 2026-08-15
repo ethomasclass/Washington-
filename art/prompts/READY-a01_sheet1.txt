@@ -1,17 +1,23 @@
 SHEET 1 — Mount Vernon, May 1775 · Martha Washington + Lund Washington
 Asset id: gl_xx_pt_a01_sheet1_v01 · 03b §4.3 sheet 1 · seed 21001
-Canvas 2048 x 1536, cut into two 1024 x 1536 cells.
+Canvas 2048 x 1536 (or nearest 4:3), cut into two cells.
 
-Assembled from the locked blocks in the fixed order of 03b §0.2 —
-[SUBJECT] [char-style-block] [FRAMING-PORTRAIT] [style-block] [char-negative].
-Do not reorder, do not edit the style or negative blocks per asset. If an
-asset needs something on the negative list, the asset is wrong.
+Assembled from the LIVE anchors, in the fixed order of 03b §0.2:
+  [SUBJECT] [char-style-block-oil-v1] [FRAMING-PORTRAIT] [negative-oil-v1]
+
+Medium per docs/09-painterly-direction.md. The pen-and-wash version of this
+sheet is deleted, not archived — a dead style block left lying next to a live
+one gets pasted by mistake exactly once.
+
+The subject lines and the framing are unchanged from before the pivot and are
+still 03b's. Costume, period locks and historical content are style-independent:
+paint how it felt, draw what was there.
 
 --------------------------------------------------------------------- PROMPT
 
-wshwash, a sheet of two portrait studies side by side on one piece of plain
-cream laid paper, at identical scale and under identical light, each a chest-up
-study with clear empty space around it and no overlap between them.
+A sheet of two oil portrait studies side by side on one canvas, at identical
+scale and under identical light, each a chest-up study with clear space around
+it and no overlap between them.
 
 LEFT: Martha Washington, aged forty-three, a small, round-faced,
 plainly-handsome Virginia gentlewoman with brown hair and hazel eyes, a
@@ -31,21 +37,18 @@ ribbon. Sunburn to the line of his collar and pale above it. A careful, patient,
 slightly evasive face — a man who is used to writing letters explaining why
 something has not been finished.
 
-CHARACTER STYLE: a portrait study in the provincial American manner of the
-1770s. The head is drawn first in warm brown-black iron-gall ink with a quill —
-a confident contour line about twice the weight of the interior lines — and the
-line carries the whole structure of the skull, the brow, the nose and the jaw.
-The face is then modelled in transparent watercolour wash in four values only:
-the bare paper standing for the light, one pale wash for the half-tone, one mid
-wash for the shadow, and a single dark accent in the eye socket and beneath the
-jaw. The cloth is stated in two values and a line and is never rendered in
-detail — the coat is described, not painted. Stiffer, flatter and more linear
-than fashionable London portraiture: the sitter is set down plainly and is not
-flattered. One light source only, hard-edged where it crosses the cheek, with no
-reflected fill, no second key and no rim light. The ground behind the head is
-bare warm cream laid rag paper with faint vertical chain lines, left untouched —
-no scenery, no drapery, no column, no sky, no painted backdrop, no vignette, no
-frame. Nothing in the image is pure black and nothing is pure white.
+CHARACTER STYLE: an alla prima oil portrait study, painted wet-into-wet on a mid-toned
+ground and left unfinished. The head is found with a loaded brush — the planes of the
+brow, the cheekbone, the nose and the jaw stated as flat masses of colour laid side by
+side and not blended into one another. The paint is thick and worked where the light
+crosses the face and thins to bare ground in the shadow, which stays transparent and
+coloured. The cloth is stated in three or four strokes and is never rendered: the coat is
+described, not painted. The sitter is set down plainly and is not flattered — stiffer,
+blunter and more literal than fashionable portraiture, closer to a working study than to a
+commission. One hard low-angle light source only, with no reflected fill, no second key
+and no rim light. The ground behind the head is a flat scumbled field worked with the same
+brush, with no scenery, no drapery, no column, no sky and no frame. Some edge of the head
+is lost entirely into that ground. Nothing is pure black and nothing is pure white.
 
 FRAMING: chest-up, the body cut across at the second coat button. No hands, no
 forearms, no held objects, nothing below the chest. The head fills about
@@ -53,70 +56,53 @@ two-fifths of the picture height and the eyes sit about one-third down from the
 top edge. A three-quarter turn with the sitter's left shoulder toward the
 viewer, the face turned a little further toward the viewer than the shoulders.
 
-THE LINE: drawn first and drawn confidently, in brown-black iron-gall ink with a
-quill, over a faint graphite underdrawing. The line carries every structure in
-the picture. It is even in weight, unbroken, never sketchy, never blurred, never
-doubled, never faded. Nothing in the image is pure black.
-
-THE WASH: transparent watercolour laid over the dry line in three values only —
-one pale tint, one mid tone, and a single dark accent — in a restricted earth
-range: soot brown, cool grey-brown, yellow ochre, grey-green, slate blue-grey,
-wet stone grey, dull brick red. Thin and unsaturated. Laid wet on dry, so each
-wash stops with a visible hard tideline.
-
-THE PAPER: warm cream laid rag paper with faint chain lines. The sheet is new:
-clean, unstained, unfoxed, untorn, no burnt or ragged edges, no visible paper
-edge. Nothing in the image is pure white.
-
-RENDERING: no opaque paint, no oil, no impasto, no visible brushwork, no canvas
-weave, no digital gradients, no airbrush, no glow, no bloom, no rim light, no
-lens flare, no depth-of-field blur.
+COLOUR: earth-dominated and muted — raw umber, olive, cool grey, ochre —
+carrying three or four unnaturally saturated accents that do not belong to the
+natural light: a sour green in the shadow of the linen, a bruised violet under
+the jaw, a hot orange note at the edge of the flesh. Placed and few. Never
+warm-nostalgic. The picture reads sombre and slightly unwell.
 
 ------------------------------------------------------------------- NEGATIVE
 
-photograph, studio portrait, glamour, beauty retouching, airbrushed skin,
-symmetrical face, perfect teeth, orthodontia, veneers, open mouth, smiling with
-teeth showing, gym physique, modern haircut, modern grooming, stubble, five
-o'clock shadow, beard, moustache, sideburns, goatee,
-periwig, powdered wig with rolls of curl over the ears, barrister wig, bob wig,
-tie wig, hair ribbon bow at the crown,
-elderly jowls, projecting lower lip, sunken mouth, collapsed lower face, dollar
-bill, banknote engraving,
-hand tucked into the waistcoat, arms folded, hands in frame, held objects,
-pointing,
-shako, busby, bicorne worn front to back, stiff triangular hat shell, pirate
-hat, feathered cavalier hat,
-tailcoat, cutaway coat, high stiff standing collar, frogging, bullion fringe on
-a fitted coat, kepi, forage cap, sack coat, greatcoat with a shoulder cape and
-brass buttons,
-corset, front-laced bodice, bare shoulders, decolletage, ball gown, empire
-waist, bare head on an adult woman, loose flowing hair on an adult woman,
-Napoleonic, Waterloo, Regency, Victorian, Civil War, Gettysburg, 19th century
-history painting, rotunda mural, Currier and Ives, Spirit of 76, bicentennial,
-reenactor photograph, costume photography, living history museum, theatrical
-costume, wax museum,
-oil painting, impasto, thick paint, visible brush loading, palette knife, canvas
-weave, gouache opacity, cel shading, anime, manga, comic ink, flat vector, 3d
-render, cgi, photoreal, hdr, oversaturated,
-glow, bloom, rim light, lens flare, depth of field, bokeh, drop shadow,
-painted backdrop, drapery, curtain, column, balustrade, landscape behind the
-sitter, sky behind the sitter, oval frame, gilt frame, cartouche, nameplate,
-signature, lettering, text,
-Leutze, Spirit of 76, Currier and Ives, N.C. Wyeth, Howard Pyle, Norman
-Rockwell, Civil War, Napoleonic, Les Miserables, Hamilton musical, colonial
-Williamsburg costume photography, 19th century history painting, oil impasto,
-bicentennial
+Leutze, Washington Crossing the Delaware, Trumbull rotunda, Spirit of 76,
+Currier and Ives, bicentennial, N.C. Wyeth, Howard Pyle, Norman Rockwell,
+19th century history painting, heroic history painting, patriotic tableau,
+flag as backdrop, eagle, bunting, fife and drum, thirteen stars in a ring,
+concept art, keyframe illustration, splash art, trading card art, book cover,
+hero shot, epic, cinematic lighting, dramatic upward camera on a figure
+against a sky, Frazetta, fantasy oil, romanticism,
+digital painting with smooth underpainting, rendered then textured, brushstroke
+filter over a photograph, photobash, 3d render, cgi, photoreal, hdr,
+evenly finished, fully rendered, every edge closed, tight detail throughout,
+polished, glossy, varnished, museum-clean,
+cel shading, anime, manga, comic ink, flat vector, outline plus flat fill,
+sepia, monochrome brown, history filter, golden hour over everything, warm
+nostalgic glow, instagram preset, oversaturated, neon,
+glow, bloom, rim light, lens flare, depth of field, bokeh,
+gore, viscera, mud-and-blood war film grade, grimdark, desaturated to grey,
+Napoleonic, Waterloo, Regency, Victorian, Civil War, Gettysburg, shako,
+tailcoat, high stiff standing collar, kepi, sack coat, percussion lock,
+Assassins Creed, hooded figure, tomahawk, wolf pelt, eagle vision,
+Gilbert Stuart Athenaeum portrait, dollar bill, banknote engraving, powdered
+wig, periwig, beard, moustache, stubble, hand tucked into waistcoat, white
+horse, three stars,
+signature, lettering, text, watermark, nameplate, cartouche, gilt frame
 
 ----------------------------------------------------------------- DROPPING IT
 
-1. Save as  public/portraits/a01_sheet1.webp  (or .png — either works).
+1. Save as  public/portraits/a01_sheet1.webp  (or .png).
 2. Uncomment the two rows in src/portraits.ts:
        martha: { sheet: 'a01_sheet1.webp', cell: 'left',  name: 'Martha Washington' },
        lund:   { sheet: 'a01_sheet1.webp', cell: 'right', name: 'Lund Washington' },
-3. That is all. Martha is already tagged on decision A1-D2 and will pick it up.
-   Nothing needs cropping — the well shows one half of the sheet.
+3. Done. Martha is already tagged on decision A1-D2. Nothing needs cropping —
+   the well shows one half of the sheet.
 
-CHECKS BEFORE ACCEPTING (03b §7): both heads at the same scale and under the
-same light; the cap is complete and no hair is loose; no hands anywhere in
-frame; bare paper behind both heads with nothing painted on it; neither face
-smiling with teeth; nothing pure black and nothing pure white.
+------------------------------------------------- ACCEPTANCE (09 §7, all six)
+
+1. Is there a lost edge — does some edge of each head dissolve into the ground?
+2. Does the mid-toned ground show through anywhere?
+3. Three or four saturated accents. Count them. Not zero, not everywhere.
+4. Are the shadows coloured and transparent rather than neutral black?
+5. Could this be a nineteenth-century history painting? If yes, reject.
+6. Is it true? Cap complete with no loose hair, no hands in frame, no wig on
+   Lund, neither face smiling with teeth.

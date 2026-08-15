@@ -22,10 +22,10 @@
 
 import type { Ambient, Business, Interactable, NpcThread, Scene, Task } from '../types';
 
-const GREENE = { portraitSeed: 606, coat: '#55627A' };
+const GREENE = { portraitSeed: 606, coat: '#4B5645' };
 const BRAGG = { portraitSeed: 707, coat: '#8C8578' };
 const WHITCOMB = { portraitSeed: 808, coat: '#6E5B45' };
-const LEE = { portraitSeed: 505, coat: '#5C6673' };
+const LEE = { portraitSeed: 505, coat: '#5F5B4C' };
 
 export const CB01: Scene = {
   id: 'CB-01',
@@ -292,7 +292,7 @@ export const CB01: Scene = {
   npcs: [
     {
       id: 'greene',
-      look: { coat: '#4E5A6B', hat: 'tricorne', build: 1.06, tall: 1.01 },
+      look: { coat: '#6A5F4A', hat: 'tricorne', build: 1.06, tall: 1.01 },
       name: 'General Greene',
       hearFlag: 'heard.a2.greene',
       x: 0.735, z: 0.46,
@@ -435,7 +435,7 @@ export const CB01: Scene = {
 
     {
       id: 'lee2',
-      look: { coat: '#5C6673', hat: 'round', build: 0.95, tall: 0.99 },
+      look: { coat: '#5F5B4C', hat: 'round', build: 0.95, tall: 0.99 },
       name: 'William Lee',
       x: 0.135, z: 0.55,
       lines: [

@@ -1311,42 +1311,35 @@ export function characterCutout(
     const kx = hipX + footDx * 0.55;
     const fx = hipX + footDx;
     // Breeches to the knee.
-    wash(x, [[hipX - w * 0.075, hy], [hipX + w * 0.075, hy],
-             [kx + w * 0.055, ky], [kx - w * 0.06, ky]], EARTH.RAW_UMBER, 0.62, rnd, 3);
+    solid(x, [[hipX - w * 0.075, hy], [hipX + w * 0.075, hy],
+              [kx + w * 0.055, ky], [kx - w * 0.06, ky]], '#8E7C63', rnd, EARTH.RAW_UMBER, 0.26);
     // Stocking below it, lighter.
-    wash(x, [[kx - w * 0.05, ky], [kx + w * 0.048, ky],
-             [fx + w * 0.042, fy], [fx - w * 0.045, fy]], PAPER.SMOKED, 0.66, rnd, 3);
+    solid(x, [[kx - w * 0.05, ky], [kx + w * 0.048, ky],
+              [fx + w * 0.042, fy], [fx - w * 0.045, fy]], PAPER.SMOKED, rnd);
     inkLine(x, [[hipX - w * 0.07, hy], [kx - w * 0.055, ky], [fx - w * 0.042, fy]], rnd, 1.2, 0.22);
     inkLine(x, [[hipX + w * 0.07, hy], [kx + w * 0.05, ky], [fx + w * 0.04, fy]], rnd, 1.2, 0.22);
     inkLine(x, [[kx - w * 0.055, ky], [kx + w * 0.05, ky]], rnd, 1.0, 0.3); // knee band
     // Shoe.
-    wash(x, [[fx - w * 0.055, fy], [fx + w * 0.05, fy],
-             [fx + w * 0.085, H1 * 0.995], [fx - w * 0.07, H1 * 0.995]], INK.FLOOR, 0.7, rnd, 3);
+    solid(x, [[fx - w * 0.055, fy], [fx + w * 0.05, fy],
+              [fx + w * 0.085, H1 * 0.995], [fx - w * 0.07, H1 * 0.995]], '#2E2419', rnd);
   };
   leg(cx - w * 0.085, swing, liftL);
   leg(cx + w * 0.085, -swing, liftR);
 
   /** One arm, swinging against the legs, with a turned-back cuff. */
   const arm = (side: number, dx: number) => {
-    const sx = cx + side * shW * 0.92 + lean * 0.6;
+    const sx = cx + side * shW * 1.04 + lean * 0.6;
     const sy = H1 * (ySh + 0.02);
     const ex = sx + side * w * 0.06 + dx;
     const ey = H1 * (yWaist + 0.075);
-    wash(x, [[sx - w * 0.055, sy], [sx + w * 0.055, sy],
-             [ex + w * 0.05, ey], [ex - w * 0.05, ey]], coat, 0.8, rnd, 3);
+    solid(x, [[sx - w * 0.055, sy], [sx + w * 0.055, sy],
+              [ex + w * 0.05, ey], [ex - w * 0.05, ey]], coat, rnd, INK.SETTLED, 0.22);
     inkLine(x, [[sx + side * w * 0.055, sy], [ex + side * w * 0.05, ey]], rnd, 1.4, 0.2);
     // Cuff.
     inkLine(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022]], rnd, 1.3, 0.15);
-    wash(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022],
-             [ex + w * 0.048, ey], [ex - w * 0.048, ey]], PAPER.SMOKED, 0.5, rnd, 2);
+    solid(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022],
+              [ex + w * 0.048, ey], [ex - w * 0.048, ey]], PAPER.SMOKED, rnd);
   };
-  arm(-1, -swing * 0.5);
-  arm(1, swing * 0.5);
-
-  // Waistcoat, showing at the coat's open front.
-  wash(x, [[cx - w * 0.12, H1 * ySh], [cx + w * 0.12, H1 * ySh],
-           [cx + w * 0.10, H1 * ySkirt], [cx - w * 0.10, H1 * ySkirt]],
-    PAPER.SMOKED, 0.75, rnd, 3);
 
   // The coat: shoulders in, waist nipped, skirts turned back and flaring.
   const coatPts: [number, number][] = [
@@ -1359,11 +1352,23 @@ export function characterCutout(
     [cx + shW * 0.92 + lean, H1 * yWaist],
     [cx + shW + lean, H1 * ySh],
   ];
-  wash(x, coatPts, coat, 0.88, rnd, 5);
+  solid(x, coatPts, coat, rnd, INK.SETTLED, 0.07);
 
   // Coat outline, drawn as separate strokes so the line can break.
   inkLine(x, coatPts.slice(0, 5), rnd, 1.7, 0.12);
   inkLine(x, coatPts.slice(4).concat([coatPts[0]]), rnd, 1.7, 0.12);
+
+  /*
+   * Waistcoat, in the gap where the coat hangs open.
+   *
+   * It used to be painted underneath a translucent coat and read through it.
+   * Now that the coat is opaque it has to be painted on top and only as wide as
+   * the opening, which is what it should have been: the waistcoat is a strip
+   * you see between the coat fronts, not a garment showing through one.
+   */
+  solid(x, [[cx - w * 0.062 + lean, H1 * (ySh + 0.02)], [cx + w * 0.062 + lean, H1 * (ySh + 0.02)],
+            [cx + w * 0.056, H1 * (ySkirt + 0.07)], [cx - w * 0.056, H1 * (ySkirt + 0.07)]],
+    '#CFC3A6', rnd, EARTH.YELLOW_OCHRE, 0.22);
   // The open front, and a row of buttons down one side of it.
   inkLine(x, [[cx - w * 0.11 + lean, H1 * (ySh + 0.02)], [cx - w * 0.095, H1 * ySkirt],
               [cx - w * 0.12, H1 * yHem]], rnd, 1.3, 0.2);
@@ -1382,21 +1387,28 @@ export function characterCutout(
   inkLine(x, [[cx - hipW * 1.42, H1 * yHem], [cx, H1 * (yHem + 0.012)],
               [cx + hipW * 1.42, H1 * yHem]], rnd, 1.5, 0.18);
 
+  // Arms last of the body, because they hang in front of the coat. Drawn before
+  // it — as they were while everything was translucent — an opaque coat swallows
+  // them whole. They also sit a little wider than the shoulder and a shade
+  // darker than the coat, or they disappear into its silhouette instead.
+  arm(-1, -swing * 0.5);
+  arm(1, swing * 0.5);
+
   // Neck stock, white and tight.
-  wash(x, [[cx - w * 0.075 + lean, H1 * yChin], [cx + w * 0.075 + lean, H1 * yChin],
-           [cx + w * 0.085 + lean, H1 * ySh], [cx - w * 0.085 + lean, H1 * ySh]],
-    PAPER.BRIGHT, 0.8, rnd, 2);
+  solid(x, [[cx - w * 0.075 + lean, H1 * yChin], [cx + w * 0.075 + lean, H1 * yChin],
+            [cx + w * 0.085 + lean, H1 * ySh], [cx - w * 0.085 + lean, H1 * ySh]],
+    PAPER.BRIGHT, rnd);
 
   // Head, and the queue tied at the back of it.
   const hx = cx + lean;
-  wash(x, [[hx - w * 0.082, H1 * yBrim], [hx + w * 0.082, H1 * yBrim],
-           [hx + w * 0.07, H1 * yChin], [hx - w * 0.07, H1 * yChin]],
-    PAPER.SMOKED, 0.9, rnd, 3);
+  solid(x, [[hx - w * 0.082, H1 * yBrim], [hx + w * 0.082, H1 * yBrim],
+            [hx + w * 0.07, H1 * yChin], [hx - w * 0.07, H1 * yChin]],
+    '#E0D3B8', rnd, EARTH.YELLOW_OCHRE, 0.2);
   inkLine(x, [[hx - w * 0.078, H1 * yBrim], [hx - w * 0.068, H1 * yChin]], rnd, 1.2, 0.3);
   inkLine(x, [[hx + w * 0.078, H1 * yBrim], [hx + w * 0.068, H1 * yChin]], rnd, 1.2, 0.3);
-  wash(x, [[hx + w * 0.06, H1 * (yBrim + 0.02)], [hx + w * 0.115, H1 * (yBrim + 0.045)],
-           [hx + w * 0.10, H1 * (yChin + 0.03)], [hx + w * 0.05, H1 * yChin]],
-    INK.FADED, 0.55, rnd, 3);
+  solid(x, [[hx + w * 0.06, H1 * (yBrim + 0.02)], [hx + w * 0.115, H1 * (yBrim + 0.045)],
+            [hx + w * 0.10, H1 * (yChin + 0.03)], [hx + w * 0.05, H1 * yChin]],
+    INK.FADED, rnd);
 
   if (hat === 'tricorne') {
     // Three cornered: a wide flat brim with the front peak and two rear points.
@@ -1411,19 +1423,19 @@ export function characterCutout(
       [hx + bw * 0.5, by + H1 * 0.024],
       [hx - bw * 0.5, by + H1 * 0.024],
     ];
-    wash(x, brim, INK.SETTLED, 0.82, rnd, 4);
+    solid(x, brim, INK.SETTLED, rnd);
     inkLine(x, [...brim, brim[0]], rnd, 1.5, 0.06);
     // Crown behind the brim.
-    wash(x, [[hx - w * 0.085, by], [hx - w * 0.06, H1 * yHat],
-             [hx + w * 0.06, H1 * yHat], [hx + w * 0.085, by]], INK.SETTLED, 0.8, rnd, 3);
+    solid(x, [[hx - w * 0.085, by], [hx - w * 0.06, H1 * yHat],
+              [hx + w * 0.06, H1 * yHat], [hx + w * 0.085, by]], INK.SETTLED, rnd);
   } else if (hat === 'round') {
     const by = H1 * yBrim;
-    wash(x, [[hx - w * 0.20, by], [hx + w * 0.20, by],
-             [hx + w * 0.16, by + H1 * 0.02], [hx - w * 0.16, by + H1 * 0.02]],
-      EARTH.BISTRE, 0.75, rnd, 3);
-    wash(x, [[hx - w * 0.085, by], [hx - w * 0.07, H1 * (yHat + 0.02)],
-             [hx + w * 0.07, H1 * (yHat + 0.02)], [hx + w * 0.085, by]],
-      EARTH.BISTRE, 0.72, rnd, 3);
+    solid(x, [[hx - w * 0.20, by], [hx + w * 0.20, by],
+              [hx + w * 0.16, by + H1 * 0.02], [hx - w * 0.16, by + H1 * 0.02]],
+      EARTH.BISTRE, rnd, INK.SETTLED, 0.14);
+    solid(x, [[hx - w * 0.085, by], [hx - w * 0.07, H1 * (yHat + 0.02)],
+              [hx + w * 0.07, H1 * (yHat + 0.02)], [hx + w * 0.085, by]],
+      EARTH.BISTRE, rnd, INK.SETTLED, 0.1);
   }
   return c;
 }

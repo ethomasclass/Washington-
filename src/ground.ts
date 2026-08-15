@@ -48,8 +48,13 @@ export const FAR_SCALE = 0.46;
  * The floor is set by the content, not by taste: below about 0.12 the existing
  * scenes start drawing two figures on top of each other at the back. The linter
  * measures this, so the number can be moved with evidence rather than nerve.
+ *
+ * Was 0.22, chosen to make a formal avenue converge hard. That avenue is gone —
+ * the scenes are staged as working ground now, which wants a shallower, less
+ * funnelled space — so this comes back up to 0.30. Still a good deal deeper than
+ * the 0.40 it started at, and it buys back width for placing figures at the back.
  */
-export const FAR_SPREAD = 0.22;
+export const FAR_SPREAD = 0.30;
 
 /** The lawn falls away west toward the river. */
 export const SLOPE = 0.22;

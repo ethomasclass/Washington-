@@ -16,9 +16,9 @@
 import type { Ambient, Business, Interactable, NpcThread, Scene, Task } from '../types';
 
 const MARTHA = { portraitSeed: 202, coat: '#6B4F35' };
-const MESSENGER = { portraitSeed: 303, coat: '#55627A' };
+const MESSENGER = { portraitSeed: 303, coat: '#8A7B5E' };
 const LUND = { portraitSeed: 404, coat: '#7A5C3E' };
-const LEE = { portraitSeed: 505, coat: '#5C6673' };
+const LEE = { portraitSeed: 505, coat: '#5F5B4C' };
 
 export const MV01: Scene = {
   id: 'MV-01',
@@ -452,7 +452,7 @@ export const MV01: Scene = {
 
     {
       id: 'lee',
-      look: { coat: '#5C6673', hat: 'round', build: 0.95, tall: 0.99 },
+      look: { coat: '#5F5B4C', hat: 'round', build: 0.95, tall: 0.99 },
       name: 'William Lee',
       // Standing just forward of the chariot he has finished loading. The x has
       // to be near the bound: depth compresses the frame toward the centre, so
@@ -476,7 +476,7 @@ export const MV01: Scene = {
 
     {
       id: 'messenger',
-      look: { coat: '#55627A', hat: 'tricorne', build: 0.94, tall: 1.00 },
+      look: { coat: '#8A7B5E', hat: 'tricorne', build: 0.94, tall: 1.00 },
       name: 'the messenger',
       x: 0.5,
       z: 0.34,

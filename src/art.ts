@@ -3122,7 +3122,20 @@ export function campForeground(): HTMLCanvasElement {
       [edge, b], [edge, b - hgt * 0.86], [ridgeX, b - hgt],
       [backX, b - hgt * 0.44], [backX, b],
     ];
-    solid(x, body, '#9C917A', rnd, EARTH.BISTRE, 0.32);
+    /*
+     * Dark, because it is near.
+     *
+     * This was '#9C917A' — mid-value, the same band as the tents two hundred
+     * yards behind it, so the nearest thing in the picture carried none of the
+     * weight a near mass is supposed to carry. Aerial perspective says the full
+     * value range belongs at the front and compresses with distance; the front
+     * had been painted as though it were the middle distance. Desaturate the
+     * composite and there was nothing to anchor it.
+     *
+     * A brush shelter seen from a yard away, in its own shade, under an
+     * overcast, is a dark thing. It reads as one now.
+     */
+    solid(x, body, '#4B4436', rnd, INK.FLOOR, 0.3);
     inkLine(x, [[edge, b - hgt * 0.86], [ridgeX, b - hgt], [backX, b - hgt * 0.44]], rnd, 3.0, 0.02);
     inkLine(x, [[backX, b - hgt * 0.44], [backX, b]], rnd, 2.4, 0.06);
     // Boards down the slope, and a guy rope out to a stake in the dirt.
@@ -3527,14 +3540,51 @@ export function linesForeground(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(337);
 
+  /*
+   * THE DARK MASS — the spoil heap and the timber left on it.
+   *
+   * Drawn first, at the shaded left edge, opposite the low sun this scene now
+   * has on the right. Digging a bank leaves the earth you dug somewhere, and it
+   * is the one thing on a fortified hill that is allowed to be shapeless — so
+   * it can be a big near-black silhouette without having to read as anything
+   * finely made.
+   *
+   * Same job as the tree at Mount Vernon: bracket the frame, give the picture
+   * a true dark, and push everything behind it back. Cropped by the edge, and
+   * running off the bottom, so it reads as being underfoot rather than as an
+   * object placed in the shot.
+   */
+  {
+    const dark = '#2B2519';
+    const top = H * 0.62;
+    solid(x, [
+      [-20, H + 20], [-20, top + H * 0.09], [W * 0.055, top],
+      [W * 0.135, top + H * 0.05], [W * 0.20, top + H * 0.16],
+      [W * 0.23, H + 20],
+    ], dark, rnd, INK.FLOOR, 0.32);
+    // Two lengths of revetment timber lying across it, catching one edge of
+    // the light so the mass is not a hole in the picture.
+    for (const [x0, y0, len, lift] of [
+      [W * 0.02, top + H * 0.075, W * 0.185, -H * 0.028],
+      [W * 0.045, top + H * 0.155, W * 0.16, -H * 0.012],
+    ] as const) {
+      solid(x, [
+        [x0, y0], [x0 + len, y0 + lift], [x0 + len, y0 + lift + H * 0.026],
+        [x0, y0 + H * 0.03],
+      ], '#5A4A31', rnd, INK.FLOOR, 0.22);
+    }
+  }
+
   // A gabion at the player's own scale at each corner, so he stands among them.
   for (const [edge, dir] of [[-30, 1], [W + 30, -1]] as [number, number][]) {
     const b = H * 1.04;
     const gh = figureAtPlateY(H * 0.9, H) * 1.1;
     const gw = gh * 0.66;
     const cx = edge + dir * gw * 0.5;
+    // Near, therefore dark. Was '#8E7A52' — the same value as the baskets on
+    // the crest a hundred yards back, so the near corners weighed nothing.
     solid(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh], [cx + gw / 2 + 4, b],
-              [cx - gw / 2 - 4, b]], '#8E7A52', rnd, EARTH.BISTRE, 0.3);
+              [cx - gw / 2 - 4, b]], '#4A3F2B', rnd, INK.FLOOR, 0.28);
     inkLine(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh]], rnd, 3.0, 0.03);
     for (let k = 1; k < 7; k++) {
       inkLine(x, [[cx - gw / 2 + (gw * k) / 7, b - gh], [cx - gw / 2 + (gw * k) / 7, b]],

@@ -300,6 +300,44 @@ function recede(c: HTMLCanvasElement, depth: number): HTMLCanvasElement {
 }
 
 /**
+ * A contact shadow: the dark where a thing meets the ground.
+ *
+ * Defined three times over in three plate painters, each a symmetric ellipse
+ * centred under the object — which is what made props read as stickers laid on
+ * the picture rather than things standing on it. A real contact shadow runs
+ * AWAY from the light, and the darkest part of it is the pinch right at the
+ * base, where least light reaches.
+ *
+ * So: one helper, offset along LIGHT, with a tight dark core at the foot and a
+ * longer thrown tail. Warm shadows on warm ground — never toward black, which
+ * deadens the paint and kills the sense of a strong light (09 §2).
+ */
+function contact(
+  x: Ctx,
+  cx: number,
+  base: number,
+  r: number,
+  rnd: () => number,
+): void {
+  const dx = LIGHT.dx * r * 1.05;
+  const dy = Math.abs(LIGHT.dy) * r * 0.22;
+  // The thrown shadow, stretched along the light.
+  wash(x, [
+    [cx - r * 0.85, base],
+    [cx + r * 0.85, base - 3],
+    [cx + r * 0.7 + dx, base + r * 0.24 + dy],
+    [cx - r * 0.8 + dx, base + r * 0.26 + dy],
+  ], EARTH.RAW_UMBER, 0.18, rnd, 3);
+  // The occlusion pinch: tight to the foot, and the darkest note in the mass.
+  wash(x, [
+    [cx - r * 0.4, base - 1],
+    [cx + r * 0.4, base - 2],
+    [cx + r * 0.34, base + r * 0.11],
+    [cx - r * 0.36, base + r * 0.12],
+  ], INK.FLOOR, 0.22, rnd, 2);
+}
+
+/**
  * A mass, painted rather than filled.
  *
  * Was: one flat fill with a 1.6px edge jitter, which is the "outline plus flat
@@ -481,10 +519,19 @@ function solid(
 
   // One accent, rarely, and never on something small enough that it would read
   // as a detail rather than as a note of colour.
-  if (span > 26 && rnd() < 0.13) {
+  /*
+   * The accents (09 §2), and they were failing both halves of the rule at once.
+   *
+   * At a 13% roll across 174 call sites a frame carried something like eighty
+   * of them, every one at 13-29% alpha over an opaque base of a different hue —
+   * so you could neither find three nor stop counting, and the sets read as one
+   * muddy range although the palette was right. Rare and strong reads; frequent
+   * and weak is just dirt.
+   */
+  if (span > 40 && rnd() < 0.025) {
     x.strokeStyle = ACCENTS[Math.floor(rnd() * ACCENTS.length)];
     x.lineWidth = width * 0.7;
-    x.globalAlpha = 0.13 + rnd() * 0.16;
+    x.globalAlpha = 0.5 + rnd() * 0.3;
     const cx = x0 + rnd() * w;
     const cy = y0 + rnd() * h;
     const len = span * 0.3;
@@ -578,7 +625,12 @@ const HORIZON = 0.34; // locked project-wide
  * is what stops a stack of equally-crisp planes reading as flat cut paper, and
  * it is the cheapest depth cue there is.
  */
-function haze(c: HTMLCanvasElement, amount: number, tint: string = PAPER.BRIGHT): HTMLCanvasElement {
+/**
+ * A flat fog card. No longer used by the plates — recede() owns aerial
+ * perspective now — but kept and exported because a deliberate drifting fog
+ * sheet between layers is the next depth cue worth adding, and this is it.
+ */
+export function haze(c: HTMLCanvasElement, amount: number, tint: string = PAPER.BRIGHT): HTMLCanvasElement {
   if (amount <= 0) return c;
   const x = c.getContext('2d')!;
   x.save();
@@ -747,7 +799,7 @@ export function layerHills(): HTMLCanvasElement {
   wash(x, [...bank, [W, hy + 40], [0, hy + 40]], EARTH.TERRE_VERTE, 0.26, rnd);
   inkLine(x, bank, rnd, 1.0, 0.34);
 
-  return haze(c, 0.30);
+  return c; // air is recede()'s job now — this used to haze on top of it
 }
 
 /**
@@ -1095,9 +1147,16 @@ export function layerHouse(): HTMLCanvasElement {
     const farTop = conv(topY);
     const farBot = conv(baseY);
 
-    // Long face, running away toward the centre. In shade on the left wing and
-    // catching the light on the right, since the sun is off to the west.
-    const lit = dir < 0;
+    /*
+     * Long face, running away toward the centre.
+     *
+     * The sun at Mount Vernon is off to the LEFT (mv01 sun 0.24), so the light
+     * travels rightward and it is the left-hand wing that stands in its own
+     * shade. This read `dir < 0` and lit the wrong one — so the hand-painted
+     * architecture and solid()'s per-mass key light disagreed inside the same
+     * plate, and the frame carried two suns.
+     */
+    const lit = dir > 0;
     const face: [number, number][] = [
       [corner, topY], [inner, farTop], [inner, farBot], [corner, baseY],
     ];
@@ -1271,9 +1330,7 @@ export function layerMidground(): HTMLCanvasElement {
   const rnd = mulberry(51);
   const hy = H * HORIZON;
 
-  const shadow = (cx: number, base: number, r: number) =>
-    wash(x, [[cx - r, base], [cx + r, base - 4], [cx + r * 0.7, base + r * 0.24],
-             [cx - r * 0.8, base + r * 0.26]], EARTH.RAW_UMBER, 0.2, rnd, 3);
+  const shadow = (cx: number, base: number, r: number) => contact(x, cx, base, r, rnd);
 
   /**
    * A tree.
@@ -1697,7 +1754,7 @@ export function layerFarMidground(): HTMLCanvasElement {
   }
 
   groundLitter(x, rnd, base - 6, base + 60, 40, 0.55);
-  return haze(c, 0.20);
+  return c; // see above: recede() owns the air
 }
 
 /**
@@ -1709,6 +1766,56 @@ export function layerForeground(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(67);
   const y = H * 0.94;
+
+  /*
+   * THE DARK MASS. Repoussoir — literally "to push back".
+   *
+   * This plate had no painted mass in it at all: 150 grass strokes, some
+   * wildflowers and a fence. So the nearest plate in the set, which is where a
+   * painter puts the darkest value and the strongest silhouette, was
+   * transparent — and Vernon's brightest mass was its own subject, sitting on a
+   * lawn four points lighter than the house. Desaturate the composite and the
+   * whole picture sat in one narrow band of mid-grey with nothing to lead the
+   * eye. That is the finding behind 09 §4 row 1b, and this is the cheapest
+   * answer to it.
+   *
+   * A cropped trunk and its bough at the left edge, running off the frame: dark,
+   * almost no internal detail, bracketing the composition. Claude Lorrain put a
+   * darkened ship on one side and shadow across the bottom; Vermeer used a
+   * drawn-back curtain. It is the oldest trick in landscape and it costs twenty
+   * lines.
+   *
+   * It is drawn FIRST so the grass and the fence lie over its foot, which is
+   * what stops it reading as a sticker on the lens.
+   */
+  {
+    const tw = W * 0.085;
+    const bark = '#2E2A22';
+    // The trunk, leaning slightly into frame and cropped top and bottom.
+    solid(x, [
+      [-10, H], [-10, H * 0.16], [tw * 0.62, H * 0.13],
+      [tw * 0.95, H * 0.52], [tw * 1.06, H],
+    ], bark, rnd, INK.FLOOR, 0.3);
+    /*
+     * The bough. Tapered, not a wedge.
+     *
+     * The first cut was a straight quadrilateral running to nearly half the
+     * frame width, which read as a diagonal bar laid over the picture rather
+     * than as timber. A branch narrows as it goes and bends once; four extra
+     * points buy both, and pulling it back to a quarter of the width keeps it
+     * bracketing the corner instead of dividing the frame.
+     */
+    solid(x, [
+      [tw * 0.5, H * 0.16], [tw * 1.5, H * 0.055], [W * 0.17, H * 0.012],
+      [W * 0.255, -8], [W * 0.30, -8], [W * 0.185, H * 0.045],
+      [tw * 1.7, H * 0.115], [tw * 0.88, H * 0.30],
+    ], bark, rnd, INK.FLOOR, 0.26);
+    // A second, lower and shorter — enough to break the trunk's silhouette.
+    solid(x, [
+      [tw * 0.74, H * 0.42], [W * 0.135, H * 0.295], [W * 0.163, H * 0.325],
+      [tw * 1.06, H * 0.50],
+    ], bark, rnd, INK.FLOOR, 0.22);
+  }
 
   /*
    * Rough grass and a little colour in the strip in front of the fence.
@@ -2278,7 +2385,18 @@ export function campHills(): HTMLCanvasElement {
       inkLine(x, [[rx0 - 30 + i * 15, hy - 50], [rx0 - 30 + i * 15, hy - 56]], rnd, 1.1, 0.1);
     }
     inkLine(x, [[rx0 + 40, hy - 40], [rx0 + 40, hy - 76]], rnd, 1.2, 0.06);
-    solid(x, [[rx0 + 40, hy - 76], [rx0 + 62, hy - 71], [rx0 + 40, hy - 64]], '#8E8477', rnd);
+    /*
+     * The colour over the redoubt they took on 17 June.
+     *
+     * This was '#8E8477' — a grey-tan. The comment at the head of this band
+     * states the act's thesis as "the only saturated colour in the act is the
+     * distant red of the British lines", and then it was painted mud, so the
+     * whole muted scheme had nothing to set off. Group D is exempt from every
+     * mood transform by design (02 §2) precisely so this can stay red on the
+     * worst day the player has.
+     */
+    solid(x, [[rx0 + 40, hy - 76], [rx0 + 62, hy - 71], [rx0 + 40, hy - 64]],
+      MEANING.BRITISH_MADDER, rnd);
 
     // The town below it: burned to the ground, chimneys left standing. Nothing
     // else in the frame is drawn as an absence, and it should be.
@@ -2443,9 +2561,7 @@ export function campMidground(): HTMLCanvasElement {
   const hy = H * HORIZON;
   const base = hy + 196;
 
-  const shadow = (cx: number, b: number, r: number) =>
-    wash(x, [[cx - r, b], [cx + r, b - 3], [cx + r * 0.7, b + r * 0.22], [cx - r * 0.8, b + r * 0.24]],
-      EARTH.BISTRE, 0.20, rnd, 3);
+  const shadow = (cx: number, b: number, r: number) => contact(x, cx, b, r, rnd);
 
   /** A lean-to of whatever the regiment had. */
   const shanty = (cx: number, b: number, w: number, h: number, kind: number) => {
@@ -2916,7 +3032,7 @@ export function campFarMidground(): HTMLCanvasElement {
   }
 
   groundLitter(x, rnd, base + 20, base + 76, 34, 0.5);
-  return haze(c, 0.22, PAPER.COOL);
+  return c; // see above: recede() owns the air
 }
 
 /** L4 — near clutter. Nothing here belongs to the army. */
@@ -3219,7 +3335,7 @@ export function linesFarMidground(): HTMLCanvasElement {
         EARTH.WET_STONE, 0.10, rnd, 3);
     }
   }
-  return haze(c, 0.22, PAPER.COOL);
+  return c; // see above: recede() owns the air
 }
 
 /**
@@ -3237,9 +3353,7 @@ export function linesMidground(): HTMLCanvasElement {
   const base = hy + 214;
   const man = (b: number) => figureAtPlateY(b, H);
 
-  const shadow = (cx: number, b: number, r: number) =>
-    wash(x, [[cx - r, b], [cx + r, b - 3], [cx + r * 0.7, b + r * 0.22], [cx - r * 0.8, b + r * 0.24]],
-      EARTH.BISTRE, 0.20, rnd, 3);
+  const shadow = (cx: number, b: number, r: number) => contact(x, cx, b, r, rnd);
 
   // The bank: a long earth mass with a firing step cut behind it.
   const crest: [number, number][] = [];

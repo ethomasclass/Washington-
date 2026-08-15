@@ -126,6 +126,12 @@ const FAR_SPREAD = 0.40;
 const SLOPE = 0.22;
 const EASE = 1.55;
 
+/**
+ * Standing figures shift their weight occasionally. Set false for a completely
+ * static frame whenever the player is not moving.
+ */
+const IDLE_SHIFTS = true;
+
 /** Depth of each painted layer, so actors can pass behind them. */
 const LAYER_DEPTH = [1.0, 0.95, 0.82, 0.44, 0.02];
 
@@ -142,8 +148,15 @@ export class DioramaRenderer {
   private camera: THREE.OrthographicCamera;
   private layers: Layer[] = [];
   private player!: THREE.Mesh;
-  private npcs: { mesh: THREE.Mesh; pos: GroundPos; phase: number }[] = [];
-  private clock = 0;
+  private npcs: {
+    mesh: THREE.Mesh;
+    pos: GroundPos;
+    /** Seconds until the next weight shift. */
+    wait: number;
+    /** Current and target settle offset, in world units. */
+    off: number;
+    target: number;
+  }[] = [];
   /** Walk-cycle textures for the player: index 0 is the standing pose. */
   private playerFrames: THREE.CanvasTexture[] = [];
   private gait = 0;
@@ -233,10 +246,8 @@ export class DioramaRenderer {
     const coats = ['#6B4F35', '#7A5C3E', '#5C6673', '#55627A', '#6E5B45'];
     npcPositions.forEach((pos, i) => {
       const mesh = mk(characterCutout(coats[i % coats.length], 202 + i * 101), -1.25);
-      // Each idle runs on its own phase and rate, so a row of waiting figures
-      // never breathes in unison — which is what makes a crowd read as painted
-      // cardboard rather than as people.
-      this.npcs.push({ mesh, pos, phase: (i * 2.399) % (Math.PI * 2) });
+      // Staggered so nobody moves at the same moment as anybody else.
+      this.npcs.push({ mesh, pos, wait: 5 + i * 4.4, off: 0, target: 0 });
     });
   }
 
@@ -304,18 +315,38 @@ export class DioramaRenderer {
   }
 
   setPlayerPos(pos: GroundPos, dt = 0): void {
-    this.clock += dt;
     this.place(this.player, pos);
     this.player.position.y += this.bob;
 
+    /*
+     * Standing idle.
+     *
+     * A continuous sway was wrong: figures that never stop moving read as
+     * floating, and at a glance the whole frame looks like it is drifting. A
+     * person waiting is still almost all of the time and then shifts their
+     * weight. So each NPC holds a fixed offset, and every few seconds picks a
+     * new one and eases across to it — then genuinely stops, snapped, so the
+     * frame is completely static between shifts.
+     */
     for (const n of this.npcs) {
       this.place(n.mesh, n.pos);
-      // A slow weight shift: a little rise and fall, and a lean that lags it.
-      const t = this.clock * 0.9 + n.phase;
-      const s = n.mesh.scale.x;
-      n.mesh.position.y += Math.sin(t) * 0.022 * s;
-      n.mesh.position.x += Math.sin(t * 0.62 + 1.1) * 0.030 * s;
-      n.mesh.rotation.z = Math.sin(t * 0.62 + 1.1) * 0.012;
+      if (!IDLE_SHIFTS) continue;
+      n.wait -= dt;
+      if (n.wait <= 0) {
+        n.target = n.target > 0 ? 0 : 0.018;
+        // Long holds. With several figures on screen, even an occasional shift
+        // each overlaps into near-constant motion unless the gaps are large and
+        // the moves are quick — the frame has to be genuinely static most of
+        // the time or the whole scene reads as drifting.
+        n.wait = 14 + Math.abs(Math.sin(n.pos.x * 91.7 + n.pos.z * 53.3)) * 12;
+      }
+      const d = n.target - n.off;
+      if (Math.abs(d) < 0.0004) {
+        n.off = n.target; // snap, so "still" means still
+      } else {
+        n.off += d * Math.min(1, dt * 9);
+      }
+      n.mesh.position.y -= n.off * n.mesh.scale.x;
     }
 
     // Parallax breath on both axes. Walking across the frame slides the stack

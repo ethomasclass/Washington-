@@ -15,7 +15,7 @@
 import * as THREE from 'three';
 import {
   characterCutout, cloudShadows, CLOUD_BANDS, insect, motes,
-  PLATE_SETS, paperTexture, prop, PROP_H, washington, washingtonFrames,
+  PLATE_DEPTHS, PLATE_SETS, paperTexture, prop, PROP_H, washington, washingtonFrames,
 } from './art';
 import type { Facing, PropKind } from './art';
 import { PAPER } from './palette';
@@ -141,15 +141,6 @@ interface Layer {
  * static frame whenever the player is not moving.
  */
 const IDLE_SHIFTS = true;
-
-/**
- * Depth of each painted layer, so actors can pass behind them.
- *
- * Two midground bands (0.62 and 0.38) rather than one: a figure can now be
- * behind the far fence and in front of the near hedge at the same time, which
- * is what makes the ground feel occupied rather than empty.
- */
-const LAYER_DEPTH = [1.0, 0.94, 0.80, 0.62, 0.38, 0.02];
 
 /** A set piece standing on the ground plane. */
 export interface PropPlacement extends GroundPos {
@@ -318,6 +309,8 @@ export class DioramaRenderer {
     this.breathZ = 0;
 
     const build = PLATE_SETS[plateSet] ?? PLATE_SETS.vernon;
+    // Depths come from the plate painter, which knows what it painted and where.
+    const depths = PLATE_DEPTHS[plateSet] ?? PLATE_DEPTHS.vernon;
     build().forEach((plate, i) => {
       const geo = new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14);
       const mat = new THREE.MeshBasicMaterial({
@@ -329,7 +322,7 @@ export class DioramaRenderer {
       mesh.position.z = -i * 0.5;
       mesh.renderOrder = i;
       this.scene.add(mesh);
-      this.layers.push({ mesh, parallax: PARALLAX[i], depth: LAYER_DEPTH[i] });
+      this.layers.push({ mesh, parallax: PARALLAX[i], depth: depths[i] ?? 1 });
     });
 
     // Cloud strip, between the sky and the hills. It never occludes anything,

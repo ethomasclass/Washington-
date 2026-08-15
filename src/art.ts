@@ -1285,19 +1285,26 @@ export function characterCutout(
   const liftR = walking ? Math.max(0, Math.sin(a)) * H1 * 0.045 : 0;
   const lean = walking ? -Math.sin(a) * w * 0.045 : 0;
 
-  // Vertical landmarks, as fractions of height.
-  const yHat = 0.052;
-  const yBrim = 0.108;
-  const yChin = 0.205;
-  const ySh = 0.238;
-  const yWaist = 0.470;
-  const ySkirt = 0.600;
-  const yHem = 0.715;
-  const yKnee = 0.760;
-  const yAnkle = 0.955;
+  /*
+   * Vertical landmarks, as fractions of height.
+   *
+   * Same correction as the player's: a man is about seven and a half heads tall
+   * and his legs are half of him, and a coat skirt stops just above the knee.
+   * These sat at a 0.715 hem with the head at a tenth of the height, which read
+   * as a bell-shaped tunic with a small head on top of it.
+   */
+  const yHat = 0.030;
+  const yBrim = 0.078;
+  const yChin = 0.162;
+  const ySh = 0.202;
+  const yWaist = 0.390;
+  const ySkirt = 0.490;
+  const yHem = 0.630;
+  const yKnee = 0.700;
+  const yAnkle = 0.950;
 
-  const shW = w * 0.30 * build;
-  const hipW = w * 0.26 * build;
+  const shW = w * 0.27 * build;
+  const hipW = w * 0.21 * build;
 
   // Cast shadow first, so the figure sits on the ground.
   wash(x, [[cx - w * 0.32, H1 * 0.986], [cx + w * 0.28, H1 * 0.978],
@@ -1339,6 +1346,13 @@ export function characterCutout(
     inkLine(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022]], rnd, 1.3, 0.15);
     solid(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022],
               [ex + w * 0.048, ey], [ex - w * 0.048, ey]], PAPER.SMOKED, rnd);
+    // A hand out of the cuff. Two marks, but their absence is what made every
+    // figure read as a coat on a stand rather than as somebody wearing one.
+    solid(x, [[ex - w * 0.036, ey], [ex + w * 0.036, ey],
+              [ex + w * 0.030, ey + H1 * 0.040], [ex - w * 0.030, ey + H1 * 0.040]],
+      '#D3BE9C', rnd, EARTH.RAW_UMBER, 0.22);
+    inkLine(x, [[ex - w * 0.036, ey + H1 * 0.006], [ex + w * 0.036, ey + H1 * 0.006]],
+      rnd, 0.9, 0.34);
   };
 
   // The coat: shoulders in, waist nipped, skirts turned back and flaring.
@@ -1383,6 +1397,21 @@ export function characterCutout(
     x.fill();
   }
   x.globalAlpha = 1;
+  /*
+   * Drape.
+   *
+   * Broadcloth falls in a few long folds from the waist, not in many small
+   * ones. Three or four lines that start at the waist and open toward the hem
+   * do more to make a coat read as cloth than any amount of shading, because
+   * they are what the eye actually uses to tell cloth from card.
+   */
+  for (const f of [-0.62, -0.2, 0.28, 0.66]) {
+    const topX = cx + shW * f * 0.8 + lean;
+    const botX = cx + hipW * 1.34 * f;
+    inkLine(x, [[topX, H1 * (yWaist + 0.02)], [(topX + botX) / 2, H1 * (ySkirt + 0.04)],
+                [botX, H1 * (yHem - 0.01)]], rnd, 1.0, 0.36);
+  }
+
   // The hem, and the turned-back skirt corners.
   inkLine(x, [[cx - hipW * 1.42, H1 * yHem], [cx, H1 * (yHem + 0.012)],
               [cx + hipW * 1.42, H1 * yHem]], rnd, 1.5, 0.18);
@@ -1401,11 +1430,28 @@ export function characterCutout(
 
   // Head, and the queue tied at the back of it.
   const hx = cx + lean;
-  solid(x, [[hx - w * 0.082, H1 * yBrim], [hx + w * 0.082, H1 * yBrim],
-            [hx + w * 0.07, H1 * yChin], [hx - w * 0.07, H1 * yChin]],
+  solid(x, [[hx - w * 0.098, H1 * yBrim], [hx + w * 0.098, H1 * yBrim],
+            [hx + w * 0.086, H1 * yChin], [hx - w * 0.086, H1 * yChin]],
     '#E0D3B8', rnd, EARTH.YELLOW_OCHRE, 0.2);
-  inkLine(x, [[hx - w * 0.078, H1 * yBrim], [hx - w * 0.068, H1 * yChin]], rnd, 1.2, 0.3);
-  inkLine(x, [[hx + w * 0.078, H1 * yBrim], [hx + w * 0.068, H1 * yChin]], rnd, 1.2, 0.3);
+  inkLine(x, [[hx - w * 0.094, H1 * yBrim], [hx - w * 0.084, H1 * yChin]], rnd, 1.2, 0.3);
+  inkLine(x, [[hx + w * 0.094, H1 * yBrim], [hx + w * 0.084, H1 * yChin]], rnd, 1.2, 0.3);
+
+  /*
+   * A face, in four marks.
+   *
+   * Brow, nose, mouth, ear. At this size that is the whole budget: a fifth mark
+   * turns a person into a caricature and a sixth into a smudge. What they buy
+   * is that the figure is looking at something, which a blank oval never is.
+   */
+  {
+    const fy = (t: number) => H1 * (yBrim + (yChin - yBrim) * t);
+    const gaze = (rnd() - 0.5) * w * 0.018; // not everyone faces dead front
+    inkLine(x, [[hx - w * 0.044 + gaze, fy(0.30)], [hx - w * 0.014 + gaze, fy(0.27)]], rnd, 1.1, 0.2);
+    inkLine(x, [[hx + w * 0.016 + gaze, fy(0.27)], [hx + w * 0.046 + gaze, fy(0.30)]], rnd, 1.1, 0.2);
+    inkLine(x, [[hx + gaze, fy(0.34)], [hx + w * 0.008 + gaze, fy(0.60)]], rnd, 1.0, 0.24);
+    inkLine(x, [[hx - w * 0.024 + gaze, fy(0.76)], [hx + w * 0.024 + gaze, fy(0.76)]], rnd, 1.1, 0.26);
+    inkLine(x, [[hx - w * 0.088, fy(0.36)], [hx - w * 0.094, fy(0.58)]], rnd, 1.0, 0.4);
+  }
   solid(x, [[hx + w * 0.06, H1 * (yBrim + 0.02)], [hx + w * 0.115, H1 * (yBrim + 0.045)],
             [hx + w * 0.10, H1 * (yChin + 0.03)], [hx + w * 0.05, H1 * yChin]],
     INK.FADED, rnd);
@@ -2405,6 +2451,33 @@ export function motes(seed = 149): HTMLCanvasElement {
 export const CLOUD_BANDS: Record<string, () => HTMLCanvasElement> = {
   vernon: () => cloudBand(91, EARTH.SHADOW_SLATE),
   camp: () => cloudBand(97, EARTH.WET_STONE),
+};
+
+/**
+ * How deep each plate stands, for occlusion.
+ *
+ * A plate is a flat painting, so the renderer needs one depth per plate to
+ * decide whether a figure passes in front of it or behind it. That number has
+ * to be the depth of the nearest thing painted on the plate — and it was
+ * hand-chosen instead, which drifted the moment the ground curve changed.
+ *
+ * The consequence was that a player walking to the back of Mount Vernon
+ * vanished. Sky, hills, the house plate and the far midground all paint content
+ * beyond the walkable band entirely, but were declared at 0.94, 0.80 and 0.62,
+ * so a figure at z = 0.72 was sorted behind scenery that stands far behind him
+ * — including the ground wash that covers the whole lower frame.
+ *
+ * They are derived now. The limitation that remains is real and worth stating:
+ * one depth per plate cannot describe a plate whose content spans a range of
+ * distances, so the nearest thing on it wins and anything painted further back
+ * on the same plate over-occludes. Splitting a plate is the fix when that shows.
+ */
+const nearestOn = (plateY: number) => zAtPlateY(plateY, H);
+
+export const PLATE_DEPTHS: Record<string, number[]> = {
+  //          sky  hills  ground  farMid            midground             foreground
+  vernon: [1, 1, 1, 1, nearestOn(H * HORIZON + 236), 0],
+  camp: [1, 1, 1, 1, nearestOn(H * HORIZON + 251), 0],
 };
 
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {

@@ -1546,10 +1546,48 @@ export function campGround(): HTMLCanvasElement {
   wash(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], EARTH.RAW_UMBER, 0.16, rnd);
   wash(x, [[0, hy + 170], [W, hy + 140], [W, H], [0, H]], EARTH.BISTRE, 0.12, rnd);
 
-  // Trodden grass either side, and a churned lane down the middle.
   wash(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], EARTH.TERRE_VERTE, 0.13, rnd);
-  solid(x, [[W * 0.42, hy + 16], [W * 0.58, hy + 16], [W * 0.86, H], [W * 0.10, H]],
-    '#A99A85', rnd, EARTH.RAW_UMBER, 0.24);
+
+  /*
+   * The camp street.
+   *
+   * It was a symmetric wedge down the dead centre of the frame — the same axial
+   * staging that was wrong at Mount Vernon, and wrong here for the same reason:
+   * it aims the player before he has decided anything. A street in a camp of
+   * sixteen thousand men who pitched where they liked is a thing worn by feet,
+   * not surveyed. So it enters left of centre, drifts right as it goes back, and
+   * its edges wander.
+   *
+   * Laid through platePx so it sits on the curve the player walks, which is what
+   * lets a man walk up the middle of it rather than across it.
+   */
+  {
+    const lane: [number, number][] = [];
+    const edge = (side: number) => {
+      const out: [number, number][] = [];
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const z = -0.06 + t * 0.94;
+        const mid = 0.30 + 0.34 * t;
+        const half = 0.165 - 0.10 * t + Math.sin(t * 7.1) * 0.018;
+        out.push([mid + side * half, z]);
+      }
+      return out;
+    };
+    for (const [gx, z] of edge(-1)) { const a = platePx({ x: gx, z }, W, H); lane.push([a.x, a.y]); }
+    for (const [gx, z] of edge(1).reverse()) { const a = platePx({ x: gx, z }, W, H); lane.push([a.x, a.y]); }
+    solid(x, lane, '#AA9C86', rnd, EARTH.RAW_UMBER, 0.18);
+    // Ruts along it, so the churned ground reads as churned rather than paved.
+    for (let r = 0; r < 14; r++) {
+      const off = (r % 5) * 0.05 - 0.1;
+      const z0 = 0.02 + (r / 14) * 0.62;
+      const a = platePx({ x: 0.30 + 0.34 * z0 + off, z: z0 }, W, H);
+      const b = platePx({ x: 0.30 + 0.34 * (z0 + 0.16) + off * 0.7, z: z0 + 0.16 }, W, H);
+      inkLine(x, [[a.x, a.y], [b.x, b.y]], rnd, 1.4, 0.24);
+      wash(x, [[a.x - 7, a.y], [a.x + 7, a.y], [b.x + 4, b.y], [b.x - 4, b.y]],
+        EARTH.BISTRE, 0.18, rnd, 2);
+    }
+  }
 
   // Ruts and standing water.
   for (let i = 0; i < 26; i++) {
@@ -1638,10 +1676,12 @@ export function campMidground(): HTMLCanvasElement {
   };
 
   // The shanty town, ragged and unaligned, on the left and centre.
+  // Clustered, not spaced. Men from the same town built next to each other and
+  // left gaps everywhere else; an even row of huts reads as a fence.
   const shanties: [number, number, number, number][] = [
-    [0.075, 0.30, 120, 92], [0.155, 0.10, 96, 74], [0.225, 0.42, 138, 104],
-    [0.315, 0.02, 88, 68], [0.40, 0.26, 112, 86], [0.485, -0.06, 78, 60],
-    [0.575, 0.20, 104, 80], [0.655, -0.02, 84, 64],
+    [0.048, 0.34, 126, 96], [0.104, 0.16, 92, 70], [0.132, 0.46, 142, 108],
+    [0.246, 0.04, 86, 66], [0.284, 0.30, 116, 88], [0.318, -0.08, 74, 58],
+    [0.452, 0.22, 108, 82], [0.492, 0.02, 82, 62], [0.60, 0.38, 118, 90],
   ];
   shanties.forEach(([fx, dy, w, h], i) => shanty(W * fx, base + dy * 120, w, h, i));
 
@@ -1664,8 +1704,8 @@ export function campMidground(): HTMLCanvasElement {
   for (let i = 0; i < 3; i++) {
     inkLine(x, [[fx - 22 + i * 20, fy + 12], [fx - 4 + i * 14, fy - 40 - i * 6]], rnd, 1.8, 0.08);
   }
-  wash(x, [[fx - 15, fy - 42], [fx + 15, fy - 42], [fx + 11, fy - 16], [fx - 11, fy - 16]],
-    INK.SETTLED, 0.55, rnd, 3);
+  solid(x, [[fx - 15, fy - 42], [fx + 15, fy - 42], [fx + 11, fy - 16], [fx - 11, fy - 16]],
+    '#3E3A34', rnd);
   inkLine(x, [[fx - 15, fy - 42], [fx + 15, fy - 42]], rnd, 1.6, 0.1);
 
   // Stacked arms — three muskets leaning into each other.
@@ -1680,12 +1720,108 @@ export function campMidground(): HTMLCanvasElement {
   inkLine(x, [[lx0, base - 16], [lx0, base + 36]], rnd, 2.0, 0.06);
   inkLine(x, [[lx1, base - 22], [lx1, base + 32]], rnd, 2.0, 0.06);
   inkLine(x, [[lx0, base - 12], [(lx0 + lx1) / 2, base - 2], [lx1, base - 18]], rnd, 1.1, 0.14);
+  for (let i = 0; i < 5; i++) {
+    const px = lx0 + 18 + i * 28;
+    const py = base - 10 + Math.sin(i * 1.7) * 5;
+    const ww = 18 + rnd() * 9;
+    const hhq = 30 + rnd() * 18;
+    const sag = 3 + rnd() * 5; // hangs unevenly, because it was hung wet
+    const tone = ['#CFC6B0', '#BEB49C', '#D6CDB6', '#B3A98F'][i % 4];
+    const pts: [number, number][] = [[px, py], [px + ww, py - 2],
+      [px + ww - 2, py + hhq], [px + sag, py + hhq + sag]];
+    solid(x, pts, tone, rnd, EARTH.SHADOW_SLATE, 0.16);
+    inkLine(x, [...pts, pts[0]], rnd, 1.0, 0.28);
+  }
+
+  /*
+   * The work of a camp.
+   *
+   * A farm's clutter is somebody's job half-finished. An army's is supply: the
+   * things sixteen thousand men need daily and mostly did not have. Every item
+   * here is one Washington was writing to Congress about within a fortnight of
+   * arriving — barrels, firewood, tools, and the beef ration.
+   */
+
+  // Provision barrels, stacked and broached. The powder was the thing he could
+  // not get; the salt beef he could.
+  {
+    const bxp = W * 0.695;
+    const byp = base + 44;
+    const cask = (cx0: number, b0: number, sc: number) => {
+      const cw = 30 * sc;
+      const ch = 40 * sc;
+      const pts: [number, number][] = [[cx0 - cw / 2, b0 - ch], [cx0 + cw / 2, b0 - ch],
+        [cx0 + cw / 2 + 2, b0], [cx0 - cw / 2 - 2, b0]];
+      solid(x, pts, '#8A7150', rnd, EARTH.RAW_UMBER, 0.26);
+      inkLine(x, [...pts, pts[0]], rnd, 1.4, 0.08);
+      for (const f of [0.26, 0.72]) {
+        inkLine(x, [[cx0 - cw / 2, b0 - ch + ch * f], [cx0 + cw / 2, b0 - ch + ch * f]], rnd, 1.1, 0.16);
+      }
+    };
+    cask(bxp, byp, 1.0);
+    cask(bxp + 34, byp + 4, 0.95);
+    cask(bxp + 17, byp - 38, 0.9);
+    shadow(bxp + 17, byp + 6, 52);
+  }
+
+  // Firewood, cut and not yet carried, with the saw-horse still standing over it.
+  {
+    const wxp = W * 0.185;
+    const wyp = base + 66;
+    for (let r = 0; r < 3; r++) {
+      for (let i = 0; i < 6 - r; i++) {
+        const lx = wxp + i * 13 + r * 6;
+        const ly = wyp - r * 12;
+        solid(x, [[lx, ly - 12], [lx + 12, ly - 12], [lx + 12, ly], [lx, ly]], '#7E6749', rnd,
+          EARTH.BISTRE, 0.22);
+        inkLine(x, [[lx, ly - 12], [lx + 12, ly - 12], [lx + 12, ly], [lx, ly], [lx, ly - 12]],
+          rnd, 0.8, 0.32);
+      }
+    }
+    for (const d of [0, 46]) {
+      inkLine(x, [[wxp - 26 + d, wyp], [wxp - 12 + d, wyp - 44]], rnd, 1.8, 0.06);
+      inkLine(x, [[wxp - 2 + d, wyp], [wxp - 16 + d, wyp - 44]], rnd, 1.8, 0.06);
+    }
+    inkLine(x, [[wxp - 30, wyp - 40], [wxp + 34, wyp - 40]], rnd, 1.6, 0.08);
+  }
+
+  // Entrenching tools against a shanty — spades and a pick, which is most of
+  // what this army did all summer.
+  {
+    const txp = W * 0.375;
+    const typ = base + 30;
+    for (const [d, hd] of [[0, 1], [13, 0], [26, 1], [37, 0]] as [number, number][]) {
+      inkLine(x, [[txp + d, typ], [txp + d + 8, typ - 66]], rnd, 1.7, 0.06);
+      if (hd) {
+        solid(x, [[txp + d + 4, typ - 66], [txp + d + 15, typ - 70], [txp + d + 17, typ - 52],
+                  [txp + d + 6, typ - 48]], '#7B7F84', rnd, EARTH.SHADOW_SLATE, 0.2);
+      }
+    }
+  }
+
+  // A beef carcass on a frame, and the butcher's tub under it. The ration was
+  // killed in camp, which is a fact students find more vivid than any number.
+  {
+    const mxp = W * 0.545;
+    const myp = base + 58;
+    inkLine(x, [[mxp - 30, myp], [mxp - 22, myp - 84]], rnd, 2.0, 0.05);
+    inkLine(x, [[mxp + 30, myp], [mxp + 22, myp - 84]], rnd, 2.0, 0.05);
+    inkLine(x, [[mxp - 24, myp - 80], [mxp + 24, myp - 80]], rnd, 1.8, 0.06);
+    solid(x, [[mxp - 12, myp - 76], [mxp + 8, myp - 78], [mxp + 12, myp - 30],
+              [mxp - 8, myp - 26]], '#8A6D5E', rnd, EARTH.MADDER_LAKE, 0.16);
+    inkLine(x, [[mxp - 12, myp - 76], [mxp + 8, myp - 78], [mxp + 12, myp - 30],
+                [mxp - 8, myp - 26], [mxp - 12, myp - 76]], rnd, 1.2, 0.14);
+    solid(x, [[mxp - 16, myp - 18], [mxp + 14, myp - 18], [mxp + 11, myp], [mxp - 13, myp]],
+      '#6E5B45', rnd, EARTH.BISTRE, 0.2);
+  }
+
+  // Guy ropes off the near tents. Every long line in this plate runs with the
+  // frame or straight back into it; these are the only diagonals, and they are
+  // most of what keeps the tent rows from reading as wallpaper.
   for (let i = 0; i < 4; i++) {
-    const px = lx0 + 24 + i * 30;
-    const py = base - 10 + Math.sin(i) * 4;
-    wash(x, [[px, py], [px + 22, py - 2], [px + 20, py + 40], [px - 2, py + 42]],
-      PAPER.BRIGHT, 0.5, rnd, 3);
-    inkLine(x, [[px, py], [px + 22, py - 2], [px + 20, py + 40], [px - 2, py + 42]], rnd, 1.0, 0.3);
+    const gx0 = W * (0.762 + i * 0.052);
+    inkLine(x, [[gx0, base + 6], [gx0 - 30, base + 30]], rnd, 0.9, 0.2);
+    inkLine(x, [[gx0, base + 6], [gx0 + 30, base + 30]], rnd, 0.9, 0.2);
   }
 
   groundLitter(x, rnd, base - 10, base + 110, 80, 0.9);

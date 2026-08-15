@@ -2729,9 +2729,9 @@ export type PropKind =
 
 /** Height of each prop as a fraction of a standing man at the same depth. */
 export const PROP_H: Record<PropKind, number> = {
-  papers: 0.16, chest: 0.30, uniform: 0.80, sash: 0.16, kettle: 0.40,
-  musket: 0.98, horn: 0.20, shirt: 0.62, necessary: 0.72, canteen: 0.17,
-  barrel: 0.46, fire: 0.34, table: 0.52, horse: 1.06, bucket: 0.24, drum: 0.36,
+  papers: 0.44, chest: 0.30, uniform: 0.52, sash: 0.30, kettle: 0.40,
+  musket: 0.98, horn: 0.62, shirt: 0.62, necessary: 0.72, canteen: 0.60,
+  barrel: 0.46, fire: 0.34, table: 0.62, horse: 1.06, bucket: 0.24, drum: 0.46,
 };
 
 /**
@@ -2762,15 +2762,63 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
 
   switch (kind) {
     case 'papers': {
-      for (let i = 0; i < 3; i++) {
-        const o = i * 7;
-        const pts: [number, number][] = [[cx - 40 + o, b - 16 - i * 7], [cx + 36 + o, b - 22 - i * 7],
-          [cx + 40 + o, b - i * 7], [cx - 36 + o, b + 4 - i * 7]];
-        solid(x, pts, i === 2 ? PAPER.BRIGHT : '#DED7C2', rnd, EARTH.YELLOW_OCHRE, 0.1);
-        inkLine(x, [...pts, pts[0]], rnd, 1.8, 0.08);
-      }
-      for (let i = 0; i < 4; i++) {
-        inkLine(x, [[cx - 22, b - 34 + i * 6], [cx + 26, b - 37 + i * 6]], rnd, 1.4, 0.3);
+      /*
+       * Paper does not lie on grass.
+       *
+       * Loose sheets scattered on a lawn was the wrong answer twice over: they
+       * would blow away, and nobody in 1775 treated a document like that. What
+       * is actually happening in this scene is that the house is being emptied
+       * into a chariot bound for Philadelphia, so documents are out of doors
+       * because they are being packed — which means they are in something.
+       *
+       * Two sorts, off the seed. A japanned tin document box with the papers
+       * standing in it, or a portfolio propped against a packing case with the
+       * loose sheets weighted under a stone. Both work equally well on a Virginia
+       * lawn and in a camp street, which is the point of choosing them.
+       */
+      if (seed % 2 === 0) {
+        // Packing case, with the portfolio leaning on it.
+        const cw = 74;
+        const ch = 46;
+        solid(x, [[cx - cw / 2, b - ch], [cx + cw / 2, b - ch], [cx + cw / 2, b], [cx - cw / 2, b]],
+          '#8A7052', rnd, EARTH.RAW_UMBER, 0.24);
+        inkLine(x, [[cx - cw / 2, b - ch], [cx + cw / 2, b - ch], [cx + cw / 2, b],
+                    [cx - cw / 2, b], [cx - cw / 2, b - ch]], rnd, 1.8, 0.06);
+        for (const f of [0.3, 0.7]) {
+          inkLine(x, [[cx - cw / 2, b - ch + ch * f], [cx + cw / 2, b - ch + ch * f]], rnd, 1.0, 0.3);
+        }
+        // Portfolio: a leather cover with a strap, leaning against the case.
+        const port: [number, number][] = [[cx - 34, b - 2], [cx - 20, b - 62],
+          [cx + 16, b - 58], [cx + 4, b + 2]];
+        solid(x, port, '#6E4F38', rnd, EARTH.BISTRE, 0.26);
+        inkLine(x, [...port, port[0]], rnd, 1.8, 0.06);
+        inkLine(x, [[cx - 27, b - 32], [cx + 10, b - 28]], rnd, 1.4, 0.12); // strap
+        // Two sheets on the case lid, with a stone on them.
+        solid(x, [[cx - 6, b - ch - 3], [cx + 34, b - ch - 7], [cx + 36, b - ch + 3],
+                  [cx - 4, b - ch + 6]], PAPER.BRIGHT, rnd);
+        inkLine(x, [[cx - 6, b - ch - 3], [cx + 34, b - ch - 7]], rnd, 1.2, 0.14);
+        solid(x, [[cx + 12, b - ch - 12], [cx + 26, b - ch - 14], [cx + 28, b - ch - 4],
+                  [cx + 13, b - ch - 3]], '#9A968C', rnd, EARTH.SHADOW_SLATE, 0.3);
+      } else {
+        // Japanned tin box, lid back, documents standing in it.
+        const bw2 = 66;
+        const bh2 = 40;
+        solid(x, [[cx - bw2 / 2, b - bh2], [cx + bw2 / 2, b - bh2],
+                  [cx + bw2 / 2, b], [cx - bw2 / 2, b]], '#2E2A26', rnd, EARTH.BISTRE, 0.18);
+        inkLine(x, [[cx - bw2 / 2, b - bh2], [cx + bw2 / 2, b - bh2], [cx + bw2 / 2, b],
+                    [cx - bw2 / 2, b], [cx - bw2 / 2, b - bh2]], rnd, 1.8, 0.06);
+        // Lid, hinged back.
+        solid(x, [[cx - bw2 / 2, b - bh2], [cx - bw2 / 2 - 10, b - bh2 - 34],
+                  [cx + 8, b - bh2 - 30], [cx + bw2 / 2, b - bh2]], '#3A342E', rnd);
+        inkLine(x, [[cx - bw2 / 2, b - bh2], [cx - bw2 / 2 - 10, b - bh2 - 34],
+                    [cx + 8, b - bh2 - 30]], rnd, 1.6, 0.08);
+        // Papers standing in the box, edges up.
+        for (let i = 0; i < 4; i++) {
+          const px2 = cx - 22 + i * 12;
+          solid(x, [[px2, b - bh2 - 2], [px2 + 10, b - bh2 - 5 - i], [px2 + 11, b - bh2 + 16],
+                    [px2 + 1, b - bh2 + 18]], i === 1 ? PAPER.BRIGHT : '#DED7C2', rnd);
+          inkLine(x, [[px2, b - bh2 - 2], [px2 + 10, b - bh2 - 5 - i]], rnd, 1.1, 0.2);
+        }
       }
       break;
     }
@@ -2785,24 +2833,71 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
       break;
     }
     case 'uniform': {
-      // On a peg: a coat hanging, with the shoulders squared.
-      inkLine(x, [[cx, b], [cx, b - 108]], rnd, 2.2, 0.06);
-      inkLine(x, [[cx - 30, b - 100], [cx + 30, b - 100]], rnd, 2.0, 0.08);
-      const coatPts: [number, number][] = [[cx - 30, b - 100], [cx + 30, b - 100],
-        [cx + 38, b - 44], [cx + 30, b - 6], [cx - 30, b - 6], [cx - 38, b - 44]];
-      solid(x, coatPts, MEANING.CONTINENTAL_BLUE, rnd, INK.SETTLED, 0.12);
-      inkLine(x, [...coatPts, coatPts[0]], rnd, 2.0, 0.06);
-      for (let i = 0; i < 5; i++) {
-        inkLine(x, [[cx - 4, b - 92 + i * 17], [cx + 4, b - 92 + i * 17]], rnd, 1.6, 0.14);
+      /*
+       * Laid over the lid of an open trunk, because it is being packed.
+       *
+       * It hung on a peg before, and a clothes peg standing free on a lawn is a
+       * stranger object than the coat on it. The trunk also says what the coat
+       * is for: he had it made, and it is going to Philadelphia whether or not
+       * he has decided what he is going as.
+       */
+      const tw = 84;
+      const th = 40;
+      solid(x, [[cx - tw / 2, b - th], [cx + tw / 2, b - th], [cx + tw / 2, b], [cx - tw / 2, b]],
+        '#6E5238', rnd, EARTH.BISTRE, 0.24);
+      inkLine(x, [[cx - tw / 2, b - th], [cx + tw / 2, b - th], [cx + tw / 2, b],
+                  [cx - tw / 2, b], [cx - tw / 2, b - th]], rnd, 1.8, 0.06);
+      for (const f of [0.28, 0.72]) {
+        inkLine(x, [[cx - tw / 2 + tw * f, b - th], [cx - tw / 2 + tw * f, b]], rnd, 1.3, 0.14);
       }
+      // Lid, standing open behind.
+      solid(x, [[cx - tw / 2, b - th], [cx - tw / 2 + 6, b - th - 44],
+                [cx + tw / 2 + 6, b - th - 40], [cx + tw / 2, b - th]], '#5E452F', rnd,
+        EARTH.BISTRE, 0.3);
+      inkLine(x, [[cx - tw / 2 + 6, b - th - 44], [cx + tw / 2 + 6, b - th - 40]], rnd, 1.6, 0.08);
+
+      // The coat itself, folded over the near edge: shoulders down, skirts hanging.
+      const coatPts: [number, number][] = [
+        [cx - 30, b - th - 12], [cx + 26, b - th - 16], [cx + 32, b - th + 4],
+        [cx + 24, b - 6], [cx - 22, b - 2], [cx - 34, b - th + 6],
+      ];
+      solid(x, coatPts, MEANING.CONTINENTAL_BLUE, rnd, INK.SETTLED, 0.12);
+      inkLine(x, [...coatPts, coatPts[0]], rnd, 1.8, 0.06);
+      // Buff facing showing where it is turned back, and a run of buttons.
+      solid(x, [[cx - 30, b - th - 12], [cx - 12, b - th - 14], [cx - 6, b - 6],
+                [cx - 22, b - 2]], '#D8C79A', rnd, EARTH.YELLOW_OCHRE, 0.16);
+      inkLine(x, [[cx - 12, b - th - 14], [cx - 6, b - 6]], rnd, 1.3, 0.14);
+      x.fillStyle = '#B8933F';
+      for (let i = 0; i < 4; i++) {
+        x.globalAlpha = 0.85;
+        x.beginPath();
+        x.arc(cx + 8 + i * 2, b - th - 6 + i * 12, 2.4, 0, 7);
+        x.fill();
+      }
+      x.globalAlpha = 1;
       break;
     }
     case 'sash': {
-      const pts: [number, number][] = [[cx - 40, b - 20], [cx + 40, b - 26], [cx + 38, b - 2],
-        [cx - 42, b + 4]];
-      solid(x, pts, '#8E4A44', rnd, EARTH.MADDER_LAKE, 0.34);
-      inkLine(x, [...pts, pts[0]], rnd, 1.8, 0.08);
-      for (let i = 0; i < 3; i++) inkLine(x, [[cx - 34 + i * 26, b - 22], [cx - 32 + i * 26, b]], rnd, 1.3, 0.2);
+      // In the box it has been kept in for twenty years. A silk sash lying on
+      // grass would be a careless thing, and carelessness is the one charge
+      // nobody ever laid against him.
+      const bw3 = 68;
+      const bh3 = 26;
+      solid(x, [[cx - bw3 / 2, b - bh3], [cx + bw3 / 2, b - bh3], [cx + bw3 / 2, b],
+                [cx - bw3 / 2, b]], '#5E452F', rnd, EARTH.BISTRE, 0.26);
+      inkLine(x, [[cx - bw3 / 2, b - bh3], [cx + bw3 / 2, b - bh3], [cx + bw3 / 2, b],
+                  [cx - bw3 / 2, b], [cx - bw3 / 2, b - bh3]], rnd, 1.7, 0.06);
+      solid(x, [[cx - bw3 / 2, b - bh3], [cx - bw3 / 2 + 5, b - bh3 - 30],
+                [cx + bw3 / 2 + 5, b - bh3 - 27], [cx + bw3 / 2, b - bh3]], '#4E3927', rnd);
+      inkLine(x, [[cx - bw3 / 2 + 5, b - bh3 - 30], [cx + bw3 / 2 + 5, b - bh3 - 27]], rnd, 1.5, 0.08);
+      // The sash, folded into it and spilling a little over the front edge.
+      const silk: [number, number][] = [[cx - 28, b - bh3 - 2], [cx + 26, b - bh3 - 5],
+        [cx + 24, b - bh3 + 12], [cx + 8, b - bh3 + 16], [cx - 26, b - bh3 + 13]];
+      solid(x, silk, '#8E4A44', rnd, EARTH.MADDER_LAKE, 0.32);
+      inkLine(x, [...silk, silk[0]], rnd, 1.4, 0.1);
+      for (const f of [-14, 2, 16]) {
+        inkLine(x, [[cx + f, b - bh3 - 3], [cx + f + 2, b - bh3 + 13]], rnd, 1.1, 0.24);
+      }
       break;
     }
     case 'kettle': {
@@ -2824,11 +2919,41 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
       break;
     }
     case 'horn': {
-      const pts: [number, number][] = [[cx - 36, b - 6], [cx + 24, b - 26], [cx + 34, b - 18],
-        [cx - 30, b + 4]];
-      solid(x, pts, '#CBBE96', rnd, EARTH.YELLOW_OCHRE, 0.3);
-      inkLine(x, [...pts, pts[0]], rnd, 1.8, 0.06);
-      inkLine(x, [[cx + 24, b - 26], [cx + 34, b - 18]], rnd, 2.2, 0.04);
+      // Hung on a stake, strap and all. A powder horn left lying in camp mud
+      // would be a ruined horn, and powder was the one thing this army could
+      // not replace.
+      inkLine(x, [[cx + 6, b], [cx + 2, b - 96]], rnd, 2.6, 0.03);
+      inkLine(x, [[cx + 2, b - 92], [cx - 20, b - 62], [cx - 4, b - 40]], rnd, 1.4, 0.1); // strap
+      /*
+       * The horn itself: a long cone with a curve in it, wide at the butt where
+       * the plug goes and narrowing to the spout. Drawn as a parallelogram it
+       * read as a shingle. Sampling the taper along a curve is the whole
+       * difference, and it costs eight points.
+       */
+      const upper: [number, number][] = [];
+      const lower: [number, number][] = [];
+      for (let i = 0; i <= 7; i++) {
+        const t = i / 7;
+        const px2 = cx - 30 + t * 52;
+        const py2 = b - 52 - Math.sin(t * Math.PI) * 11 + t * 4;
+        const half = 13 * (1 - t) + 2.4;
+        upper.push([px2, py2 - half]);
+        lower.push([px2, py2 + half]);
+      }
+      const horn: [number, number][] = [...upper, ...lower.reverse()];
+      solid(x, horn, '#CBBE96', rnd, EARTH.YELLOW_OCHRE, 0.24);
+      inkLine(x, [...horn, horn[0]], rnd, 1.6, 0.06);
+      // Scribed rings near the spout, and the wooden butt plug.
+      for (const t of [0.62, 0.74]) {
+        const px2 = cx - 30 + t * 52;
+        const py2 = b - 52 - Math.sin(t * Math.PI) * 11 + t * 4;
+        const half = 13 * (1 - t) + 2.4;
+        inkLine(x, [[px2, py2 - half], [px2, py2 + half]], rnd, 1.1, 0.14);
+      }
+      solid(x, [[cx + 18, b - 44], [cx + 24, b - 43], [cx + 24, b - 37], [cx + 18, b - 38]],
+        '#6E5238', rnd);
+      solid(x, [[cx - 32, b - 65], [cx - 27, b - 66], [cx - 27, b - 39], [cx - 32, b - 38]],
+        '#8A6F52', rnd, EARTH.BISTRE, 0.24);
       break;
     }
     case 'shirt': {
@@ -2850,12 +2975,38 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
       break;
     }
     case 'canteen': {
-      const pts: [number, number][] = [[cx - 26, b - 44], [cx + 26, b - 46], [cx + 24, b - 4],
-        [cx - 24, b - 2]];
-      solid(x, pts, '#A99271', rnd, EARTH.RAW_UMBER, 0.24);
-      inkLine(x, [...pts, pts[0]], rnd, 2.0, 0.06);
-      inkLine(x, [[cx - 25, b - 24], [cx + 25, b - 25]], rnd, 1.4, 0.16);
-      inkLine(x, [[cx - 20, b - 46], [cx - 12, b - 60], [cx + 12, b - 60]], rnd, 1.6, 0.12);
+      // A cheesebox canteen — a wooden cheese hoop with two heads let into it
+      // and a strap — hung on a shelter pole beside the horn, for the same
+      // reason. Round, which is what tells it from every square thing in camp.
+      inkLine(x, [[cx - 4, b], [cx, b - 92]], rnd, 2.6, 0.03);
+      inkLine(x, [[cx, b - 88], [cx - 22, b - 70], [cx - 14, b - 56]], rnd, 1.4, 0.1); // strap
+      x.save();
+      x.translate(cx - 6, b - 34);
+      const r0 = 26;
+      x.fillStyle = '#B49B74';
+      x.beginPath();
+      x.ellipse(0, 0, r0, r0 * 0.94, 0, 0, Math.PI * 2);
+      x.fill();
+      x.globalAlpha = 0.26;
+      x.fillStyle = EARTH.RAW_UMBER;
+      x.beginPath();
+      x.ellipse(0, 0, r0, r0 * 0.94, 0, 0, Math.PI * 2);
+      x.fill();
+      x.globalAlpha = 0.9;
+      x.strokeStyle = INK.SETTLED;
+      x.lineWidth = 1.9;
+      x.beginPath();
+      x.ellipse(0, 0, r0, r0 * 0.94, 0, 0, Math.PI * 2);
+      x.stroke();
+      x.lineWidth = 1.2;
+      x.globalAlpha = 0.6;
+      x.beginPath();
+      x.ellipse(0, 0, r0 * 0.72, r0 * 0.68, 0, 0, Math.PI * 2);
+      x.stroke();
+      x.globalAlpha = 1;
+      x.restore();
+      solid(x, [[cx - 12, b - 60], [cx, b - 62], [cx + 1, b - 52], [cx - 11, b - 50]],
+        '#6E5238', rnd); // the spout bung
       break;
     }
     case 'barrel': {
@@ -2889,15 +3040,39 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
       break;
     }
     case 'table': {
-      box(cx - 52, b - 62, 104, 10, '#8A7052', EARTH.RAW_UMBER);
-      for (const f of [-0.42, 0.42]) {
-        inkLine(x, [[cx + 104 * f, b - 54], [cx + 104 * f * 1.06, b]], rnd, 2.4, 0.05);
+      /*
+       * A trestle with a portable writing desk on it.
+       *
+       * The desk is the thing that makes this make sense out of doors: a
+       * slope-front box with the ink and pens inside, carried to wherever the
+       * work is. Washington used one for eight years of campaign. A bare table
+       * with a sheet lying on it says somebody left their homework on the lawn.
+       */
+      // Trestle: a board on two splayed pairs of legs.
+      for (const f of [-0.40, 0.40]) {
+        const lx = cx + 104 * f;
+        inkLine(x, [[lx - 8, b], [lx + 3, b - 54]], rnd, 2.4, 0.04);
+        inkLine(x, [[lx + 10, b], [lx + 1, b - 54]], rnd, 2.4, 0.04);
+        inkLine(x, [[lx - 5, b - 20], [lx + 8, b - 20]], rnd, 1.4, 0.16);
       }
-      const pp: [number, number][] = [[cx - 20, b - 68], [cx + 18, b - 70], [cx + 20, b - 62],
-        [cx - 18, b - 60]];
-      solid(x, pp, PAPER.BRIGHT, rnd);
-      inkLine(x, [...pp, pp[0]], rnd, 1.4, 0.12);
-      inkLine(x, [[cx + 22, b - 66], [cx + 34, b - 92]], rnd, 1.6, 0.08); // quill
+      solid(x, [[cx - 56, b - 62], [cx + 56, b - 62], [cx + 56, b - 52], [cx - 56, b - 52]],
+        '#8A7052', rnd, EARTH.RAW_UMBER, 0.24);
+      inkLine(x, [[cx - 56, b - 62], [cx + 56, b - 62], [cx + 56, b - 52], [cx - 56, b - 52],
+                  [cx - 56, b - 62]], rnd, 1.8, 0.06);
+
+      // The writing desk: a wedge, hinged lid sloping toward the writer.
+      const desk: [number, number][] = [[cx - 34, b - 62], [cx + 18, b - 62],
+        [cx + 18, b - 84], [cx - 34, b - 74]];
+      solid(x, desk, '#6E5238', rnd, EARTH.BISTRE, 0.24);
+      inkLine(x, [...desk, desk[0]], rnd, 1.8, 0.05);
+      inkLine(x, [[cx - 34, b - 68], [cx + 18, b - 74]], rnd, 1.2, 0.2); // the hinge line
+      // A sheet on the slope, and the inkstand beside it.
+      solid(x, [[cx - 28, b - 66], [cx + 10, b - 71], [cx + 11, b - 79], [cx - 27, b - 73]],
+        PAPER.BRIGHT, rnd);
+      inkLine(x, [[cx - 28, b - 66], [cx + 10, b - 71]], rnd, 1.1, 0.2);
+      solid(x, [[cx + 26, b - 62], [cx + 42, b - 62], [cx + 40, b - 76], [cx + 28, b - 76]],
+        '#3E3A34', rnd);
+      inkLine(x, [[cx + 34, b - 76], [cx + 46, b - 102]], rnd, 1.5, 0.06); // quill
       break;
     }
     case 'bucket': {
@@ -2909,13 +3084,43 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
       break;
     }
     case 'drum': {
-      const pts: [number, number][] = [[cx - 34, b - 56], [cx + 34, b - 56], [cx + 34, b - 6],
-        [cx - 34, b - 6]];
-      solid(x, pts, '#B8A276', rnd, EARTH.YELLOW_OCHRE, 0.26);
-      inkLine(x, [...pts, pts[0]], rnd, 2.0, 0.06);
-      for (let i = 0; i < 4; i++) {
-        inkLine(x, [[cx - 32, b - 52 + i * 4], [cx + 32, b - 12 - i * 4]], rnd, 1.3, 0.14);
+      /*
+       * A side drum: a wooden shell between two hoops, roped in a zigzag with
+       * leather ears to tension it, sticks laid across the head. It was a plain
+       * box with four diagonal scratches before, which is neither a drum nor
+       * anything else.
+       *
+       * The drum is how an army is actually run — every order of the day
+       * reaches the men as a beat, and Washington spent that summer trying to
+       * get men who had never heard one to answer it.
+       */
+      const dw = 62;
+      const dh = 52;
+      const t0 = b - dh - 12;
+      // Shell.
+      solid(x, [[cx - dw / 2, t0], [cx + dw / 2, t0], [cx + dw / 2, t0 + dh],
+                [cx - dw / 2, t0 + dh]], '#B8A276', rnd, EARTH.YELLOW_OCHRE, 0.26);
+      // Hoops, top and bottom, darker.
+      for (const hy2 of [t0, t0 + dh - 7]) {
+        solid(x, [[cx - dw / 2 - 3, hy2], [cx + dw / 2 + 3, hy2],
+                  [cx + dw / 2 + 3, hy2 + 7], [cx - dw / 2 - 3, hy2 + 7]], '#7A5C3E', rnd,
+          EARTH.BISTRE, 0.24);
+        inkLine(x, [[cx - dw / 2 - 3, hy2], [cx + dw / 2 + 3, hy2]], rnd, 1.5, 0.06);
       }
+      inkLine(x, [[cx - dw / 2, t0], [cx - dw / 2, t0 + dh]], rnd, 1.7, 0.06);
+      inkLine(x, [[cx + dw / 2, t0], [cx + dw / 2, t0 + dh]], rnd, 1.7, 0.06);
+      // Rope, zigzag between the hoops, with the leather ears on it.
+      for (let i = 0; i < 6; i++) {
+        const x0 = cx - dw / 2 + (i * dw) / 6;
+        const x1 = cx - dw / 2 + ((i + 1) * dw) / 6;
+        inkLine(x, [[x0, t0 + 6], [x1, t0 + dh - 6]], rnd, 1.2, 0.1);
+        inkLine(x, [[x1, t0 + dh - 6], [x1 + dw / 12, t0 + 6]], rnd, 1.2, 0.14);
+        solid(x, [[x0 + 2, t0 + 20], [x0 + 9, t0 + 22], [x0 + 8, t0 + 34], [x0 + 1, t0 + 32]],
+          '#5E452F', rnd);
+      }
+      // Sticks, leaning against it.
+      inkLine(x, [[cx + dw / 2 - 4, b], [cx + dw / 2 + 12, t0 - 6]], rnd, 2.0, 0.04);
+      inkLine(x, [[cx + dw / 2 + 4, b], [cx + dw / 2 + 18, t0 - 4]], rnd, 2.0, 0.04);
       break;
     }
     case 'horse': {

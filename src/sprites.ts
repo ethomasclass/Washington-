@@ -8,7 +8,7 @@
  * like variants.html.
  */
 import { characterCutout, prop, washingtonFrames } from './art';
-import type { Facing } from './art';
+import type { Facing, PropKind } from './art';
 
 const out = document.getElementById('out')!;
 
@@ -87,4 +87,23 @@ for (const riband of [false, true]) {
   // Lund, for comparison — an ordinary man in an ordinary coat.
   r.append(characterCutout('#7A5C3E', 404, 250, -1, { hat: 'round', build: 1.1 }));
   for (const seed of [11, 12, 13]) r.append(prop('horse', seed));
+}
+
+/*
+ * Set pieces.
+ *
+ * Chiefly here so that "would that really be sitting on the lawn?" can be asked
+ * of each one at a size where the answer is visible. Anything holding paper
+ * carries its own furniture, because paper does not lie on grass.
+ */
+{
+  const sec = section('Set pieces', 'props');
+  const kinds: PropKind[] = [
+    'papers', 'chest', 'uniform', 'sash', 'table', 'barrel',
+    'kettle', 'musket', 'horn', 'canteen', 'drum', 'bucket', 'fire', 'necessary',
+  ];
+  row(sec, 'a', kinds.slice(0, 7).map((k, i) => prop(k, 2 + i * 5)));
+  row(sec, 'b', kinds.slice(7).map((k, i) => prop(k, 3 + i * 7)));
+  // Both variants of the paper prop, side by side.
+  row(sec, 'papers', [prop('papers', 2), prop('papers', 3), prop('papers', 4), prop('papers', 5)]);
 }

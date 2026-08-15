@@ -236,6 +236,24 @@ export interface Scene {
   /** Shown in place of the return when there is nothing to count. */
   noStrength: string;
 
+  /**
+   * The enlistment clock: whose contracts run out, and when.
+   *
+   * Separate from the return rather than nested inside it, because the two are
+   * independent. CB-03 is the case that proves it — no November strength return
+   * has been sourced (see V-A2.2 at the head of that file), and the date runs
+   * out regardless of whether anyone managed to count the men it applies to.
+   *
+   * `count` is optional for the same reason. A date is a fact about a contract;
+   * a headcount is a claim about the world, and this project does not put
+   * unsourced claims on the screen. Where no figure has been verified, the
+   * clock shows the date and says in words who it applies to.
+   *
+   * Null where the army has no expiry in view — which in Act 1 is because
+   * there is no army.
+   */
+  expiring: { date: string; count?: number; who: string } | null;
+
   /*
    * The briefing, shown on arrival and repeatable from the journal.
    *

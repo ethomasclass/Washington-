@@ -225,6 +225,40 @@ for (const scene of sceneList()) {
   check(`a document answers back (${scene.interactables.filter((i) => i.contradicts).length})`,
     scene.interactables.some((i) => i.contradicts));
 
+  /*
+   * The register rule (08-progress-enlistment-and-playability.md §8).
+   *
+   * The world may be hard — Sergeant Starr says "the paper says the tenth of
+   * December" because that is how he talked, and difficulty there is the
+   * subject matter. The interface may not be. So the strings a lost student
+   * reads to find out what they are doing get measured, and nothing else does.
+   *
+   * Sentences, not strings: a situation line is allowed to be three short
+   * sentences and is not allowed to be one long one. That is the actual
+   * failure mode — the 44-word single sentence with its verb four clauses in.
+   */
+  const sentences = (s: string): string[] =>
+    s.split(/(?<=[.?!])\s+/).map((t) => t.trim()).filter(Boolean);
+  const words = (s: string): number => s.split(/\s+/).filter(Boolean).length;
+  const overlong: string[] = [];
+  const measure = (label: string, text: string, cap: number): void => {
+    for (const sn of sentences(text)) {
+      if (words(sn) > cap) overlong.push(`${label}: ${words(sn)} words`);
+    }
+  };
+  scene.objectives.forEach((o, i) => measure(`objective ${i + 1}`, o, 16));
+  scene.situation.forEach((s, i) => measure(`situation ${i + 1}`, s, 22));
+  measure('purpose', scene.purpose, 16);
+  measure('noStrength', scene.noStrength, 22);
+  check('interface strings stay inside the register', overlong.length === 0,
+    overlong.join('; '));
+
+  check(`the job line is short enough to read at a glance (${words(scene.purpose)} words)`,
+    words(scene.purpose) <= 14, scene.purpose);
+
+  check('three objectives at most, or it is a chore list',
+    scene.objectives.length > 0 && scene.objectives.length <= 3);
+
   check(`density floor (${scene.interactables.length} interactables, floor 12)`,
     scene.interactables.length >= 12);
 

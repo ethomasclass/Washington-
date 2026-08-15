@@ -83,7 +83,15 @@ const propsFor = (sc: Scene) =>
 
 const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene), propsFor(scene));
 renderer.setSun(scene.sun[0], scene.sun[1]);
-const overlay = new Overlay(overlayRoot, scene.title, scene.subtitle);
+const headOf = (sc: Scene) => ({ when: sc.when, title: sc.title, purpose: sc.purpose });
+const returnOf = (sc: Scene) => ({
+  strength: sc.strength,
+  noStrength: sc.noStrength,
+  expiring: sc.expiring,
+});
+
+const overlay = new Overlay(overlayRoot, headOf(scene));
+overlay.setReturn(returnOf(scene));
 
 /** Interactables looked at this session, for the journal. */
 const seen = new Set<string>();
@@ -177,10 +185,20 @@ function openJournal(): void {
   const doneTasks = scene.tasks
     .filter((t) => state.knowledge.has(t.grants))
     .map((t) => t.note);
-  const strength = scene.strength
+  // The same three facts as the corner of the screen, in sentences, because a
+  // student reading the journal on Thursday has lost the habit of the form.
+  const count = scene.strength
     ? `Return of ${scene.strength.dated}: ${scene.strength.fit.toLocaleString()} present and ` +
       `fit for duty, of ${scene.strength.onRolls.toLocaleString()} on the rolls.`
     : scene.noStrength;
+  const clock = scene.expiring
+    ? ` The contracts of ${
+        scene.expiring.count === undefined
+          ? scene.expiring.who
+          : `${scene.expiring.count.toLocaleString()} ${scene.expiring.who}`
+      } end on ${scene.expiring.date}. After that they may lawfully go home.`
+    : '';
+  const strength = count + clock;
   overlay.showJournal(
     { where: scene.where, when: scene.when, objectives: scene.objectives },
     scene.purpose, strength, read, owed(), noticed, doneTasks, () => {
@@ -515,7 +533,8 @@ function enterScene(id: string): void {
 
   renderer.loadScene(scene.plates, actorsFor(scene), propsFor(scene));
   renderer.setSun(scene.sun[0], scene.sun[1]);
-  overlay.setPlate(scene.title, scene.subtitle);
+  overlay.setPlate(headOf(scene));
+  overlay.setReturn(returnOf(scene));
   refreshCode();
   refreshIntent();
 

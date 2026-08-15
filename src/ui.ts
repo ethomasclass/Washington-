@@ -120,13 +120,58 @@ export const CSS = `
     color: ${INK.SETTLED};
   }
 
-  .plate-title { position: absolute; top: 26px; left: 34px; font-variant: small-caps;
-                 letter-spacing: .09em; font-size: 15px; color: ${INK.LIGHT}; }
-  .plate-title b { display: block; font-size: 20px; color: ${INK.SETTLED}; font-weight: 600; }
+  /*
+   * The two-line header.
+   *
+   * Line one is a dateline: when, then where, in the form a student would write
+   * at the top of a page. Line two is the job, in plain modern English, and it
+   * is the bigger of the two on purpose — a player who has forgotten everything
+   * needs what they are doing before they need what the hill is called.
+   */
+  /* Header and intent share one column in normal flow. They were two fixed
+     positions and the job line collided with the thought under it the moment
+     it wrapped to a second line, which is most scenes. */
+  .topleft { position: absolute; top: 26px; left: 34px; max-width: 44ch; }
+  .plate-title { }
+  /* FADED rather than LIGHT: the dateline sits over open sky in two of the
+     three scenes, and LIGHT washes out against it. This is the line a student
+     copies into a notebook, so it has to survive a pale background. */
+  .plate-title .dateline { display: block; font-variant: small-caps;
+                           letter-spacing: .10em; font-size: 14px; color: ${INK.FADED}; }
+  .plate-title b { display: block; margin-top: 3px; font-size: 21px; line-height: 1.35;
+                   color: ${INK.SETTLED}; font-weight: 600; }
+
+  /*
+   * The return: the army's own weekly headcount, and the only number in the
+   * game the player is ever shown.
+   *
+   * It is a fact, not a score. No colour coding, no arrows, no deltas — the
+   * four stats are hidden because Washington could not count them, and this is
+   * visible because he could, and did, obsessively, and complained for eight
+   * years that the figures were late and wrong.
+   */
+  .return { position: absolute; top: 22px; right: 26px; width: 268px;
+            background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED};
+            padding: 11px 14px 12px; font-size: 15px; color: ${INK.SETTLED}; }
+  .return .cap { font-variant: small-caps; letter-spacing: .10em; font-size: 12px;
+                 color: ${INK.LIGHT}; padding-bottom: 6px; margin-bottom: 7px;
+                 border-bottom: 1px solid ${PAPER.SHADOW}; }
+  .return .row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 3px; }
+  .return .row b { flex: 0 0 72px; text-align: right; font-size: 18px; font-weight: 600;
+                   font-variant-numeric: tabular-nums; }
+  .return .row span { font-size: 14px; color: ${INK.LIGHT}; line-height: 1.3; }
+  .return .none { font-size: 15px; line-height: 1.45; font-style: italic; color: ${INK.FADED}; }
+  /* The clock. Ruled off from the count because it is a different kind of fact:
+     the numbers are what you have, the date is what you are about to lose. */
+  .return .clock { margin-top: 9px; padding-top: 8px; border-top: 1px solid ${PAPER.SHADOW}; }
+  .return .clock .when { font-variant: small-caps; letter-spacing: .09em; font-size: 13px;
+                         color: ${INK.LIGHT}; }
+  .return .clock .who { font-size: 15px; line-height: 1.35; }
+  .return .clock .who b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
   /* Washington's own sense of what is unfinished. Not an objective marker —
      it is written as a thought, and it names people rather than tasks. */
-  .intent { position: absolute; top: 82px; left: 34px; max-width: 40ch;
+  .intent { margin-top: 15px; max-width: 40ch;
             font-size: 16px; line-height: 1.5; font-style: italic; color: ${INK.FADED};
             border-left: 2px solid ${PAPER.SHADOW}; padding-left: 12px; }
 
@@ -243,7 +288,9 @@ export const CSS = `
   .continue { margin-top: 14px; font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .05em; }
   .continue b { font-weight: 600; color: ${INK.SETTLED}; }
 
-  .codebar { position: absolute; top: 22px; right: 26px; pointer-events: auto;
+  /* Moved off the top-right corner, which now belongs to the return. The code
+     is an end-of-period utility, not something played with. */
+  .codebar { position: absolute; bottom: 20px; right: 26px; pointer-events: auto;
              background: ${PAPER.BRIGHT}; border: 1px solid ${INK.FADED}; padding: 10px 14px;
              font-size: 13px; letter-spacing: .06em; color: ${INK.LIGHT}; }
   .codebar b { display: block; font-size: 16px; letter-spacing: .16em; color: ${INK.SETTLED};
@@ -266,18 +313,37 @@ export interface OptionView {
 
 type Portrait = { seed: number; coat: string };
 
+/** The two-line header: a dateline, and the job in plain English. */
+export interface SceneHead {
+  when: string;
+  title: string;
+  purpose: string;
+}
+
+export interface ReturnView {
+  strength: { fit: number; onRolls: number; dated: string } | null;
+  noStrength: string;
+  expiring: { date: string; count?: number; who: string } | null;
+}
+
+const headerHtml = (h: SceneHead): string =>
+  `<span class="dateline">${h.when} · ${h.title}</span><b>${h.purpose}</b>`;
+
 export class Overlay {
   private root: HTMLElement;
   private panel: HTMLElement | null = null;
   private thought: HTMLElement | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
-  constructor(root: HTMLElement, title: string, subtitle: string) {
+  constructor(root: HTMLElement, head: SceneHead) {
     this.root = root;
+    const col = document.createElement('div');
+    col.className = 'topleft';
     const t = document.createElement('div');
     t.className = 'plate-title';
-    t.innerHTML = `<b>${title}</b>${subtitle}`;
-    root.appendChild(t);
+    t.innerHTML = headerHtml(head);
+    col.appendChild(t);
+    root.appendChild(col);
 
     const hint = document.createElement('div');
     hint.className = 'hint';
@@ -286,9 +352,46 @@ export class Overlay {
   }
 
   /** Retitle the frame when the composed view changes. */
-  setPlate(title: string, subtitle: string): void {
+  setPlate(head: SceneHead): void {
     const el = this.root.querySelector<HTMLElement>('.plate-title');
-    if (el) el.innerHTML = `<b>${title}</b>${subtitle}`;
+    if (el) el.innerHTML = headerHtml(head);
+  }
+
+  /**
+   * The return, top right, always.
+   *
+   * Three lines at most, and each one is a different lesson: what the paper
+   * says you have, who can actually stand up, and whose contract runs out. The
+   * gap between the first two is never explained anywhere in the game.
+   */
+  setReturn(r: ReturnView): void {
+    let el = this.root.querySelector<HTMLElement>('.return');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'return';
+      this.root.appendChild(el);
+    }
+    const row = (n: number, label: string): string =>
+      `<div class="row"><b>${n.toLocaleString()}</b><span>${label}</span></div>`;
+
+    const head = r.strength ? `return of ${r.strength.dated}` : 'the return';
+    const body = r.strength
+      ? row(r.strength.onRolls, 'on the rolls') +
+        row(r.strength.fit, 'present and fit for duty')
+      : `<div class="none">${r.noStrength}</div>`;
+
+    // The date is always shown; the headcount only where one has been sourced.
+    const clock = r.expiring
+      ? '<div class="clock">' +
+        `<div class="when">time up · ${r.expiring.date}</div>` +
+        `<div class="who">${
+          r.expiring.count === undefined
+            ? r.expiring.who
+            : `<b>${r.expiring.count.toLocaleString()}</b> ${r.expiring.who}`
+        }</div></div>`
+      : '';
+
+    el.innerHTML = `<div class="cap">${head}</div>${body}${clock}`;
   }
 
   /**
@@ -301,7 +404,9 @@ export class Overlay {
     if (!el) {
       el = document.createElement('div');
       el.className = 'intent';
-      this.root.appendChild(el);
+      // Under the header, in the same column, so a wrapped job line pushes the
+      // thought down instead of printing through it.
+      this.root.querySelector('.topleft')!.appendChild(el);
     }
     el.textContent = text;
   }

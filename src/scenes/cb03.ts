@@ -61,9 +61,17 @@ export const CB03: Scene = {
 
   /** See V-A2.2 above. No number is quoted because none has been sourced. */
   strength: null as { fit: number; onRolls: number; dated: string } | null,
-  noStrength:
-    'The weekly return has not come in. Four regiments cannot say what they have, and the rest ' +
-    'are counting men whose time is up in December.',
+  noStrength: 'No return this week. Four regiments cannot say what they have.',
+
+  /*
+   * The clock, with a date and no headcount.
+   *
+   * The date is documented and the count is not — see V-A2.3. So the counter
+   * says what is true (the terms run out, and it is most of this army) and does
+   * not invent the figure that would make it hit harder. If a sourced November
+   * return is found, `count` goes here and nowhere else.
+   */
+  expiring: { date: '31 December', who: 'most of this army' },
 
   where: 'The works above Charlestown, before Boston',
   when: 'November 1775',
@@ -78,17 +86,17 @@ export const CB03: Scene = {
    * the two things he could do that autumn: look at the enemy, and count.
    */
   situation: [
-    'The siege has held since July. Nobody has broken out and nobody has broken in, and the ' +
-      'fleet still feeds the town, so the noose is a fence.',
-    'Henry Knox has gone west to Ticonderoga to fetch the captured guns three hundred miles ' +
-      'over the mountains in winter. Nobody knows whether he can.',
-    'And the enlistments run out in December. Not a mutiny and not desertion — the paper ' +
-      'these men signed simply ends, and they may lawfully walk home.',
+    'The siege has held since July. Nobody has broken out and nobody has broken in. British ' +
+      'ships still feed the town, so surrounding it has changed nothing.',
+    'Henry Knox has gone west to Ticonderoga to fetch the captured guns — 300 miles over the ' +
+      'mountains, in winter. Nobody knows whether he can do it.',
+    'And in December the contracts end. These men signed up for eight months. When the eight ' +
+      'months are up they can legally walk home, and it is not desertion. It is the deal.',
   ],
   objectives: [
-    'Read the ground: sweep the glass across the water and name what is over there.',
-    'Answer Sergeant Starr, and through him the eleven hundred men behind him.',
-    'Put the works in order before the weather closes in.',
+    'Use the spyglass. Name all seven British positions across the water.',
+    'Give Sergeant Starr an answer. 1,100 men are waiting on the same one.',
+    'Get the trenches ready before winter.',
   ],
 
   opening: [

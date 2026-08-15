@@ -100,6 +100,9 @@ export const MV01: Scene = {
   strength: null as { fit: number; onRolls: number; dated: string } | null,
   noStrength: 'There is no army. That is the whole of the difficulty.',
 
+  /** Nothing to run out yet. The counter is empty all act, and that is the point. */
+  expiring: null,
+
   where: 'Mount Vernon, Virginia',
   when: 'May 1775',
 
@@ -116,15 +119,15 @@ export const MV01: Scene = {
   situation: [
     'Three weeks ago, at Lexington and Concord, British regulars and Massachusetts militia ' +
       'shot at each other. Nobody has called it a war yet.',
-    'Fifteen thousand New England men are now camped around Boston with no commander, no ' +
-      'supply and no authority over one another.',
-    'The Congress in Philadelphia has to decide whether that is an army. You have been in ' +
-      'uniform to every session, which is not an accident, and everyone there has noticed.',
+    'About 15,000 New England men are camped around Boston right now. They have no ' +
+      'commander, no supplies, and no authority over each other.',
+    'Congress meets in Philadelphia and has to decide whether that is an army. You have worn ' +
+      'your uniform to every session. That was not an accident, and everyone has noticed.',
   ],
   objectives: [
-    'Answer Martha. She has asked you a question you have been avoiding for a week.',
-    'Answer the messenger, who is carrying your reply back to Philadelphia.',
-    'Set the estate in order before you go — you do not know for how long.',
+    'Answer Martha. She asked you a question a week ago and you have been avoiding it.',
+    'Give the messenger your answer. He rides back to Philadelphia with it.',
+    'Put the estate in order before you leave. You do not know for how long.',
   ],
 
   /** Two lines of atmosphere, after the facts. */
@@ -567,6 +570,22 @@ export const MV01: Scene = {
           text:
             'Philadelphia has voted to raise an army before it has voted who is to command it. ' +
             'Some think the two questions have one answer.',
+        },
+        /*
+         * The clock, planted where nobody can act on it.
+         *
+         * The whole army's terms ran to the end of 1775, and that single fact
+         * very nearly ended the war twice. It is mentioned here in May, by a
+         * man with no stake in it, as a piece of paperwork — so that when it
+         * detonates in Act 2 the student has already been told and has already
+         * failed to notice, which is exactly what happened to Congress.
+         */
+        {
+          speaker: 'Congress messenger',
+          ...MESSENGER,
+          text:
+            'They have the New England men down as enlisted to the end of the year, sir. ' +
+            'December. After that it is a fresh sheet of paper and every name written again.',
         },
       ],
       decision: {

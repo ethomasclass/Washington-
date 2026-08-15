@@ -47,6 +47,15 @@ export const CB01: Scene = {
   strength: { fit: 13743, onRolls: 16770, dated: '3 July 1775' },
   noStrength: '',
 
+  /*
+   * No clock on the return here, and it is a deliberate omission rather than an
+   * oversight. In July the expiry is six months off and it is one line of
+   * paperwork among a thousand; the problem in front of him is that he cannot
+   * find out what he has. The clock appears on the parapet in November, when it
+   * is six weeks off, and the counter growing a third line is the story beat.
+   */
+  expiring: null,
+
   where: 'Cambridge, Massachusetts — the camp before Boston',
   when: 'July 1775',
 
@@ -60,17 +69,17 @@ export const CB01: Scene = {
    * that into something that can still be there in the spring.
    */
   situation: [
-    'On the fifteenth of June the Congress made you commander-in-chief of an army it had not ' +
-      'yet raised. You rode north for a fortnight and arrived on the second of July.',
-    'Bunker Hill was fought three weeks ago. The British hold Boston and Charlestown; they ' +
-      'burned Charlestown to the ground taking it, and their fleet feeds them by sea.',
-    'What is camped here is the militia of four colonies, each obeying its own officers, on ' +
-      'enlistments that expire at the end of December.',
+    'On 15 June, Congress made you commander-in-chief of an army it had not yet raised. You ' +
+      'rode north for two weeks and got here on 2 July.',
+    'Bunker Hill was fought three weeks ago. The British hold Boston and Charlestown. They ' +
+      'burned Charlestown to the ground taking it, and their ships keep them fed by sea.',
+    'What is camped here is the militia of four colonies. Each one obeys its own officers. ' +
+      'Every man signed a contract that ends on 31 December.',
   ],
   objectives: [
     'Walk the camp and find out what you actually command.',
-    'Settle with Greene what is to be done about the powder.',
-    'Get the general orders out — one army, one set of rules, starting today.',
+    'Decide what to tell Greene about the powder.',
+    'Issue your first general orders. One army, one set of rules, starting today.',
   ],
 
   opening: [

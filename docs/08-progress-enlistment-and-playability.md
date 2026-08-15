@@ -482,9 +482,9 @@ is cut.
 
 | # | Step | Files | Size |
 |---|---|---|---|
-| 1 | **Rewrite the player-facing strings** to §8's register, across all three scenes | `scenes/*.ts` | half a day, zero risk |
-| 2 | **Return on the HUD.** Extend `Scene.strength` with `expiring`; render top-right, always, in document type | `types.ts`, `ui.ts`, `main.ts` | 1 day |
-| 3 | **Two-line scene header** per §8.4 | `ui.ts` | 2 hours |
+| 1 | ~~**Rewrite the player-facing strings** to §8's register, across all three scenes~~ **DONE** | `scenes/*.ts` | half a day, zero risk |
+| 2 | ~~**Return on the HUD.**~~ **DONE** — shipped as a top-level `Scene.expiring` rather than nested inside `strength`, because CB-03 has a documented date and no sourced headcount and the two must be independent | `types.ts`, `ui.ts`, `main.ts` | 1 day |
+| 3 | ~~**Two-line scene header** per §8.4~~ **DONE** | `ui.ts` | 2 hours |
 | 4 | **The ledger module.** `src/ledger.ts`: named line items with causes, written by decisions, recomputable from flags — **not** in the passport (`06` §7.2 already rules counters out of the code) | new file | 1 day |
 | 5 | **The reckoning screen** at act end | `ui.ts`, new `interlude.ts` | 2 days |
 | 6 | **Wire `A2-D4`'s four options to named line items** | `scenes/cb03.ts`, `ledger.ts` | half a day |
@@ -495,6 +495,30 @@ is cut.
 **Steps 1–3 alone answer the playtest question.** A student who sits down after step 3
 sees a date, a job, and a headcount with a deadline on it, and can say what they were
 trying to do. Everything after that makes it *land*; those three make it *legible*.
+
+### What steps 1–3 actually shipped
+
+The three-scene arc §1 argued for is now on the screen, and it is visible in one
+glance per scene:
+
+| Scene | The card reads |
+|---|---|
+| `MV-01` | **the return** — *There is no army. That is the whole of the difficulty.* |
+| `CB-01` | **return of 3 July 1775** — 16,770 on the rolls · 13,743 present and fit for duty |
+| `CB-03` | **the return** — *No return this week…* · **time up · 31 December** — most of this army |
+
+The register rule is enforced by the content linter rather than by review: interface
+strings are split into sentences and each one is measured (objectives ≤ 16 words,
+situation ≤ 22, the job line ≤ 14). The world's registers — dialogue, examine text,
+the Council, the intent line — are not measured and must not be.
+
+**Known rendering artifact.** In headless Chromium screenshots a pale rectangle
+appears at the bottom right: a vertical mirror of the return card, reflected about
+the viewport's centre line. The DOM is correct in all three scenes (verified by full
+element dump), it hit-tests to the canvas, and hiding the canvas removes it — so it
+is a compositing artifact between the WebGL canvas and the DOM overlay, not a layout
+bug. `translateZ(0)` and a fixed card height both failed to clear it. **It needs
+eyeballing in a real browser on a real GPU before anyone spends more time on it.**
 
 ---
 

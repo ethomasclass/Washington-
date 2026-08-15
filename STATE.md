@@ -8,8 +8,9 @@ GitHub Pages on every push.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment
-clock through Acts 1–3, and the player-facing writing register. Nothing in it is
-built yet; §9 is the build order and steps 1–3 are the cheap ones.
+clock through Acts 1–3, and the player-facing writing register. **Steps 1–3 of its
+build order are done** (interface strings rewritten, the Return on the HUD, the
+two-line header). Step 4 — the ledger — is the next real work.
 
 **Run it:** `npm install && npm run dev`. `npm test` is the codec plus the
 content linter and must be green before any commit. `npm run build` before

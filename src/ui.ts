@@ -144,7 +144,8 @@ export const CSS = `
    * --grain is set at runtime by mountSheet(); if it has not been set the rule
    * degrades to plain paper rather than to a broken url().
    */
-  .journal, .panel, .bubble, .return, .codebar, .prompt, .intent, .hint, .sopt {
+  .journal, .panel, .bubble, .return, .codebar, .prompt,
+  .plate-title, .intent, .hint, .sopt {
     background-color: ${PAPER.BRIGHT};
     background-image:
       repeating-linear-gradient(90deg, rgba(110,97,82,.05) 0 1px, transparent 1px 96px),
@@ -186,7 +187,10 @@ export const CSS = `
      positions and the job line collided with the thought under it the moment
      it wrapped to a second line, which is most scenes. */
   .topleft { position: absolute; top: 26px; left: 34px; max-width: 44ch; }
-  .plate-title { }
+  /* The header sits on paper like everything else. It was ink printed straight
+     onto the plate, which was survivable over Vernon's pale sky and became
+     unreadable the moment the lines got a heavy November one. */
+  .plate-title { padding: 9px 14px 11px; }
   /* FADED rather than LIGHT: the dateline sits over open sky in two of the
      three scenes, and LIGHT washes out against it. This is the line a student
      copies into a notebook, so it has to survive a pale background. */

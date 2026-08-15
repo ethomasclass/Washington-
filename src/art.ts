@@ -1733,22 +1733,22 @@ export function layerFarMidground(): HTMLCanvasElement {
 
   // Two small outbuildings, low and pale with distance.
   const shed = (sx: number, sw: number, sh: number) => {
-    wash(x, [[sx, base - sh], [sx + sw, base - sh], [sx + sw, base], [sx, base]],
-      PAPER.SMOKED, 0.5, rnd, 4);
+    solid(x, [[sx, base - sh], [sx + sw, base - sh], [sx + sw, base], [sx, base]],
+      PAPER.SMOKED, rnd, EARTH.RAW_UMBER, 0.22);
     inkLine(x, [[sx, base - sh], [sx + sw, base - sh], [sx + sw, base], [sx, base], [sx, base - sh]],
       rnd, 1.4, 0.1);
-    wash(x, [[sx - 7, base - sh], [sx + sw / 2, base - sh - 20], [sx + sw + 7, base - sh]],
-      EARTH.RAW_UMBER, 0.4, rnd, 3);
+    solid(x, [[sx - 7, base - sh], [sx + sw / 2, base - sh - 20], [sx + sw + 7, base - sh]],
+      EARTH.RAW_UMBER, rnd, INK.SETTLED, 0.18);
   };
   shed(W * 0.155, 92, 54);
   shed(W * 0.80, 78, 46);
 
   // A horse in the paddock, small enough to be a shape.
   const nx = W * 0.30;
-  wash(x, [[nx - 34, base - 30], [nx + 30, base - 34], [nx + 32, base - 12], [nx - 32, base - 8]],
-    EARTH.BISTRE, 0.5, rnd, 4);
-  wash(x, [[nx + 26, base - 34], [nx + 44, base - 52], [nx + 52, base - 44], [nx + 34, base - 24]],
-    EARTH.BISTRE, 0.5, rnd, 3);
+  solid(x, [[nx - 34, base - 30], [nx + 30, base - 34], [nx + 32, base - 12], [nx - 32, base - 8]],
+    EARTH.BISTRE, rnd, INK.SETTLED, 0.2);
+  solid(x, [[nx + 26, base - 34], [nx + 44, base - 52], [nx + 52, base - 44], [nx + 34, base - 24]],
+    EARTH.BISTRE, rnd, INK.SETTLED, 0.2);
   for (const lx of [nx - 24, nx - 10, nx + 10, nx + 22]) {
     inkLine(x, [[lx, base - 12], [lx + (rnd() - 0.5) * 5, base + 6]], rnd, 1.6, 0.1);
   }
@@ -2318,24 +2318,85 @@ export function campLane(z: number): { mid: number; half: number } {
   };
 }
 
-export function campSky(): HTMLCanvasElement {
+/**
+ * A sky, with the option of a sun in it.
+ *
+ * `campSky()` was written for Cambridge in July — a flat, shadowless overcast —
+ * and the lines then reused it wholesale. But `cb03` declares a sun at
+ * (0.72, 0.20), which the plate painter turns into a full-strength key: so
+ * every mass on the earthwork was carrying hard warm light and cool shadow
+ * under a sky with no light in it anywhere. The frame had a lit subject and no
+ * source, which is the other half of what the greyscale test complains about.
+ *
+ * Reusing the far shore across the two scenes is right and is the point of
+ * them — from these hills you are looking at the same Boston. Reusing the sky
+ * is not.
+ *
+ * `sun` puts a low break in the cloud at that uv, warm, with the cloud bars
+ * lit on their undersides near it. It is the only genuinely light thing in
+ * either picture, which is what a light source is supposed to be.
+ */
+function skyPlate(
+  seed: number,
+  stops: [string, string, string],
+  sun: { x: number; y: number; warm: string } | null,
+): HTMLCanvasElement {
   const { c, x } = surface(W, H);
-  const rnd = mulberry(211);
-  // Overcast, but not colourless: a cold blue-grey aloft warming to pale straw
-  // at the horizon, which is what a flat July sky over water actually does.
-  const g = x.createLinearGradient(0, 0, 0, H * HORIZON + 40);
-  g.addColorStop(0, '#AFB6BE');
-  g.addColorStop(0.55, '#CBCCC6');
-  g.addColorStop(1, '#E4DFCE');
+  const rnd = mulberry(seed);
+  const hy = H * HORIZON;
+
+  const g = x.createLinearGradient(0, 0, 0, hy + 40);
+  g.addColorStop(0, stops[0]);
+  g.addColorStop(0.55, stops[1]);
+  g.addColorStop(1, stops[2]);
   x.fillStyle = g;
   x.fillRect(0, 0, W, H);
-  const hy = H * HORIZON;
+
+  /*
+   * The break in the cloud. A radial wash, not a disc — you are painting the
+   * glow around a low sun through weather, and a hard edge on it would read as
+   * a sticker. Two passes: a wide warm bloom, then a small hot core.
+   */
+  if (sun) {
+    const sx = W * sun.x;
+    const sy = hy * (sun.y / HORIZON) * 0.9;
+    for (const [r, a] of [[W * 0.34, 0.5], [W * 0.15, 0.6], [W * 0.055, 0.75]] as const) {
+      const rg = x.createRadialGradient(sx, sy, 0, sx, sy, r);
+      rg.addColorStop(0, sun.warm);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      x.save();
+      x.globalAlpha = a;
+      x.fillStyle = rg;
+      x.fillRect(0, 0, W, H);
+      x.restore();
+    }
+  }
+
   for (let i = 0; i < 9; i++) {
     const y = rnd() * hy;
     wash(x, [[0, y], [W * 0.5, y - 26], [W, y + 14], [W * 0.4, y + 62]],
       EARTH.WET_STONE, 0.09, rnd);
   }
   return c;
+}
+
+/** L0 for Cambridge in July: flat overcast, deliberately without a sun in it. */
+export function campSky(): HTMLCanvasElement {
+  // Cold blue-grey aloft warming to pale straw at the horizon, which is what a
+  // flat July sky over water actually does.
+  return skyPlate(211, ['#AFB6BE', '#CBCCC6', '#E4DFCE'], null);
+}
+
+/**
+ * L0 for the lines in November: colder, heavier, and with a low sun breaking
+ * through on the right where `cb03` says it is.
+ */
+export function linesSky(): HTMLCanvasElement {
+  return skyPlate(
+    229,
+    ['#6E7684', '#95999B', '#C8BCA4'],
+    { x: 0.72, y: 0.20, warm: '#E8C489' },
+  );
 }
 
 /** L1 — the far shore, and Boston on it. */
@@ -2905,8 +2966,8 @@ export function campFarMidground(): HTMLCanvasElement {
     const bw = 26 + rnd() * 40;
     const bh = 14 + rnd() * 26;
     const by = base - rnd() * 22;
-    wash(x, [[px, by], [px + bw * 0.3, by - bh], [px + bw, by - bh * 0.5], [px + bw, by]],
-      rnd() < 0.3 ? PAPER.BRIGHT : PAPER.SMOKED, 0.34, rnd, 3);
+    solid(x, [[px, by], [px + bw * 0.3, by - bh], [px + bw, by - bh * 0.5], [px + bw, by]],
+      rnd() < 0.3 ? PAPER.BRIGHT : PAPER.SMOKED, rnd, EARTH.RAW_UMBER, 0.24);
     inkLine(x, [[px, by], [px + bw * 0.3, by - bh], [px + bw, by - bh * 0.5]], rnd, 1.1, 0.2);
   }
 
@@ -3323,8 +3384,8 @@ export function linesFarMidground(): HTMLCanvasElement {
     const px = rnd() * W;
     const bw = 22 + rnd() * 30;
     const bh = 12 + rnd() * 18;
-    wash(x, [[px, base], [px + bw * 0.3, base - bh], [px + bw, base - bh * 0.5], [px + bw, base]],
-      PAPER.SMOKED, 0.34, rnd, 3);
+    solid(x, [[px, base], [px + bw * 0.3, base - bh], [px + bw, base - bh * 0.5], [px + bw, base]],
+      PAPER.SMOKED, rnd, EARTH.RAW_UMBER, 0.24);
     inkLine(x, [[px, base], [px + bw * 0.3, base - bh], [px + bw, base - bh * 0.5]], rnd, 1.0, 0.24);
   }
   for (const sx of [W * 0.18, W * 0.44, W * 0.72, W * 0.9]) {
@@ -3357,8 +3418,13 @@ export function linesMidground(): HTMLCanvasElement {
 
   // The bank: a long earth mass with a firing step cut behind it.
   const crest: [number, number][] = [];
+  let walk = 0;
   for (let i = 0; i <= 26; i++) {
-    crest.push([(i / 26) * W, base - man(base) * 1.02 + Math.sin(i * 0.7) * 7 + rnd() * 5]);
+    // A random walk, not a sine: an earth bank thrown up by men does not
+    // undulate on a period, and the eye finds a regular one immediately.
+    walk += (rnd() - 0.5) * 9;
+    walk = Math.max(-13, Math.min(13, walk));
+    crest.push([(i / 26) * W, base - man(base) * 1.02 + walk]);
   }
   solid(x, [...crest, [W, base + 60], [0, base + 60]], '#9C8C6E', rnd, EARTH.RAW_UMBER, 0.28);
   inkLine(x, crest, rnd, 2.2, 0.05);
@@ -3375,10 +3441,24 @@ export function linesMidground(): HTMLCanvasElement {
    * under fire.
    */
   const gh = man(base) * 0.78;
-  for (let i = 0; i < 9; i++) {
-    const cx = W * 0.06 + i * W * 0.108 + (rnd() - 0.5) * 12;
+  /*
+   * Six baskets in two working clusters, not nine at a fixed pitch.
+   *
+   * This was `i * W * 0.108` across the full width with every basket the same
+   * size and a fascine dead centre in every gap — basket, bundle, basket,
+   * bundle, all the way across, in the plate that IS this scene's midground.
+   * At a fixed pitch it reads as wallpaper however well each one is painted.
+   * Men who have been working a line leave clusters and a gap where they have
+   * not got to yet.
+   */
+  const gabionsAt = [0.07, 0.135, 0.20, 0.60, 0.665, 0.83];
+  for (let i = 0; i < gabionsAt.length; i++) {
+    const cx = W * gabionsAt[i] + (rnd() - 0.5) * 14;
     const b = base - man(base) * 0.92 + (rnd() - 0.5) * 8;
-    const gw = gh * 0.62;
+    // ±25% per basket: they were woven by different men out of what was there.
+    const gw = gh * 0.62 * (0.78 + rnd() * 0.46);
+    // And they stand on the ground rather than floating on it.
+    shadow(cx, b + 2, gw * 0.72);
     solid(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh], [cx + gw / 2 + 2, b],
               [cx - gw / 2 - 2, b]], '#9A8258', rnd, EARTH.BISTRE, 0.24);
     inkLine(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh], [cx + gw / 2 + 2, b],
@@ -3392,10 +3472,16 @@ export function linesMidground(): HTMLCanvasElement {
       inkLine(x, [[cx - gw / 2 - 1, b - gh + gh * f], [cx + gw / 2 + 1, b - gh + gh * f]],
         rnd, 1.2, 0.14);
     }
-    // Fascine bundle wedged in the gap.
-    if (i < 8) {
-      const fx = cx + W * 0.054;
+    /*
+     * A fascine bundle in SOME of the gaps.
+     *
+     * One in every gap at a fixed offset was half of what made this row march.
+     * Three of six, at varying offsets, reads as work in progress.
+     */
+    if (i === 0 || i === 3 || i === 4) {
+      const fx = cx + W * (0.038 + rnd() * 0.028);
       const fh = gh * 0.34;
+      shadow(fx, b + 2, gw * 0.5);
       solid(x, [[fx - gw * 0.44, b - fh], [fx + gw * 0.44, b - fh], [fx + gw * 0.44, b],
                 [fx - gw * 0.44, b]], '#7C6B4A', rnd, EARTH.BISTRE, 0.3);
       for (let k = 0; k < 5; k++) {
@@ -3560,7 +3646,7 @@ export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
   // Same sky and same far shore as the camp: from these hills you are looking
   // at the same Boston, which is the point of the scene.
   lines: () => withAir('lines', [
-    campSky(), campHills(), linesGround(),
+    linesSky(), campHills(), linesGround(),
     linesFarMidground(), linesMidground(), linesForeground(),
   ]),
 };

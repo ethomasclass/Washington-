@@ -3,8 +3,13 @@
 Read this first. It is the handoff, not the design — the design is in `docs/`.
 
 **Branch:** `claude/washington-game-story-playability-xa9mh8` (previous work is on
-`claude/game-ideation-ucj49o`). Everything is committed and pushed. Deploys to
-GitHub Pages on every push.
+`claude/game-ideation-ucj49o`). Everything is committed and pushed.
+
+**Deploys to GitHub Pages** — but only from the branches named in
+`.github/workflows/deploy.yml`, which is this one, the old one, and `main`. A
+push from any other branch builds nothing and publishes nothing, and the live
+URL will quietly go on showing whatever was deployed last. If the site does not
+look like your work, check that trigger list first.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment

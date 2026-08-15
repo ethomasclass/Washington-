@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/game-ideation-ucj49o
+      - claude/washington-game-story-playability-xa9mh8
       - main
   workflow_dispatch:
 

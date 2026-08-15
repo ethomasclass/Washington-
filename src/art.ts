@@ -12,7 +12,7 @@
  */
 
 import { EARTH, INK, PAPER } from './palette';
-import { platePx, zAtPlateY } from './ground';
+import { platePx, xAtPlateX, zAtPlateY } from './ground';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -412,116 +412,127 @@ export function layerHouse(): HTMLCanvasElement {
     }
   };
 
-  // Where the house will stand, needed here because the ground has to be laid
-  // out to meet it.
-  const houseBaseY = 356;
-  const houseZ = zAtPlateY(houseBaseY, H);
-
   /*
-   * The formal axis.
+   * The ground of a working farm, laid before anything is built on it.
    *
-   * Laid out with the same projection the player walks on, so the rows are a
-   * corridor he moves down rather than scenery he walks through. This is the
-   * part that would have been impossible before the ground curve was shared:
-   * painted by eye, the avenue and the walking would have disagreed, and the
-   * disagreement is exactly the kind that reads as "wrong" without anyone being
-   * able to say why.
+   * The previous pass staged this as a period engraving would: house dead
+   * centre, dependencies mirrored either side, a formal avenue of clipped yews
+   * marching up the middle. It was a handsome arrangement and the wrong one.
+   * A ruled axis tells the player where to walk before he has decided anything,
+   * and Mount Vernon in May 1775 was a farm being run, not a plate being sat
+   * for — the serpentine bowling green everyone pictures was ten years off.
    *
-   * Laid before the buildings, for the same reason the palings are: a plate has
-   * no depth sorting of its own, so anything lying on the ground has to go down
-   * before anything standing on it.
+   * So: nothing on the centre line, nothing mirrored, and the lines that do run
+   * into the picture are the ones a working yard would actually have — a
+   * paddock fence at an angle, garden rows, a track worn where feet go.
    */
-  const gravel: [number, number][] = [];
-  for (const z of [houseZ, 0.30]) {
-    const a = platePx({ x: 0.5 - 0.075, z }, W, H);
-    gravel.push([a.x, a.y]);
-  }
-  for (const z of [0.30, houseZ]) {
-    const a = platePx({ x: 0.5 + 0.075, z }, W, H);
-    gravel.push([a.x, a.y]);
-  }
-  // Low contrast on purpose. The first pass used a pale opaque trapezoid and it
-  // read as a spotlight thrown from the front door — a bright shape narrowing
-  // toward a building is a beam unless the edges are drawn.
-  wash(x, gravel, EARTH.YELLOW_OCHRE, 0.22, rnd, 4);
-  wash(x, gravel, PAPER.BRIGHT, 0.13, rnd, 3);
-  inkLine(x, [gravel[0], gravel[1]], rnd, 1.1, 0.22);
-  inkLine(x, [gravel[2], gravel[3]], rnd, 1.1, 0.22);
+  const houseBaseY = 352;
+  const houseZ = zAtPlateY(houseBaseY, H);
+  const houseCx = W * 0.42;
 
-  // Clipped yews down both sides, marching away. Size comes off the same curve
-  // as the path, so the file recedes at the rate a walking figure does.
-  for (let i = 0; i <= 13; i++) {
-    // Stops a little short of the doorstep rather than running onto it.
-    const z = 0.34 + (i / 13) * (houseZ - 0.07 - 0.34);
-    for (const side of [-1, 1]) {
-      // Wide enough to frame the court rather than to fence a corridor through
-      // it. At 0.185 the rows closed in on the middle of the play space and
-      // the NPCs stood in a hedge tunnel.
-      const p = platePx({ x: 0.5 + side * 0.30, z }, W, H);
-      const sh = 54 * p.scale * (0.62 + 0.38 * (1 - z));
-      const sw = sh * 0.42;
-      const cone: [number, number][] = [
-        [p.x, p.y - sh], [p.x + sw * 0.5, p.y - sh * 0.42], [p.x + sw * 0.42, p.y],
-        [p.x - sw * 0.42, p.y], [p.x - sw * 0.5, p.y - sh * 0.42],
-      ];
-      solid(x, cone, '#6E7A5C', rnd, EARTH.TERRE_VERTE, 0.3);
-      inkLine(x, [...cone, cone[0]], rnd, 1.0, 0.16);
+  // The track to the door. Worn rather than laid: it comes in from the yard on
+  // the right, where the carriage and the outbuildings are, and bends toward
+  // the door instead of aiming at it.
+  {
+    const doorGx = xAtPlateX(houseCx, houseZ, W);
+    const pts: [number, number][] = [];
+    const edge = (side: number) => {
+      const out: [number, number][] = [];
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const z = 0.24 + t * (houseZ - 0.03 - 0.24);
+        // Bends: wide and vague near the viewer, narrowing to the doorstep.
+        const gx = 0.74 + (doorGx - 0.74) * (t * t * (3 - 2 * t));
+        const half = 0.085 - 0.055 * t;
+        out.push([gx + side * half, z]);
+      }
+      return out;
+    };
+    for (const [gx, z] of edge(-1)) { const a = platePx({ x: gx, z }, W, H); pts.push([a.x, a.y]); }
+    for (const [gx, z] of edge(1).reverse()) { const a = platePx({ x: gx, z }, W, H); pts.push([a.x, a.y]); }
+    wash(x, pts, EARTH.RAW_UMBER, 0.16, rnd, 4);
+    wash(x, pts, EARTH.YELLOW_OCHRE, 0.10, rnd, 3);
+  }
+
+  // The kitchen garden, off to the right where the ground is flat. Rows run
+  // away from the viewer, which is the one honestly converging thing in the
+  // frame and does the work the avenue was doing, without ruling the middle.
+  for (let r = 0; r < 7; r++) {
+    const gx = 0.60 + r * 0.028;
+    const a = platePx({ x: gx, z: 0.66 }, W, H);
+    const b = platePx({ x: gx + 0.012, z: 0.79 }, W, H);
+    // The furrow itself, as a turned-earth band rather than a line — a single
+    // stroke at this size disappears into the ground litter.
+    wash(x, [[a.x - 5, a.y], [a.x + 5, a.y], [b.x + 3, b.y], [b.x - 3, b.y]],
+      EARTH.RAW_UMBER, 0.34, rnd, 3);
+    inkLine(x, [[a.x, a.y], [b.x, b.y]], rnd, 1.3, 0.14);
+    for (let i = 0; i < 5; i++) {
+      const t = (i + 0.5) / 5;
+      const px = a.x + (b.x - a.x) * t;
+      const py = a.y + (b.y - a.y) * t;
+      const sh = 9 * (1 - t * 0.45);
+      solid(x, [[px - sh * 0.5, py], [px + sh * 0.5, py], [px + sh * 0.4, py - sh],
+                [px - sh * 0.4, py - sh]], '#6B7A56', rnd, EARTH.TERRE_VERTE, 0.3);
     }
   }
 
-  // Palings closing the court, drawn to the same curve so the fence lies on the
-  // ground rather than across the picture — and drawn before anything is built
-  // on that ground, because a plate has no depth sorting of its own and a fence
-  // painted last runs straight through the first storey of the house.
-  for (const side of [-1, 1]) {
-    const near = platePx({ x: 0.5 + side * 0.34, z: 0.93 }, W, H);
-    const far = platePx({ x: 0.5 + side * 1.6, z: 0.93 }, W, H);
-    const n = 16;
+  // A paddock fence running away on the left. Diagonal on purpose: every other
+  // long line in the frame is parallel to its edges, and one that is not is
+  // most of what stops a painted set looking like a stage flat.
+  {
+    const a = { x: 0.02, z: 0.30 };
+    const b = { x: 0.30, z: 0.74 };
+    const n = 13;
+    let prev: { x: number; y: number } | null = null;
     for (let i = 0; i <= n; i++) {
       const t = i / n;
-      const px = near.x + (far.x - near.x) * t;
-      const py = near.y + (far.y - near.y) * t;
-      inkLine(x, [[px, py], [px, py - 15]], rnd, 0.9, 0.14);
+      const q = platePx({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t }, W, H);
+      const ph = 34 * q.scale;
+      inkLine(x, [[q.x, q.y], [q.x + 2, q.y - ph]], rnd, 1.6 * q.scale, 0.06);
+      if (prev) {
+        for (const f of [0.42, 0.78]) {
+          inkLine(x, [[prev.x, prev.y - 34 * q.scale * f], [q.x, q.y - ph * f]], rnd, 1.1, 0.1);
+        }
+      }
+      prev = q;
     }
-    inkLine(x, [[near.x, near.y - 11], [far.x, far.y - 11]], rnd, 1.0, 0.08);
-    inkLine(x, [[near.x, near.y - 4], [far.x, far.y - 4]], rnd, 0.9, 0.12);
   }
 
   /*
-   * Staging, after the period plates.
+   * Staging.
    *
-   * The engraved views of a Virginia seat — the Bodleian plate of the College
-   * being the one everybody knows — all use the same arrangement, and it is a
-   * better one than a row of buildings seen flat: the principal house dead
-   * frontal on the centre line, the dependencies turned inward so their long
-   * faces run away toward the same vanishing point, and a formal axis marching
-   * out of the picture toward the viewer. The eye is put low and close, so the
-   * house fills the frame rather than sitting in it.
+   * Nothing is centred and nothing is mirrored. The house sits left of the
+   * frame's middle with its working yard open to the right, which is where the
+   * carriage and the outbuildings already are — so the eye enters on the
+   * business and travels to the house, rather than being aimed at the front
+   * door from the first frame.
    *
-   * It suits Mount Vernon better than it suits most places, because the west
-   * front is a five-part Palladian composition already — a centre block with
-   * two dependencies standing off it. The plate was not inventing a courtyard;
-   * it was drawing one.
+   * The five-part Palladian massing is still true to the place; it is only the
+   * symmetry of the engraved plates that has gone. A dependency nearer than the
+   * house and a second one further off does more for depth than two of them
+   * placed evenly ever did.
    */
-  const bx = W * 0.375;
-  const bw = W * 0.25;
-  const bh = 184;
-  /*
-   * Where the house is planted, in the ground's own terms.
-   *
-   * This is the number the whole axis is measured from. The first cut put the
-   * foundation at z = 0.655 — inside the walkable band, so the player could
-   * stroll past the front of his own house — and then ran the avenue out to
-   * z = 0.86, so a third of its length stood behind the building and got
-   * painted over the facade. Anchoring the foundation once and deriving the
-   * rest from it is the only way the two stay agreed.
-   */
+  const bw = W * 0.245;
+  const bh = 178;
+  const bx = houseCx - bw / 2;
   const by = houseBaseY - bh;
-  block(bx, by, bw, bh, 5, 52);
+  block(bx, by, bw, bh, 5, 50);
 
-  // The door, on the centre line, with a pediment over it. An axis has to end
-  // on something or the eye runs off the top of the building — this is the
-  // whole reason the arrangement works in the plates.
+  // Chimneys. Two, at the ends, per the house as it stood before the wings
+  // went up. Without them the roof reads as a lid.
+  for (const f of [0.16, 0.84]) {
+    const cxp = bx + bw * f;
+    const cw = bw * 0.030;
+    const ct = by - 38 * (1 - Math.abs(f - 0.5) * 1.1) - 16;
+    solid(x, [[cxp - cw, ct], [cxp + cw, ct], [cxp + cw, by - 6], [cxp - cw, by - 6]],
+      '#9A8A72', rnd, EARTH.RAW_UMBER, 0.3);
+    inkLine(x, [[cxp - cw, ct], [cxp + cw, ct], [cxp + cw, by - 6], [cxp - cw, by - 6],
+                [cxp - cw, ct]], rnd, 1.3, 0.07);
+    inkLine(x, [[cxp - cw * 1.25, ct + 6], [cxp + cw * 1.25, ct + 6]], rnd, 1.2, 0.08);
+  }
+
+  // The door and its pediment. Centred on the building, which is no longer
+  // centred on the frame — that is the whole difference.
   {
     const dx = bx + bw / 2;
     const dw = bw * 0.075;
@@ -534,7 +545,7 @@ export function layerHouse(): HTMLCanvasElement {
       '#D8D1BC', rnd, EARTH.SHADOW_SLATE, 0.14);
     inkLine(x, [[dx - dw * 1.7, dy - 2], [dx, dy - dh * 0.42], [dx + dw * 1.7, dy - 2],
                 [dx - dw * 1.7, dy - 2]], rnd, 1.3, 0.06);
-    // Steps down to the gravel.
+    // Steps down to the track.
     for (let i = 0; i < 3; i++) {
       const sw = dw * (1.6 + i * 0.32);
       inkLine(x, [[dx - sw, dy + dh + i * 5], [dx + sw, dy + dh + i * 5]], rnd, 1.1, 0.08);
@@ -544,7 +555,19 @@ export function layerHouse(): HTMLCanvasElement {
   // The north wing, unfinished, and its scaffolding. In May 1775 this was an
   // open building site — no piazza, no cupola, no weathervane.
   const sx = bx + bw;
-  wash(x, [[sx, by + 58], [sx + 110, by + 58], [sx + 110, by + bh], [sx, by + bh]], PAPER.SHADOW, 0.4, rnd);
+  {
+    // Part-built wall, ragged along the top where the courses stop.
+    const top: [number, number][] = [];
+    for (let i = 0; i <= 6; i++) {
+      top.push([sx + (i * 110) / 6, by + 62 + (i % 2 === 0 ? 0 : 11) + rnd() * 6]);
+    }
+    const wall: [number, number][] = [...top, [sx + 110, by + bh], [sx, by + bh]];
+    solid(x, wall, '#A08A6E', rnd, EARTH.RAW_UMBER, 0.28);
+    inkLine(x, [...wall, wall[0]], rnd, 1.3, 0.12);
+    for (let r = 1; r < 5; r++) {
+      inkLine(x, [[sx, by + 62 + r * 24], [sx + 110, by + 60 + r * 24]], rnd, 0.7, 0.35);
+    }
+  }
   for (let i = 0; i <= 4; i++) {
     const px = sx + i * 27;
     inkLine(x, [[px, by + 28], [px, by + bh + 8]], rnd, 1.1, 0.05);
@@ -554,20 +577,24 @@ export function layerHouse(): HTMLCanvasElement {
   }
 
   /**
-   * A dependency turned to face the central axis.
+   * A dependency, turned.
    *
    * Two faces and a hipped roof. The gable end is taken as frontal; the long
-   * face runs away inward, and everything on it — the eaves, the sill line, the
+   * face runs away, and everything on it — the eaves, the sill line, the
    * spacing of the windows — converges on the horizon. `k` is how far the far
-   * end is foreshortened, and it is the only number here doing any work: it
-   * fixes where the building's vanishing point lands, and it has to be the same
-   * for both wings or the courtyard pulls apart.
+   * end is foreshortened.
+   *
+   * The two are given different depths, sizes and angles on purpose. Matched
+   * pairs read as architecture posing for a portrait; a big one close and a
+   * small one further off reads as buildings that were put up when they were
+   * needed, which is what these were.
    */
-  const wing = (outer: number, inner: number, baseY: number, h: number, gw: number, wins: number) => {
+  const wing = (
+    outer: number, inner: number, baseY: number, h: number, gw: number, wins: number, k = 0.74,
+  ) => {
     const dir = Math.sign(inner - outer);
     const corner = outer + dir * gw;
     const topY = baseY - h;
-    const k = 0.74;
     const conv = (yy: number) => hy + (yy - hy) * k; // toward the horizon
     const farTop = conv(topY);
     const farBot = conv(baseY);
@@ -622,8 +649,112 @@ export function layerHouse(): HTMLCanvasElement {
 
   // The kitchen and the servants' hall, standing off the house and turned in.
   // They sit forward of the centre block, which is what closes the court.
-  wing(W * 0.145, W * 0.305, hy + 118, 146, W * 0.072, 3);
-  wing(W * 0.855, W * 0.695, hy + 122, 142, W * 0.072, 3);
+  // The kitchen: near, large, its long face running back toward the house.
+  wing(W * 0.045, W * 0.225, hy + 168, 168, W * 0.078, 3, 0.66);
+  // A smaller store, further off and turned the other way, tucked between the
+  // house and the yard.
+  wing(W * 0.805, W * 0.690, hy + 100, 100, W * 0.050, 2, 0.80);
+
+  /*
+   * The work.
+   *
+   * Pentiment's places read as lived in because the clutter is somebody's job
+   * half-finished — wood not yet stacked, washing not yet dry — rather than
+   * set dressing placed for balance. All of this leans on a building or sits
+   * where it was put down, and none of it is arranged.
+   */
+
+  // Woodpile against the kitchen's long face, and the axe left in the block.
+  {
+    const px = W * 0.185;
+    const py = hy + 168;
+    for (let r = 0; r < 4; r++) {
+      for (let i = 0; i < 7 - r; i++) {
+        const lx = px + i * 11 + r * 5;
+        const ly = py - r * 10;
+        solid(x, [[lx, ly - 10], [lx + 10, ly - 10], [lx + 10, ly], [lx, ly]], '#8A6F52', rnd,
+          EARTH.BISTRE, 0.2);
+        inkLine(x, [[lx, ly - 10], [lx + 10, ly - 10], [lx + 10, ly], [lx, ly], [lx, ly - 10]],
+          rnd, 0.8, 0.3);
+      }
+    }
+    solid(x, [[px - 30, py - 22], [px - 8, py - 22], [px - 8, py], [px - 30, py]], '#7A6349', rnd);
+    inkLine(x, [[px - 22, py - 22], [px - 16, py - 44]], rnd, 1.6, 0.04); // helve
+    solid(x, [[px - 20, py - 44], [px - 8, py - 50], [px - 6, py - 42], [px - 16, py - 38]],
+      '#6A7076', rnd);
+  }
+
+  // Barrels by the store, one on its side.
+  {
+    const bxs = W * 0.665;
+    const byb = hy + 104;
+    const barrel = (cx0: number, b0: number, sc: number, tipped: boolean) => {
+      const bwd = 22 * sc;
+      const bht = 30 * sc;
+      const pts: [number, number][] = tipped
+        ? [[cx0 - bht / 2, b0 - bwd], [cx0 + bht / 2, b0 - bwd], [cx0 + bht / 2, b0], [cx0 - bht / 2, b0]]
+        : [[cx0 - bwd / 2, b0 - bht], [cx0 + bwd / 2, b0 - bht], [cx0 + bwd / 2 + 1, b0], [cx0 - bwd / 2 - 1, b0]];
+      solid(x, pts, '#7E6647', rnd, EARTH.RAW_UMBER, 0.24);
+      inkLine(x, [...pts, pts[0]], rnd, 1.2, 0.1);
+      for (const f of [0.3, 0.7]) {
+        inkLine(x, tipped
+          ? [[cx0 - bht / 2 + bht * f, b0 - bwd], [cx0 - bht / 2 + bht * f, b0]]
+          : [[cx0 - bwd / 2, b0 - bht + bht * f], [cx0 + bwd / 2, b0 - bht + bht * f]],
+          rnd, 0.9, 0.2);
+      }
+    };
+    barrel(bxs, byb, 1.0, false);
+    barrel(bxs + 26, byb + 3, 0.95, false);
+    barrel(bxs - 30, byb + 5, 0.9, true);
+  }
+
+  // Washing on a line between the kitchen and a post. Nothing says a household
+  // is running quite as cheaply as laundry that is not dry yet.
+  {
+    const ax = W * 0.235;
+    const ay = hy + 128;
+    const bx2 = W * 0.325;
+    const by2 = hy + 150;
+    inkLine(x, [[bx2, by2], [bx2, by2 - 74]], rnd, 1.6, 0.04);
+    const sagY = (t: number) => ay + (by2 - 74 - ay) * t + Math.sin(Math.PI * t) * 9;
+    const line: [number, number][] = [];
+    for (let i = 0; i <= 8; i++) line.push([ax + (bx2 - ax) * (i / 8), sagY(i / 8)]);
+    inkLine(x, line, rnd, 1.0, 0.06);
+    for (const [t, wq, hq, tone] of [[0.18, 20, 26, '#DCD6C4'], [0.44, 16, 22, '#C9C2AE'],
+                                     [0.70, 22, 30, '#E2DCCB']] as [number, number, number, string][]) {
+      const px = ax + (bx2 - ax) * t;
+      const py = sagY(t);
+      solid(x, [[px - wq / 2, py], [px + wq / 2, py], [px + wq / 2 - 2, py + hq],
+                [px - wq / 2 + 2, py + hq]], tone, rnd, EARTH.SHADOW_SLATE, 0.1);
+      inkLine(x, [[px - wq / 2, py], [px + wq / 2, py], [px + wq / 2 - 2, py + hq],
+                  [px - wq / 2 + 2, py + hq], [px - wq / 2, py]], rnd, 0.9, 0.18);
+    }
+  }
+
+  // Poultry, wherever poultry is. Four marks and a scratch each.
+  for (const [px, py, sc] of [[W * 0.30, hy + 196, 1.0], [W * 0.335, hy + 188, 0.9],
+                              [W * 0.275, hy + 178, 0.85], [W * 0.56, hy + 150, 0.8],
+                              [W * 0.585, hy + 158, 0.9]] as [number, number, number][]) {
+    solid(x, [[px - 7 * sc, py - 9 * sc], [px + 5 * sc, py - 11 * sc], [px + 7 * sc, py - 4 * sc],
+              [px - 5 * sc, py - 2 * sc]], '#B8A88A', rnd, EARTH.RAW_UMBER, 0.22);
+    inkLine(x, [[px + 5 * sc, py - 11 * sc], [px + 9 * sc, py - 16 * sc]], rnd, 1.1 * sc, 0.06);
+    inkLine(x, [[px - 2 * sc, py - 2 * sc], [px - 2 * sc, py]], rnd, 0.9 * sc, 0.1);
+    inkLine(x, [[px + 3 * sc, py - 2 * sc], [px + 3 * sc, py]], rnd, 0.9 * sc, 0.1);
+  }
+
+  // Smoke off the kitchen chimney — the only thing in the frame that says the
+  // house is occupied rather than merely standing.
+  {
+    let sxp = W * 0.115;
+    let syp = hy + 168 - 168 - 26;
+    for (let i = 0; i < 9; i++) {
+      const r = 9 + i * 4.5;
+      wash(x, [[sxp - r, syp], [sxp + r * 0.8, syp - r * 0.5], [sxp + r, syp + r * 0.4],
+               [sxp - r * 0.6, syp + r * 0.6]], PAPER.BRIGHT, 0.20, rnd, 3);
+      sxp += 7 + i * 1.6;
+      syp -= 13;
+    }
+  }
 
   // The house throws its shadow west across the lawn in the afternoon.
   wash(x, [[bx - 20, by + bh], [bx + bw + 40, by + bh - 6], [bx + bw + 10, by + bh + 84],

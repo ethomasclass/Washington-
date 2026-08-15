@@ -120,3 +120,13 @@ export function zAtPlateY(y: number, h: number): number {
   const f = (v - horizonY()) / (NEAR_Y - horizonY());
   return 1 - Math.pow(Math.max(0, f), 1 / EASE);
 }
+
+/**
+ * The inverse of platePx's x: what ground x a plate column sits at, at depth z.
+ *
+ * The companion to zAtPlateY. Between them, "put this on the ground under that
+ * painted building" becomes a calculation instead of a guess.
+ */
+export function xAtPlateX(px: number, z: number, w: number): number {
+  return 0.5 + ((px / w - 0.5) * OVERSCAN) / (0.94 * spreadAt(z));
+}

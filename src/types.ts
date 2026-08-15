@@ -29,6 +29,8 @@ export interface Contradiction {
   note: string;
 }
 
+import type { PropKind } from './art';
+
 export interface Interactable {
   id: string;
   label: string;
@@ -40,6 +42,14 @@ export interface Interactable {
   /** Reading this sets a knowledge flag. Documents never move stats. */
   grants?: string;
   contradicts?: Contradiction;
+  /**
+   * What is drawn on the ground here.
+   *
+   * Omit for things that are a view rather than an object — the river, the road
+   * up the hill, a building already painted into the plate. Everything the
+   * player is told is a thing should have a thing.
+   */
+  prop?: PropKind;
 }
 
 /**
@@ -88,6 +98,8 @@ export interface Task {
   /** Gate, if it needs something known or someone spoken to first. */
   requires?: string;
   requiresNote?: string;
+  /** What is drawn on the ground here. */
+  prop?: PropKind;
 }
 
 export interface DialogueLine {
@@ -171,6 +183,16 @@ export interface Business {
 
 
 /** A composed view: one plate, one ground plane, one act's worth of business. */
+export interface Extra {
+  x: number;
+  z: number;
+  coat: string;
+  hat?: 'tricorne' | 'round' | 'none';
+  build?: number;
+  tall?: number;
+  seed: number;
+}
+
 export interface Scene {
   id: string;
   act: number;
@@ -196,6 +218,14 @@ export interface Scene {
   tasks: Task[];
   interactables: Interactable[];
   npcs: NpcThread[];
+  /**
+   * People who are simply present.
+   *
+   * Not threads and not targets — a camp with four men in it is not a camp of
+   * sixteen thousand. They are placed on the ground plane like everyone else,
+   * so they take their size and position from depth for free.
+   */
+  extras?: Extra[];
   /** Which placeholder plate set the renderer should build. */
   plates: 'vernon' | 'camp';
   /** Where the light comes from, in uv. Flat overcast sits high and central. */

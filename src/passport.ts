@@ -58,6 +58,7 @@ export const FLAG_REGISTRY: string[] = [
   'obs.a2.orders_issued',
   'obs.a2.marquee',
   'obs.a2.headquarters',
+  'obs.a2.cook_fire',
 ];
 
 class BitWriter {

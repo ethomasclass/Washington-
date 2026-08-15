@@ -11,7 +11,7 @@
  * pipeline separates them: the line carries structure, the wash carries mood.
  */
 
-import { EARTH, INK, PAPER } from './palette';
+import { EARTH, INK, MEANING, PAPER } from './palette';
 import { figureAtPlateY, platePx, xAtPlateX, zAtPlateY } from './ground';
 
 type Ctx = CanvasRenderingContext2D;
@@ -1485,6 +1485,22 @@ export function portraitPlate(coat: string, seed: number): HTMLCanvasElement {
  */
 
 /** L0 — flat overcast. No sun anywhere in it. */
+/**
+ * Where the camp street runs, in ground coordinates.
+ *
+ * Defined once because two plates need it: campGround paints it, and
+ * campMidground has to keep the tent lines off it. Written out separately in
+ * each, the tents drift onto the road the first time either is adjusted — which
+ * is exactly what had happened.
+ */
+export function campLane(z: number): { mid: number; half: number } {
+  const t = (z + 0.06) / 0.94;
+  return {
+    mid: 0.30 + 0.34 * t,
+    half: 0.165 - 0.10 * t + Math.sin(t * 7.1) * 0.018,
+  };
+}
+
 export function campSky(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(211);
@@ -1666,10 +1682,8 @@ export function campGround(): HTMLCanvasElement {
     const edge = (side: number) => {
       const out: [number, number][] = [];
       for (let i = 0; i <= 12; i++) {
-        const t = i / 12;
-        const z = -0.06 + t * 0.94;
-        const mid = 0.30 + 0.34 * t;
-        const half = 0.165 - 0.10 * t + Math.sin(t * 7.1) * 0.018;
+        const z = -0.06 + (i / 12) * 0.94;
+        const { mid, half } = campLane(z);
         out.push([mid + side * half, z]);
       }
       return out;
@@ -1681,8 +1695,8 @@ export function campGround(): HTMLCanvasElement {
     for (let r = 0; r < 14; r++) {
       const off = (r % 5) * 0.05 - 0.1;
       const z0 = 0.02 + (r / 14) * 0.62;
-      const a = platePx({ x: 0.30 + 0.34 * z0 + off, z: z0 }, W, H);
-      const b = platePx({ x: 0.30 + 0.34 * (z0 + 0.16) + off * 0.7, z: z0 + 0.16 }, W, H);
+      const a = platePx({ x: campLane(z0).mid + off, z: z0 }, W, H);
+      const b = platePx({ x: campLane(z0 + 0.16).mid + off * 0.7, z: z0 + 0.16 }, W, H);
       inkLine(x, [[a.x, a.y], [b.x, b.y]], rnd, 1.4, 0.24);
       wash(x, [[a.x - 7, a.y], [a.x + 7, a.y], [b.x + 4, b.y], [b.x - 4, b.y]],
         EARTH.BISTRE, 0.18, rnd, 2);
@@ -1818,15 +1832,25 @@ export function campMidground(): HTMLCanvasElement {
   for (let row = 2; row >= 0; row--) {
     for (let i = 0; i < 2; i++) {
       const b = base - row * 34 + 26;
-      // Spaced off their own width, not off a guessed fraction of the frame.
-      // Sized correctly they are twice as wide as they were, and the old
-      // spacing packed them into one continuous ridge of canvas.
-      const b0 = base - row * 34 + 26;
-      const cx = W * 0.575 + i * figureAtPlateY(b0, H) * 1.42 + row * 26;
-      // A common wedge tent stood about as high at the ridge as the man who
-      // slept in it, and was a little wider than it was tall.
-      const th = man(b) * 1.02;
-      tent(cx, b, th * 1.28, th);
+      /*
+       * The line starts where the road ends.
+       *
+       * Spacing is off the tents' own width — sized correctly they are twice as
+       * wide as they were, and the old fraction-of-the-frame spacing packed them
+       * into one continuous ridge of canvas. The first tent of each row is then
+       * placed from the verge of the street at that row's depth rather than from
+       * a guessed column, so no tent can end up pitched in the road however
+       * either of them is adjusted later.
+       *
+       * A common wedge tent stood about as high at the ridge as the man who
+       * slept in it, and was a little wider than it was tall.
+       */
+      const z = zAtPlateY(b, H);
+      const lane = campLane(z);
+      const th0 = man(b) * 1.02;
+      const verge = platePx({ x: lane.mid + lane.half, z }, W, H).x;
+      const cx = verge + th0 * 1.28 * 0.5 + 30 + i * th0 * 1.46;
+      tent(cx, b, th0 * 1.28, th0);
     }
   }
 
@@ -2393,3 +2417,230 @@ export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
     campFarMidground(), campMidground(), campForeground(),
   ],
 };
+
+/* -------------------------------------------------------------- set pieces
+ *
+ * The objects the interactables name.
+ *
+ * Every interactable in the game had a label, an examine string and nothing on
+ * the ground under it: the player walked up to bare grass and was told there
+ * was a kettle there. These are drawn small and read by silhouette, because
+ * that is all there is at the size a thing on the ground gets.
+ *
+ * Each sprite is drawn into a box of PROP_H man-heights and placed by the
+ * renderer off the same ground curve as the figures, so a musket leaning at the
+ * back of the scene is the right size relative to the man walking toward it
+ * without anybody choosing a number.
+ */
+export type PropKind =
+  | 'papers' | 'chest' | 'uniform' | 'sash' | 'kettle' | 'musket' | 'horn'
+  | 'shirt' | 'necessary' | 'canteen' | 'barrel' | 'fire' | 'table' | 'horse'
+  | 'bucket' | 'drum';
+
+/** Height of each prop as a fraction of a standing man at the same depth. */
+export const PROP_H: Record<PropKind, number> = {
+  papers: 0.16, chest: 0.30, uniform: 0.80, sash: 0.16, kettle: 0.40,
+  musket: 0.98, horn: 0.20, shirt: 0.62, necessary: 0.72, canteen: 0.17,
+  barrel: 0.46, fire: 0.34, table: 0.52, horse: 1.06, bucket: 0.24, drum: 0.36,
+};
+
+export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
+  const S = 128;
+  const { c, x } = surface(S, S);
+  const rnd = mulberry(seed);
+  const cx = S / 2;
+  const b = S - 4; // everything stands on this line
+
+  const box = (x0: number, y0: number, w: number, h: number, fill: string, tint?: string) => {
+    const pts: [number, number][] = [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]];
+    solid(x, pts, fill, rnd, tint, 0.24);
+    inkLine(x, [...pts, pts[0]], rnd, 2.0, 0.06);
+  };
+
+  switch (kind) {
+    case 'papers': {
+      for (let i = 0; i < 3; i++) {
+        const o = i * 7;
+        const pts: [number, number][] = [[cx - 40 + o, b - 16 - i * 7], [cx + 36 + o, b - 22 - i * 7],
+          [cx + 40 + o, b - i * 7], [cx - 36 + o, b + 4 - i * 7]];
+        solid(x, pts, i === 2 ? PAPER.BRIGHT : '#DED7C2', rnd, EARTH.YELLOW_OCHRE, 0.1);
+        inkLine(x, [...pts, pts[0]], rnd, 1.8, 0.08);
+      }
+      for (let i = 0; i < 4; i++) {
+        inkLine(x, [[cx - 22, b - 34 + i * 6], [cx + 26, b - 37 + i * 6]], rnd, 1.4, 0.3);
+      }
+      break;
+    }
+    case 'chest': {
+      box(cx - 44, b - 52, 88, 52, '#7A6248', EARTH.BISTRE);
+      solid(x, [[cx - 48, b - 66], [cx + 48, b - 66], [cx + 44, b - 50], [cx - 44, b - 50]],
+        '#8A7052', rnd, EARTH.RAW_UMBER, 0.2);
+      inkLine(x, [[cx - 48, b - 66], [cx + 48, b - 66], [cx + 44, b - 50], [cx - 44, b - 50],
+                  [cx - 48, b - 66]], rnd, 2.0, 0.06);
+      for (const f of [-0.5, 0.5]) inkLine(x, [[cx + 88 * f * 0.5, b - 64], [cx + 88 * f * 0.5, b - 4]], rnd, 1.8, 0.12);
+      box(cx - 8, b - 44, 16, 14, '#9A9184');
+      break;
+    }
+    case 'uniform': {
+      // On a peg: a coat hanging, with the shoulders squared.
+      inkLine(x, [[cx, b], [cx, b - 108]], rnd, 2.2, 0.06);
+      inkLine(x, [[cx - 30, b - 100], [cx + 30, b - 100]], rnd, 2.0, 0.08);
+      const coatPts: [number, number][] = [[cx - 30, b - 100], [cx + 30, b - 100],
+        [cx + 38, b - 44], [cx + 30, b - 6], [cx - 30, b - 6], [cx - 38, b - 44]];
+      solid(x, coatPts, MEANING.CONTINENTAL_BLUE, rnd, INK.SETTLED, 0.12);
+      inkLine(x, [...coatPts, coatPts[0]], rnd, 2.0, 0.06);
+      for (let i = 0; i < 5; i++) {
+        inkLine(x, [[cx - 4, b - 92 + i * 17], [cx + 4, b - 92 + i * 17]], rnd, 1.6, 0.14);
+      }
+      break;
+    }
+    case 'sash': {
+      const pts: [number, number][] = [[cx - 40, b - 20], [cx + 40, b - 26], [cx + 38, b - 2],
+        [cx - 42, b + 4]];
+      solid(x, pts, '#8E4A44', rnd, EARTH.MADDER_LAKE, 0.34);
+      inkLine(x, [...pts, pts[0]], rnd, 1.8, 0.08);
+      for (let i = 0; i < 3; i++) inkLine(x, [[cx - 34 + i * 26, b - 22], [cx - 32 + i * 26, b]], rnd, 1.3, 0.2);
+      break;
+    }
+    case 'kettle': {
+      for (const d of [-30, 0, 30]) inkLine(x, [[cx + d, b], [cx - d * 0.2, b - 78]], rnd, 2.2, 0.05);
+      const pot: [number, number][] = [[cx - 26, b - 52], [cx + 26, b - 52], [cx + 20, b - 12],
+        [cx - 20, b - 12]];
+      solid(x, pot, '#3E3A34', rnd);
+      inkLine(x, [...pot, pot[0]], rnd, 2.0, 0.06);
+      inkLine(x, [[cx - 26, b - 52], [cx, b - 68], [cx + 26, b - 52]], rnd, 1.8, 0.1);
+      break;
+    }
+    case 'musket': {
+      inkLine(x, [[cx - 20, b], [cx + 14, b - 112]], rnd, 3.0, 0.03);
+      const stock: [number, number][] = [[cx - 20, b], [cx - 10, b - 4], [cx + 2, b - 54],
+        [cx - 8, b - 56]];
+      solid(x, stock, '#6E5638', rnd, EARTH.BISTRE, 0.24);
+      inkLine(x, [...stock, stock[0]], rnd, 1.8, 0.08);
+      inkLine(x, [[cx - 4, b - 60], [cx + 10, b - 58]], rnd, 2.0, 0.1); // lock
+      break;
+    }
+    case 'horn': {
+      const pts: [number, number][] = [[cx - 36, b - 6], [cx + 24, b - 26], [cx + 34, b - 18],
+        [cx - 30, b + 4]];
+      solid(x, pts, '#CBBE96', rnd, EARTH.YELLOW_OCHRE, 0.3);
+      inkLine(x, [...pts, pts[0]], rnd, 1.8, 0.06);
+      inkLine(x, [[cx + 24, b - 26], [cx + 34, b - 18]], rnd, 2.2, 0.04);
+      break;
+    }
+    case 'shirt': {
+      inkLine(x, [[cx - 52, b - 96], [cx + 52, b - 90]], rnd, 1.6, 0.1); // the line
+      const sh: [number, number][] = [[cx - 34, b - 94], [cx + 34, b - 92], [cx + 40, b - 60],
+        [cx + 26, b - 58], [cx + 22, b - 4], [cx - 24, b - 2], [cx - 28, b - 58], [cx - 40, b - 60]];
+      solid(x, sh, '#CFC6AC', rnd, EARTH.RAW_UMBER, 0.16);
+      inkLine(x, [...sh, sh[0]], rnd, 1.8, 0.08);
+      inkLine(x, [[cx - 6, b - 92], [cx - 2, b - 62]], rnd, 1.4, 0.2);
+      break;
+    }
+    case 'necessary': {
+      // A screen of boards round a trench. Nobody drew it and everyone used it.
+      for (let i = 0; i < 5; i++) {
+        const px = cx - 34 + i * 15;
+        box(px, b - 92 - (i % 2) * 6, 12, 92, i % 2 ? '#9C8A6E' : '#8A7A60', EARTH.BISTRE);
+      }
+      inkLine(x, [[cx - 36, b - 60], [cx + 42, b - 56]], rnd, 1.6, 0.16);
+      break;
+    }
+    case 'canteen': {
+      const pts: [number, number][] = [[cx - 26, b - 44], [cx + 26, b - 46], [cx + 24, b - 4],
+        [cx - 24, b - 2]];
+      solid(x, pts, '#A99271', rnd, EARTH.RAW_UMBER, 0.24);
+      inkLine(x, [...pts, pts[0]], rnd, 2.0, 0.06);
+      inkLine(x, [[cx - 25, b - 24], [cx + 25, b - 25]], rnd, 1.4, 0.16);
+      inkLine(x, [[cx - 20, b - 46], [cx - 12, b - 60], [cx + 12, b - 60]], rnd, 1.6, 0.12);
+      break;
+    }
+    case 'barrel': {
+      const pts: [number, number][] = [[cx - 30, b - 76], [cx + 30, b - 76], [cx + 34, b - 4],
+        [cx - 34, b - 4]];
+      solid(x, pts, '#8A7150', rnd, EARTH.RAW_UMBER, 0.26);
+      inkLine(x, [...pts, pts[0]], rnd, 2.2, 0.05);
+      for (const f of [0.24, 0.72]) {
+        inkLine(x, [[cx - 31 - f * 6, b - 76 + 72 * f], [cx + 31 + f * 6, b - 76 + 72 * f]], rnd, 1.8, 0.1);
+      }
+      break;
+    }
+    case 'fire': {
+      // Stones, sticks, and the flame. The flame is the only saturated thing
+      // in the frame besides Washington's coat, so it is kept small.
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        const sx0 = cx + Math.cos(a) * 44;
+        const sy0 = b - 6 + Math.sin(a) * 12;
+        solid(x, [[sx0 - 9, sy0 - 8], [sx0 + 9, sy0 - 10], [sx0 + 8, sy0], [sx0 - 8, sy0 + 1]],
+          '#8E8A80', rnd, EARTH.SHADOW_SLATE, 0.24);
+      }
+      for (const d of [-26, -8, 12, 28]) {
+        inkLine(x, [[cx + d, b - 6], [cx - d * 0.4, b - 42]], rnd, 2.2, 0.06);
+      }
+      const flame: [number, number][] = [[cx - 22, b - 26], [cx - 6, b - 62], [cx + 4, b - 44],
+        [cx + 14, b - 74], [cx + 24, b - 24]];
+      solid(x, flame, '#C9762F', rnd);
+      solid(x, [[cx - 12, b - 22], [cx - 2, b - 48], [cx + 12, b - 20]], '#E0A64A', rnd);
+      inkLine(x, [...flame, flame[0]], rnd, 1.4, 0.3);
+      break;
+    }
+    case 'table': {
+      box(cx - 52, b - 62, 104, 10, '#8A7052', EARTH.RAW_UMBER);
+      for (const f of [-0.42, 0.42]) {
+        inkLine(x, [[cx + 104 * f, b - 54], [cx + 104 * f * 1.06, b]], rnd, 2.4, 0.05);
+      }
+      const pp: [number, number][] = [[cx - 20, b - 68], [cx + 18, b - 70], [cx + 20, b - 62],
+        [cx - 18, b - 60]];
+      solid(x, pp, PAPER.BRIGHT, rnd);
+      inkLine(x, [...pp, pp[0]], rnd, 1.4, 0.12);
+      inkLine(x, [[cx + 22, b - 66], [cx + 34, b - 92]], rnd, 1.6, 0.08); // quill
+      break;
+    }
+    case 'bucket': {
+      const pts: [number, number][] = [[cx - 24, b - 40], [cx + 24, b - 40], [cx + 18, b - 2],
+        [cx - 18, b - 2]];
+      solid(x, pts, '#8A7458', rnd, EARTH.BISTRE, 0.24);
+      inkLine(x, [...pts, pts[0]], rnd, 2.0, 0.06);
+      inkLine(x, [[cx - 24, b - 40], [cx, b - 58], [cx + 24, b - 40]], rnd, 1.6, 0.12);
+      break;
+    }
+    case 'drum': {
+      const pts: [number, number][] = [[cx - 34, b - 56], [cx + 34, b - 56], [cx + 34, b - 6],
+        [cx - 34, b - 6]];
+      solid(x, pts, '#B8A276', rnd, EARTH.YELLOW_OCHRE, 0.26);
+      inkLine(x, [...pts, pts[0]], rnd, 2.0, 0.06);
+      for (let i = 0; i < 4; i++) {
+        inkLine(x, [[cx - 32, b - 52 + i * 4], [cx + 32, b - 12 - i * 4]], rnd, 1.3, 0.14);
+      }
+      break;
+    }
+    case 'horse': {
+      // Legs first so the barrel closes over their tops, and a chestnut coat
+      // rather than near-black: Nelson was the horse he rode for eight years,
+      // not a silhouette.
+      for (const [lx, kn, ft] of [[-24, 4, 2], [20, 4, -2], [-32, -3, -8], [28, 6, 9]] as
+           [number, number, number][]) {
+        inkLine(x, [[cx + lx, b - 50], [cx + lx + kn, b - 24], [cx + lx + ft, b]], rnd, 2.8, 0.02);
+      }
+      const barrel: [number, number][] = [[cx - 30, b - 84], [cx + 4, b - 80], [cx + 30, b - 86],
+        [cx + 42, b - 66], [cx + 32, b - 46], [cx - 4, b - 42], [cx - 28, b - 48],
+        [cx - 40, b - 58], [cx - 42, b - 74]];
+      solid(x, barrel, '#7A5C3E', rnd, EARTH.BISTRE, 0.2);
+      inkLine(x, [...barrel, barrel[0]], rnd, 2.0, 0.08);
+      const neck: [number, number][] = [[cx - 26, b - 86], [cx - 62, b - 126], [cx - 52, b - 104],
+        [cx - 38, b - 70]];
+      solid(x, neck, '#7A5C3E', rnd);
+      inkLine(x, [...neck, neck[0]], rnd, 1.8, 0.08);
+      const head: [number, number][] = [[cx - 60, b - 128], [cx - 84, b - 118], [cx - 92, b - 106],
+        [cx - 82, b - 101], [cx - 54, b - 106]];
+      solid(x, head, '#6E5236', rnd, EARTH.BISTRE, 0.18);
+      inkLine(x, [...head, head[0]], rnd, 1.7, 0.06);
+      inkLine(x, [[cx - 62, b - 128], [cx - 58, b - 138]], rnd, 1.6, 0.04); // ear
+      inkLine(x, [[cx - 60, b - 126], [cx - 40, b - 96], [cx - 28, b - 84]], rnd, 1.7, 0.16); // mane
+      inkLine(x, [[cx + 40, b - 82], [cx + 54, b - 58], [cx + 48, b - 30]], rnd, 2.6, 0.06); // tail
+      break;
+    }
+  }
+  return c;
+}

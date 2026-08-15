@@ -15,8 +15,9 @@
 import * as THREE from 'three';
 import {
   characterCutout, characterFrames, cloudShadows, CLOUD_BANDS, insect, motes,
-  PLATE_SETS, paperTexture,
+  PLATE_SETS, paperTexture, prop, PROP_H,
 } from './art';
+import type { PropKind } from './art';
 import { MEANING, PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
@@ -150,6 +151,12 @@ const IDLE_SHIFTS = true;
  */
 const LAYER_DEPTH = [1.0, 0.94, 0.80, 0.62, 0.38, 0.02];
 
+/** A set piece standing on the ground plane. */
+export interface PropPlacement extends GroundPos {
+  kind: PropKind;
+  seed: number;
+}
+
 /** A figure on the ground plane, with the build that distinguishes them. */
 export interface Actor extends GroundPos {
   coat: string;
@@ -201,6 +208,13 @@ export class DioramaRenderer {
     beat: number; squeeze: number;
     t: number;
   }[] = [];
+  /**
+   * Set pieces. Placed exactly like the figures, which is the point: a kettle
+   * at the back of the scene takes its size and its position from the same
+   * curve the man walking toward it does, so nobody has to choose a number and
+   * nothing can drift out of agreement.
+   */
+  private props: { mesh: THREE.Mesh; pos: GroundPos; flicker: boolean; t: number }[] = [];
   private gait = 0;
   private bob = 0;
 
@@ -213,7 +227,12 @@ export class DioramaRenderer {
   private breath = 0;
   private breathZ = 0;
 
-  constructor(canvas: HTMLCanvasElement, plateSet: string, npcPositions: Actor[] = []) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    plateSet: string,
+    npcPositions: Actor[] = [],
+    props: PropPlacement[] = [],
+  ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.scene.background = new THREE.Color(PAPER.WARM);
@@ -223,7 +242,7 @@ export class DioramaRenderer {
     );
     this.camera.position.z = 20;
 
-    this.loadScene(plateSet, npcPositions);
+    this.loadScene(plateSet, npcPositions, props);
 
     this.target = new THREE.WebGLRenderTarget(1, 1, {
       minFilter: THREE.LinearFilter,
@@ -255,7 +274,7 @@ export class DioramaRenderer {
    * rather than orphaned — an eight-act game that leaks a plate set per scene
    * change would not survive a class period on a Chromebook.
    */
-  loadScene(plateSet: string, npcPositions: Actor[]): void {
+  loadScene(plateSet: string, npcPositions: Actor[], props: PropPlacement[] = []): void {
     const drop = (mesh: THREE.Mesh) => {
       this.scene.remove(mesh);
       mesh.geometry.dispose();
@@ -266,6 +285,8 @@ export class DioramaRenderer {
     for (const m of [this.clouds, this.shadowMesh, this.moteMesh]) if (m) drop(m);
     for (const b of this.bugs) drop(b.mesh);
     this.bugs = [];
+    for (const pr of this.props) drop(pr.mesh);
+    this.props = [];
     this.clouds = null;
     this.cloudTex = null;
     this.shadowMesh = null;
@@ -338,6 +359,7 @@ export class DioramaRenderer {
     this.scene.add(this.moteMesh);
 
     this.buildBugs(plateSet);
+    this.buildProps(props);
     this.buildActors(npcPositions);
   }
 
@@ -397,6 +419,22 @@ export class DioramaRenderer {
         t: i * 3.7,
       });
     });
+  }
+
+  private buildProps(props: PropPlacement[]): void {
+    for (const p of props) {
+      const canvas = prop(p.kind, p.seed);
+      // Height is given in man-heights, so the sprite is sized against a figure
+      // at the same depth rather than against the frame.
+      const h = FIGURE_H * PROP_H[p.kind];
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(h * (canvas.width / canvas.height), h),
+        new THREE.MeshBasicMaterial({ map: textureFrom(canvas), transparent: true, depthWrite: false }),
+      );
+      mesh.position.z = -1.3;
+      this.scene.add(mesh);
+      this.props.push({ mesh, pos: { x: p.x, z: p.z }, flicker: p.kind === 'fire', t: p.seed % 7 });
+    }
   }
 
   private buildActors(npcPositions: Actor[]): void {
@@ -536,6 +574,23 @@ export class DioramaRenderer {
         n.off += d * Math.min(1, dt * 9);
       }
       n.mesh.position.y -= n.off * n.mesh.scale.x;
+    }
+
+    // Set pieces stand still. The one exception is a fire, which is the only
+    // thing in the camp that would look wrong holding perfectly steady.
+    for (const pr of this.props) {
+      const { x, y, scale } = this.project(pr.pos);
+      pr.mesh.position.x = x;
+      pr.mesh.renderOrder = this.orderFor(pr.pos.z);
+      if (pr.flicker) {
+        pr.t += dt;
+        const f = 1 + Math.sin(pr.t * 7.3) * 0.05 + Math.sin(pr.t * 17.1) * 0.03;
+        pr.mesh.scale.set(scale * (2 - f), scale * f, 1);
+        pr.mesh.position.y = y + (FIGURE_H * PROP_H.fire * scale * f) / 2;
+      } else {
+        pr.mesh.scale.setScalar(scale);
+        pr.mesh.position.y = y + (pr.mesh.geometry as THREE.PlaneGeometry).parameters.height * scale / 2;
+      }
     }
 
     /*

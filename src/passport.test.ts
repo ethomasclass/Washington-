@@ -219,18 +219,47 @@ for (const scene of sceneList()) {
    * Figures only. Interactables are painted into the plates and have no cutout
    * to collide with.
    */
+  /*
+   * Two different requirements, so two different thresholds.
+   *
+   * A target the player has to walk up to and speak with must stand clear of
+   * every other figure, or one of them is unreachable. An extra is scenery: men
+   * in a camp stand close together and a crowd that keeps a polite two paces
+   * between everybody reads as a queue. So extras must not obscure a target and
+   * must not stack exactly on each other, and are otherwise free to overlap.
+   */
+  const gapBetween = (a: { x: number; z: number }, c: { x: number; z: number }) =>
+    Math.abs(frameX(a.x, a.z) - frameX(c.x, c.z)) - figureHalfW(a.z) - figureHalfW(c.z);
+  const targets = scene.npcs.map((n) => ({ id: n.id, x: n.x, z: n.z }));
+  const extras = (scene.extras ?? []).map((e, k) => ({ id: `extra${k}`, x: e.x, z: e.z }));
+
   let tight = { a: '', b: '', gap: 1 };
-  for (let i = 0; i < scene.npcs.length; i++) {
-    for (let j = i + 1; j < scene.npcs.length; j++) {
-      const a = scene.npcs[i];
-      const c = scene.npcs[j];
-      const gap = Math.abs(frameX(a.x, a.z) - frameX(c.x, c.z))
-        - figureHalfW(a.z) - figureHalfW(c.z);
-      if (gap < tight.gap) tight = { a: a.id, b: c.id, gap };
+  for (let i = 0; i < targets.length; i++) {
+    for (let j = i + 1; j < targets.length; j++) {
+      const gap = gapBetween(targets[i], targets[j]);
+      if (gap < tight.gap) tight = { a: targets[i].id, b: targets[j].id, gap };
     }
   }
-  check(`no two figures overlap on screen (tightest ${tight.gap.toFixed(3)} of the frame)`,
+  for (const e of extras) {
+    for (const t of targets) {
+      const gap = gapBetween(e, t);
+      if (gap < tight.gap) tight = { a: e.id, b: t.id, gap };
+    }
+  }
+  check(`no figure obscures a target (tightest ${tight.gap.toFixed(3)} of the frame)`,
     tight.gap >= 0.012, `${tight.a} / ${tight.b}`);
+
+  let stacked = { a: '', b: '', gap: 1 };
+  for (let i = 0; i < extras.length; i++) {
+    for (let j = i + 1; j < extras.length; j++) {
+      const gap = gapBetween(extras[i], extras[j]);
+      if (gap < stacked.gap) stacked = { a: extras[i].id, b: extras[j].id, gap };
+    }
+  }
+  if (extras.length > 1) {
+    check(`no two extras stack (tightest ${stacked.gap.toFixed(3)} of the frame)`,
+      stacked.gap >= 0.004, `${stacked.a} / ${stacked.b}`);
+  }
 
   const outside = pts.filter(
     (p) => p.x < BOUND.x0 || p.x > BOUND.x1 || p.z < BOUND.z0 || p.z > BOUND.z1,

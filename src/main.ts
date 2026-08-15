@@ -43,8 +43,8 @@ let scene: Scene = SCENES[state.scene] ?? SCENES[FIRST_SCENE];
 state.scene = scene.id;
 
 /** Everything the renderer needs to stand a figure up, from the scene data. */
-const actorsFor = (sc: Scene) =>
-  sc.npcs.map((n, i) => ({
+const actorsFor = (sc: Scene) => [
+  ...sc.npcs.map((n, i) => ({
     x: n.x,
     z: n.z,
     seed: n.lines[0]?.portraitSeed ?? 200 + i * 97,
@@ -52,9 +52,30 @@ const actorsFor = (sc: Scene) =>
     hat: n.look?.hat,
     build: n.look?.build,
     tall: n.look?.tall,
-  }));
+  })),
+  // Extras are drawn by the same path as the threads, so they take their size
+  // and position from depth for free and cannot drift out of scale.
+  ...(sc.extras ?? []),
+];
 
-const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene));
+/**
+ * Everything with something drawn under it.
+ *
+ * Interactables and tasks both carry an optional prop; anything that is a view
+ * rather than an object leaves it off. The seed is derived from the id so a
+ * given kettle looks the same every time the scene loads.
+ */
+const propsFor = (sc: Scene) =>
+  [...sc.interactables, ...sc.tasks]
+    .filter((o): o is typeof o & { prop: NonNullable<typeof o.prop> } => Boolean(o.prop))
+    .map((o) => ({
+      x: o.x,
+      z: o.z,
+      kind: o.prop,
+      seed: [...o.id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 9973, 7),
+    }));
+
+const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene), propsFor(scene));
 renderer.setSun(scene.sun[0], scene.sun[1]);
 const overlay = new Overlay(overlayRoot, scene.title, scene.subtitle);
 
@@ -441,7 +462,7 @@ function enterScene(id: string): void {
   pos.z = 0.34;
   held.left = held.right = held.up = held.down = false;
 
-  renderer.loadScene(scene.plates, actorsFor(scene));
+  renderer.loadScene(scene.plates, actorsFor(scene), propsFor(scene));
   renderer.setSun(scene.sun[0], scene.sun[1]);
   overlay.setPlate(scene.title, scene.subtitle);
   refreshCode();

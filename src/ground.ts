@@ -33,7 +33,32 @@ export const FIGURE_H = 2.6;
 export const FIGURE_ASPECT = 0.46;
 
 export const NEAR_SCALE = 1.0;
-export const FAR_SCALE = 0.46;
+
+/**
+ * How far up the frame the far edge of the walkable band sits, as a fraction of
+ * the way from the near edge to the horizon.
+ *
+ * This is the number that makes the perspective honest. On a real ground plane
+ * a figure's on-screen height is proportional to how far below the horizon his
+ * feet are — walk twice as far up the picture and you are half the size. The
+ * old curve set scale and vertical position from the same easing but through
+ * *different* functions: an affine scale with a 0.46 floor against a lift that
+ * ran all the way to the horizon. The ratio between them climbed fourfold
+ * across the walkable band, so a figure rose toward the horizon far faster than
+ * he shrank, and the eye reads that immediately as wrong without being able to
+ * name it.
+ *
+ * Now scale and lift are the same quantity, so the relationship is exact by
+ * construction. The cost is that the walkable band no longer runs to the
+ * horizon — it stops 30% of the way up, because that is what it takes to keep a
+ * figure at the back both correctly proportioned and big enough to read. Going
+ * lower shrinks him further and buys vertical room; going higher flattens the
+ * effect back toward the old mistake.
+ */
+export const FAR_LIFT = 0.30;
+
+/** Derived, not chosen: what NEAR_SCALE times the far lift comes to. */
+export const FAR_SCALE = NEAR_SCALE * FAR_LIFT;
 
 /**
  * How much the walkable width narrows toward the horizon.
@@ -75,14 +100,21 @@ export const ease = (z: number): number => Math.pow(1 - z, EASE);
 /** How much of the full frame width the walkable band spans at depth z. */
 export const spreadAt = (z: number): number => FAR_SPREAD + (1 - FAR_SPREAD) * ease(z);
 
-/** How large a figure is drawn at depth z. */
-export const scaleAt = (z: number): number => FAR_SCALE + (NEAR_SCALE - FAR_SCALE) * ease(z);
+/**
+ * How far the ground at depth z sits below the horizon, as a fraction of the
+ * near edge's distance below it. Scale and vertical placement both come off
+ * this one number, which is what makes them agree.
+ */
+export const liftAt = (z: number): number => FAR_LIFT + (1 - FAR_LIFT) * ease(z);
+
+/** How large a figure is drawn at depth z. Proportional to the lift, exactly. */
+export const scaleAt = (z: number): number => NEAR_SCALE * liftAt(z);
 
 /** View-space position of a ground point: x, and the y of whatever stands on it. */
 export function groundView(pos: GroundPos): { x: number; y: number; scale: number } {
-  const f = ease(pos.z);
+  const l = liftAt(pos.z);
   const x = (pos.x - 0.5) * VIEW_W * 0.94 * spreadAt(pos.z);
-  const y = horizonY() + (NEAR_Y - horizonY()) * f - SLOPE * (0.5 - pos.x) * f;
+  const y = horizonY() + (NEAR_Y - horizonY()) * l - SLOPE * (0.5 - pos.x) * l;
   return { x, y, scale: scaleAt(pos.z) };
 }
 
@@ -122,8 +154,9 @@ export const frameX = (x: number, z: number): number => (x - 0.5) * 0.94 * sprea
  */
 export function zAtPlateY(y: number, h: number): number {
   const v = (0.5 - y / h) * VIEW_H * OVERSCAN;
-  const f = (v - horizonY()) / (NEAR_Y - horizonY());
-  return 1 - Math.pow(Math.max(0, f), 1 / EASE);
+  const lift = (v - horizonY()) / (NEAR_Y - horizonY());
+  const f = (lift - FAR_LIFT) / (1 - FAR_LIFT);
+  return 1 - Math.pow(Math.min(1, Math.max(0, f)), 1 / EASE);
 }
 
 /**
@@ -146,5 +179,10 @@ export function xAtPlateX(px: number, z: number, w: number): number {
  * far away rather than stood in.
  */
 export function figureAtPlateY(y: number, h: number): number {
-  return scaleAt(zAtPlateY(y, h)) * FIGURE_H * (h / (VIEW_H * OVERSCAN));
+  // Straight from the geometry: height below the horizon, times a constant.
+  // Clamped at the top so scenery painted above the walkable band still gets a
+  // sane unit rather than zero.
+  const v = (0.5 - y / h) * VIEW_H * OVERSCAN;
+  const lift = Math.max(FAR_LIFT * 0.5, (v - horizonY()) / (NEAR_Y - horizonY()));
+  return NEAR_SCALE * lift * FIGURE_H * (h / (VIEW_H * OVERSCAN));
 }

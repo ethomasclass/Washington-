@@ -136,6 +136,7 @@ export const MV01: Scene = {
         'the stair. You will not be laying out any ground this year.',
       grants: 'task.a1.instruments',
       note: 'Put up the surveying instruments',
+      prop: 'chest',
     },
     {
       id: 'task.weather',
@@ -146,6 +147,7 @@ export const MV01: Scene = {
         'nearly every morning for sixteen years, and it takes you longer today than it should.',
       grants: 'task.a1.weather',
       note: 'Made the morning weather entry',
+      prop: 'table',
     },
     {
       id: 'task.letter',
@@ -157,6 +159,7 @@ export const MV01: Scene = {
         'seal it before you can read it over.',
       grants: 'task.a1.letter',
       note: 'Wrote to Burwell Bassett — the first time you have said it in writing',
+      prop: 'table',
     },
     {
       id: 'task.orders',
@@ -170,6 +173,7 @@ export const MV01: Scene = {
       note: 'Left standing orders for the estate',
       requires: 'heard.a1.lund',
       requiresNote: 'you have not spoken to Lund yet',
+      prop: 'papers',
     },
     {
       id: 'task.nelson',
@@ -181,6 +185,7 @@ export const MV01: Scene = {
         'you bent down.',
       grants: 'task.a1.nelson',
       note: 'Looked over Nelson — sound, and already seen to',
+      prop: 'horse',
     },
   ] as Task[],
 
@@ -205,6 +210,7 @@ export const MV01: Scene = {
         'regulars harried nineteen miles back to Charlestown by farmers who would not stand and ' +
         'fight in the open.',
       grants: 'doc.a1.boston_clipping',
+      prop: 'papers',
     },
     {
       id: 'ledger',
@@ -223,6 +229,7 @@ export const MV01: Scene = {
         grants: 'obs.a1.ledger_stops',
         note: 'The ledger stops the week the Boston news came — you decided earlier than you have admitted',
       },
+      prop: 'papers',
     },
     {
       id: 'commission',
@@ -233,6 +240,7 @@ export const MV01: Scene = {
         'Command of the Fairfax Independent Company. You did not ask for it either. Four counties ' +
         'have now named you to something, and none of them waited for an answer.',
       grants: 'doc.a1.commission',
+      prop: 'papers',
     },
     {
       id: 'uniform',
@@ -243,6 +251,7 @@ export const MV01: Scene = {
         'Blue faced with buff, cut to your own specification, hanging where it can be seen. You ' +
         'have not said why you had it made. Neither has anyone asked.',
       grants: 'obs.a1.uniform',
+      prop: 'uniform',
     },
     {
       id: 'surveyors_chest',
@@ -253,6 +262,7 @@ export const MV01: Scene = {
         'Chain, compass, and the Ohio field books from when you were seventeen. You know that ' +
         'country better than any man in Virginia. Ground is a thing you can read.',
       grants: 'obs.a1.surveying',
+      prop: 'chest',
     },
     {
       id: 'braddock',
@@ -263,6 +273,7 @@ export const MV01: Scene = {
         'Crimson silk, given to you as he was dying on the Monongahela road. Two horses shot ' +
         'under you that day, four balls through your coat, and nine hundred men lost in three hours.',
       grants: 'doc.a1.braddock',
+      prop: 'sash',
     },
     {
       id: 'lund_letter',
@@ -281,6 +292,7 @@ export const MV01: Scene = {
         grants: 'obs.a1.lund_pays',
         note: 'Lund said he could hold the estate — his own accounts say he is already paying for it',
       },
+      prop: 'papers',
     },
     {
       id: 'bowling_green',

@@ -107,6 +107,7 @@ export const CB01: Scene = {
         'where a man may and may not relieve himself.',
       grants: 'task.a2.orders',
       note: 'Issued the general orders — swearing, muskets, and the necessary',
+      prop: 'table',
     },
     {
       id: 't2.rounds',
@@ -118,6 +119,7 @@ export const CB01: Scene = {
         'them is a portrait of an army.',
       grants: 'task.a2.rounds',
       note: 'Walked the shelter lines',
+      prop: 'drum',
     },
     {
       id: 't2.return',
@@ -130,6 +132,7 @@ export const CB01: Scene = {
       note: 'Signed a weekly return you do not believe',
       requires: 'doc.a2.ration_return',
       requiresNote: 'you have not seen what the commissary issues',
+      prop: 'papers',
     },
     {
       id: 't2.powder',
@@ -143,6 +146,7 @@ export const CB01: Scene = {
       note: 'Worked out what nine rounds a man actually permits',
       requires: 'obs.a2.powder_horn',
       requiresNote: 'you have not yet seen a man who knows exactly what he carries',
+      prop: 'barrel',
     },
     {
       id: 't2.reed',
@@ -154,6 +158,7 @@ export const CB01: Scene = {
         'will outlive you.',
       grants: 'task.a2.reed',
       note: 'Wrote to Joseph Reed — plainly, and in your own hand',
+      prop: 'table',
     },
   ] as Task[],
 
@@ -166,6 +171,7 @@ export const CB01: Scene = {
         'What the commissary actually issued this week, counted in mouths fed. It is four ' +
         'thousand short of the strength the army returns claim. Neither paper is marked true.',
       grants: 'doc.a2.ration_return',
+      prop: 'papers',
     },
     {
       id: 'reed_letter',
@@ -183,6 +189,7 @@ export const CB01: Scene = {
         grants: 'obs.a2.greene_contradiction',
         note: 'Greene calls them the best material in America — your own letter calls them nasty',
       },
+      prop: 'papers',
     },
     {
       id: 'emerson',
@@ -193,6 +200,7 @@ export const CB01: Scene = {
         'the camp a curiosity. He means it kindly. It is still the most exact description of ' +
         'your army that anyone has written.',
       grants: 'doc.a2.emerson',
+      prop: 'papers',
     },
     {
       id: 'enlistment_paper',
@@ -203,6 +211,7 @@ export const CB01: Scene = {
         'every other paper in this camp. On the first of January you will have no army at all ' +
         'unless every one of them signs again.',
       grants: 'doc.a2.enlistment',
+      prop: 'papers',
     },
     {
       id: 'kettle',
@@ -211,6 +220,7 @@ export const CB01: Scene = {
       examine:
         'One kettle among eight men, and it belongs to whichever of them brought it from home. ' +
         'When his term is up it walks out of camp with him.',
+      prop: 'kettle',
     },
     {
       id: 'powder_horn',
@@ -220,6 +230,7 @@ export const CB01: Scene = {
         'Scrimshawed, and half full. A militia habit — a man carries his own powder and knows ' +
         'exactly what he has. The army cannot say the same.',
       grants: 'obs.a2.powder_horn',
+      prop: 'horn',
     },
     {
       id: 'musket',
@@ -228,6 +239,7 @@ export const CB01: Scene = {
       examine:
         'A fowling piece off a farm wall. It will kill a man at fifty yards and it will not hold ' +
         'a line against regulars who come on at the run with eighteen inches of steel.',
+      prop: 'musket',
     },
     {
       id: 'hunting_shirt',
@@ -236,6 +248,7 @@ export const CB01: Scene = {
       examine:
         'Fringed linen, the Virginia riflemen. They shoot better than anyone in this camp at ' +
         'three hundred yards and they will not dig, and both facts are about to be your problem.',
+      prop: 'shirt',
     },
     {
       id: 'necessary',
@@ -244,6 +257,7 @@ export const CB01: Scene = {
       examine:
         'A trench, sited badly, uphill of the water. Half the sickness in this camp comes out of ' +
         'that decision, and nobody who made it thought of it as a decision.',
+      prop: 'necessary',
     },
     {
       id: 'canteen',
@@ -252,6 +266,7 @@ export const CB01: Scene = {
       examine:
         'Two cheesebox lids and a strap. It leaks. The man who made it is proud of it and shows ' +
         'you how the seam is set.',
+      prop: 'canteen',
     },
     {
       id: 'greene_tents',
@@ -309,7 +324,37 @@ export const CB01: Scene = {
         'are aware of the distance every time you walk up it.',
       grants: 'obs.a2.headquarters',
     },
+    {
+      id: 'cook_fire',
+      label: 'a cook fire',
+      x: 0.255,
+      z: 0.52,
+      examine:
+        'Eight men to a kettle and no two of them from the same town. They are boiling salt beef ' +
+        'and arguing about whose turn it was to fetch the wood, which is the sound of an army ' +
+        'that is not one yet.',
+      grants: 'obs.a2.cook_fire',
+      prop: 'fire',
+    },
   ] as Interactable[],
+
+  /**
+   * The rest of the army.
+   *
+   * Sixteen thousand men were on the rolls and the scene had four people in it.
+   * These are not threads and not targets — they stand, they shift their
+   * weight, and they make the place look inhabited. Coats are all drab: no
+   * Continental blue anywhere but on Washington, which is the rule the whole
+   * palette is built around.
+   */
+  extras: [
+    { x: 0.060, z: 0.20, coat: '#7E7059', hat: 'round', seed: 911, build: 0.96, tall: 0.97 },
+    { x: 0.060, z: 0.38, coat: '#6E6350', hat: 'none', seed: 922, build: 1.04, tall: 1.01 },
+    { x: 0.220, z: 0.64, coat: '#8A7F66', hat: 'round', seed: 933, build: 0.92, tall: 0.95 },
+    { x: 0.860, z: 0.23, coat: '#6A6152', hat: 'tricorne', seed: 944, build: 1.0, tall: 0.99 },
+    { x: 0.920, z: 0.16, coat: '#7C7159', hat: 'none', seed: 955, build: 0.98, tall: 1.02 },
+    { x: 0.900, z: 0.53, coat: '#847A61', hat: 'round', seed: 966, build: 1.06, tall: 0.96 },
+  ],
 
   npcs: [
     {

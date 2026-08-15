@@ -267,6 +267,22 @@ for (const scene of sceneList()) {
    * reach, or — the bad one — enough locks on one decision that a player can
    * arrive at it with nothing to say.
    */
+  /*
+   * A warm-up is a rehearsal, not a decision. The moment one acquires a stat
+   * effect it stops being free and the student's first ever choice starts
+   * costing them something before they know what the panel is.
+   */
+  const stakes: string[] = [];
+  for (const n of scene.npcs) {
+    if (!n.warmup) continue;
+    for (const o of n.warmup.options) {
+      const moved = Object.entries(o.effects).filter(([, v]) => v);
+      if (moved.length) stakes.push(`${n.warmup.id}/${o.id}: ${moved.map(([k, v]) => `${k} ${v}`).join(', ')}`);
+      if (o.requires || o.voiceLock) stakes.push(`${n.warmup.id}/${o.id}: locked`);
+    }
+  }
+  check('warm-up choices cost nothing and lock nothing', stakes.length === 0, stakes.join('; '));
+
   const councilFaults: string[] = [];
   for (const n of scene.npcs) {
     const d = n.decision;
@@ -550,7 +566,7 @@ console.log('\nchrome · 02 §8.1');
 console.log('\nthe council');
 {
   const decisions: Decision[] = sceneList()
-    .flatMap((s) => s.npcs.map((n) => n.decision))
+    .flatMap((s) => s.npcs.flatMap((n) => [n.warmup, n.decision]))
     .filter((d): d is Decision => Boolean(d));
 
   // R4, exercised against every authored set at four corners of the stat space

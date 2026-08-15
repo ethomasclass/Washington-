@@ -233,6 +233,25 @@ export interface NpcThread {
   name: string;
   x: number;
   z: number;
+  /**
+   * A choice with nothing at stake, run before the thread's lines.
+   *
+   * R11 asks that at least 40% of choices be characterization-only — no stat
+   * movement, no branching — and the build had none at all: every choice a
+   * player had ever met was a real decision with consequences, including the
+   * first one they met.
+   *
+   * This is where the interface gets taught. 05 §1.1 requires Act 1 to
+   * "establish the four-channel reading grammar while the stakes are near
+   * zero, so the student learns the interface without a tutorial" — and the
+   * only honest way to do that is a decision panel that behaves exactly like
+   * every later one and costs nothing. The council argues, the emblems show
+   * who wants what, the expand text explains, the choice commits and cannot be
+   * taken back. Then it turns out not to have mattered, and the next one does.
+   *
+   * Every option here must have `effects: {}`. The linter enforces it.
+   */
+  warmup?: Decision;
   lines: DialogueLine[];
   decision?: Decision;
   /** Lines shown once the thread's decision is done. */

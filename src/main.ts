@@ -358,6 +358,27 @@ function runThread(n: NpcThread): void {
     speaking = null;
     busy = false;
   };
+
+  /*
+   * The warm-up runs first, before a word is spoken, so that the first decision
+   * panel a student ever sees is one where nothing can go wrong. By the time
+   * the real question arrives they have already used the interface once.
+   *
+   * It has to sit BELOW `step`, not above it: `step` is a const arrow function,
+   * so calling it from a callback declared earlier in the body is a temporal
+   * dead zone error. It threw on the very first playthrough after the result
+   * card, which is the one place a student would certainly have hit it.
+   */
+  if (n.warmup && !state.decisions.has(n.warmup.id)) {
+    speaking = null;
+    runDecision(n.warmup, () => {
+      busy = true;
+      speaking = n;
+      step();
+    });
+    return;
+  }
+
   step();
 }
 

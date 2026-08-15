@@ -585,6 +585,72 @@ export const MV01: Scene = {
       name: 'the messenger',
       x: 0.5,
       z: 0.34,
+
+      /*
+       * THE FIRST CHOICE IN THE GAME, AND IT DOES NOTHING.
+       *
+       * The player spawns on this spot, so this man is reliably the first thing
+       * anyone touches — which makes him the right place to teach the interface
+       * (05 §1.1) with the stakes at zero.
+       *
+       * Every option is `effects: {}`. The council argues, the emblems show who
+       * wants what, the choice commits and cannot be taken back, and then it
+       * turns out to have cost nothing. What it leaves behind is a student who
+       * has used the panel once before the panel matters, and a small true fact
+       * about the man: how he treats somebody who has ridden two days to reach
+       * him, before he knows what the letter says.
+       *
+       * It is recorded in `state.decisions` like any other choice, which is
+       * what the epilogue's persisted characterization slots are for (07 §1.6).
+       */
+      warmup: {
+        id: 'A1-D0',
+        prompt:
+          'He has ridden from Philadelphia and he is still holding his hat. The letter is in his ' +
+          'other hand and he has not offered it yet.',
+        speaker: 'Congress messenger',
+        ...MESSENGER,
+        voices: ['duty', 'vanity', 'restraint', 'temper'],
+        interjections: {
+          duty: 'He is not a servant. He carries the correspondence of the Congress and he is owed the civility of the door.',
+          vanity: 'He will describe this house, and you in it, to men who have never seen either.',
+          restraint: 'Whatever is in that letter, it is already true. Another minute will not alter it.',
+          temper: 'Two days on the road and they could not spare a man who knows how to hand over a letter.',
+        },
+        options: [
+          {
+            id: 'ask_after_ride',
+            label: 'Ask after his ride',
+            full: 'Ask what the roads were like, and have something brought out to him, before anything else.',
+            favoured: ['duty'],
+            effects: {},
+            result:
+              'He tells you about the ferry at the Occoquan and a horse that went lame at Dumfries. ' +
+              'It takes four minutes. The letter waits, and is not improved by waiting.',
+          },
+          {
+            id: 'take_it_standing',
+            label: 'Take it and read it standing',
+            full: 'Put out your hand for the letter and read it where you are, in the yard, with him watching.',
+            favoured: ['temper', 'restraint'],
+            effects: {},
+            result:
+              'You read it standing in the grass with your hat still on. He watches your face and ' +
+              'learns nothing from it, which is a thing people have remarked on since you were twenty.',
+          },
+          {
+            id: 'finish_the_row',
+            label: 'Have him wait',
+            full: 'Finish what you were doing. He has come a long way; another quarter hour will not hurt him.',
+            favoured: ['vanity'],
+            effects: {},
+            result:
+              'You finish the row. It is not rudeness and it is not quite not-rudeness, and by the ' +
+              'time you take the letter you have decided something, though not what you think.',
+          },
+        ],
+      },
+
       lines: [
         {
           speaker: 'Congress messenger',

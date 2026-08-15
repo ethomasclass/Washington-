@@ -55,6 +55,7 @@ const actorsFor = (sc: Scene) =>
   }));
 
 const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene));
+renderer.setSun(scene.sun[0], scene.sun[1]);
 const overlay = new Overlay(overlayRoot, scene.title, scene.subtitle);
 
 /** Interactables looked at this session, for the journal. */
@@ -441,6 +442,7 @@ function enterScene(id: string): void {
   held.left = held.right = held.up = held.down = false;
 
   renderer.loadScene(scene.plates, actorsFor(scene));
+  renderer.setSun(scene.sun[0], scene.sun[1]);
   overlay.setPlate(scene.title, scene.subtitle);
   refreshCode();
   refreshIntent();

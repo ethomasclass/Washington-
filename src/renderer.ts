@@ -13,7 +13,10 @@
  */
 
 import * as THREE from 'three';
-import { characterCutout, characterFrames, CLOUD_BANDS, PLATE_SETS, paperTexture } from './art';
+import {
+  characterCutout, characterFrames, cloudShadows, CLOUD_BANDS, motes,
+  PLATE_SETS, paperTexture,
+} from './art';
 import { MEANING, PAPER } from './palette';
 
 /** Parallax coefficients, L0..L5. */
@@ -29,6 +32,8 @@ const MOOD_FRAG = /* glsl */ `
   uniform sampler2D uPaper;
   uniform float uMood;      // 0 = sodden and grey, 1 = warm and confident
   uniform float uVignette;
+  uniform vec2  uSun;       // where the light comes from, in uv
+  uniform float uWarm;      // strength of the sunlight wash
   varying vec2 vUv;
 
   // Group D meaning colours are exempt from the mood transform. We approximate
@@ -37,8 +42,7 @@ const MOOD_FRAG = /* glsl */ `
   float meaningMask(vec3 c) {
     float mx = max(c.r, max(c.g, c.b));
     float mn = min(c.r, min(c.g, c.b));
-    float sat = mx - mn;
-    return smoothstep(0.18, 0.34, sat);
+    return smoothstep(0.18, 0.34, mx - mn);
   }
 
   void main() {
@@ -48,27 +52,51 @@ const MOOD_FRAG = /* glsl */ `
     // The line carries structure and never wavers. Dark pixels are line.
     float isInk = 1.0 - smoothstep(0.16, 0.42, lum);
 
-    // The wash carries mood: it drains, cools and thins as morale falls.
-    // The curve is deliberately flat through the middle band — a mid run should
-    // look like the world, not like a half-erased version of it. The signal
-    // lives at the ends.
-    float m = smoothstep(0.10, 0.90, uMood);
+    /*
+     * Mood.
+     *
+     * The wash drains, cools and thins as morale falls — but the middle band
+     * has to look like the world, not like a half-erased version of it. The
+     * old curve took a quarter of the colour out at mid and the whole game
+     * read as overcast regardless of how the run was going. Signal lives at
+     * the ends: below about a third, and above about two thirds.
+     */
+    float m = smoothstep(0.06, 0.94, uMood);
+    float drainAmt = smoothstep(0.55, 0.0, uMood);   // only really bites when low
     vec3 grey = vec3(lum);
     vec3 cool = vec3(lum * 0.94, lum * 0.97, lum * 1.06);
     vec3 drained = mix(cool, grey, 0.45);
-    vec3 washed = mix(drained, src, 0.55 + 0.45 * m);
+    vec3 washed = mix(src, drained, drainAmt * 0.42);
+    washed = mix(washed, vec3(0.937, 0.906, 0.835), drainAmt * 0.16);
 
-    // Low mood also thins the wash toward bare paper.
-    washed = mix(washed, vec3(0.937, 0.906, 0.835), (1.0 - m) * 0.20);
+    // A confident run gains a little warmth and depth rather than only losing
+    // less — the top of the range should be worth reaching.
+    float lift = smoothstep(0.62, 1.0, uMood);
+    washed = mix(washed, washed * vec3(1.05, 1.01, 0.95), lift);
+    washed = mix(washed, clamp((washed - 0.5) * 1.06 + 0.5, 0.0, 1.0), lift * 0.6);
 
     vec3 outc = mix(washed, src, max(isInk, meaningMask(src)));
 
+    /*
+     * Sunlight.
+     *
+     * Mid-morning, per the canonical view, throwing long shadows to the right.
+     * One broad warm gradient falling from the light and a matching cool in the
+     * lee of it. This is the cheapest thing that separates a lit place from a
+     * flat one, and its absence was most of why the set read as overcast.
+     */
+    float d = distance(vUv * vec2(1.0, 0.62), uSun * vec2(1.0, 0.62));
+    float sun = 1.0 - smoothstep(0.10, 1.05, d);
+    outc *= mix(vec3(1.0), vec3(1.075, 1.035, 0.965), sun * uWarm);
+    outc *= mix(vec3(1.0), vec3(0.965, 0.985, 1.03), (1.0 - sun) * uWarm * 0.8);
+
     // Paper grain as one screen-space overlay, never baked per layer.
     vec3 grain = texture2D(uPaper, vUv * vec2(3.0, 1.7)).rgb;
-    outc *= mix(0.94, 1.03, grain.r);
+    outc *= mix(0.96, 1.02, grain.r);
 
-    float d = distance(vUv, vec2(0.5));
-    outc *= 1.0 - uVignette * smoothstep(0.34, 0.86, d) * (1.0 - 0.35 * uMood);
+    // A light hand on the vignette. It was doing the work of a storm cloud.
+    float v = distance(vUv, vec2(0.5, 0.52));
+    outc *= 1.0 - uVignette * smoothstep(0.42, 0.95, v);
 
     gl_FragColor = vec4(outc, 1.0);
   }
@@ -168,6 +196,10 @@ export class DioramaRenderer {
   /** Cloud strip, scrolled rather than animated. */
   private clouds: THREE.Mesh | null = null;
   private cloudTex: THREE.CanvasTexture | null = null;
+  private shadowMesh: THREE.Mesh | null = null;
+  private shadowTex: THREE.CanvasTexture | null = null;
+  private moteMesh: THREE.Mesh | null = null;
+  private moteTex: THREE.CanvasTexture | null = null;
   private gait = 0;
   private bob = 0;
 
@@ -202,7 +234,9 @@ export class DioramaRenderer {
         uScene: { value: this.target.texture },
         uPaper: { value: textureFrom(paperTexture()) },
         uMood: { value: 0.5 },
-        uVignette: { value: 0.5 },
+        uVignette: { value: 0.22 },
+        uSun: { value: new THREE.Vector2(0.26, 0.16) },
+        uWarm: { value: 0.9 },
       },
       vertexShader: MOOD_VERT,
       fragmentShader: MOOD_FRAG,
@@ -228,11 +262,13 @@ export class DioramaRenderer {
       m.map?.dispose();
       m.dispose();
     };
-    if (this.clouds) {
-      drop(this.clouds);
-      this.clouds = null;
-      this.cloudTex = null;
-    }
+    for (const m of [this.clouds, this.shadowMesh, this.moteMesh]) if (m) drop(m);
+    this.clouds = null;
+    this.cloudTex = null;
+    this.shadowMesh = null;
+    this.shadowTex = null;
+    this.moteMesh = null;
+    this.moteTex = null;
     for (const l of this.layers) drop(l.mesh);
     for (const n of this.npcs) drop(n.mesh);
     if (this.player) drop(this.player);
@@ -272,6 +308,31 @@ export class DioramaRenderer {
     this.clouds.position.z = -0.25;
     this.clouds.renderOrder = 0.5;
     this.scene.add(this.clouds);
+
+    // Cloud shadows on the ground, between the ground plate and the far
+    // midground, drifting a little slower than the clouds that cast them.
+    this.shadowTex = textureFrom(cloudShadows());
+    this.shadowTex.wrapS = THREE.RepeatWrapping;
+    this.shadowMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
+      new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false }),
+    );
+    this.shadowMesh.position.z = -1.1;
+    this.shadowMesh.renderOrder = 2.5;
+    this.scene.add(this.shadowMesh);
+
+    // Near-field motes, drifting diagonally in front of everything.
+    this.moteTex = textureFrom(motes());
+    this.moteTex.wrapS = THREE.RepeatWrapping;
+    this.moteTex.wrapT = THREE.RepeatWrapping;
+    this.moteTex.repeat.set(3.2, 1.8);
+    this.moteMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
+      new THREE.MeshBasicMaterial({ map: this.moteTex, transparent: true, depthWrite: false, opacity: 0.5 }),
+    );
+    this.moteMesh.position.z = 1.5;
+    this.moteMesh.renderOrder = 6;
+    this.scene.add(this.moteMesh);
 
     this.buildActors(npcPositions);
   }
@@ -379,6 +440,11 @@ export class DioramaRenderer {
     // frame allowed to, because a sky that holds perfectly still reads as a
     // painted backdrop rather than as air.
     if (this.cloudTex) this.cloudTex.offset.x -= dt * 0.0022;
+    if (this.shadowTex) this.shadowTex.offset.x -= dt * 0.0016;
+    if (this.moteTex) {
+      this.moteTex.offset.x -= dt * 0.0035;
+      this.moteTex.offset.y -= dt * 0.0012;
+    }
     if (this.clouds) this.clouds.position.x = -this.breath * 0.16 * ((PARALLAX_MAX_PX / 1600) * VIEW_W);
 
     this.place(this.player, pos);
@@ -431,7 +497,15 @@ export class DioramaRenderer {
 
   setMood(mood: number): void {
     this.postMat.uniforms.uMood.value = mood;
-    this.postMat.uniforms.uVignette.value = 0.62 - 0.28 * mood;
+    // Kept shallow throughout. A heavy vignette reads as weather, and weather
+    // is the wash's job, not the lens's.
+    this.postMat.uniforms.uVignette.value = 0.30 - 0.13 * mood;
+    this.postMat.uniforms.uWarm.value = 0.55 + 0.55 * mood;
+  }
+
+  /** Where the light comes from, in uv. Set per scene. */
+  setSun(x: number, y: number): void {
+    this.postMat.uniforms.uSun.value.set(x, y);
   }
 
   private resize(): void {

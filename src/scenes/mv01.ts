@@ -39,6 +39,8 @@ export const MV01: Scene = {
    */
   purpose: 'Decide what kind of man goes to Philadelphia.',
   plates: 'vernon',
+  // Mid-morning, long shadows to the right, per the canonical view.
+  sun: [0.24, 0.14],
   exitTo: 'CB-01',
   exitPrompt: 'Ride for Philadelphia?',
 

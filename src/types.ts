@@ -198,4 +198,6 @@ export interface Scene {
   npcs: NpcThread[];
   /** Which placeholder plate set the renderer should build. */
   plates: 'vernon' | 'camp';
+  /** Where the light comes from, in uv. Flat overcast sits high and central. */
+  sun: [number, number];
 }

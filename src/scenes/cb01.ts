@@ -33,6 +33,8 @@ export const CB01: Scene = {
   title: 'Cambridge — the camp street',
   subtitle: 'July 1775',
   plates: 'camp',
+  // Flat overcast, no directional key — the act's stated tone.
+  sun: [0.5, 0.05],
   purpose: 'Turn a mob into an army.',
 
   /**

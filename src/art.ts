@@ -260,6 +260,15 @@ export function cloudBand(seed = 91, tint: string = EARTH.SHADOW_SLATE): HTMLCan
                  [lx + lr * 0.8, cy + ch * 0.45], [lx - lr * 0.5, cy + ch * 0.5]],
           tint, alpha, rnd, 3);
       }
+      // A few birds, high and far off. Two strokes each is enough at this size.
+      if (i % 5 === 0) {
+        for (let bq = 0; bq < 3; bq++) {
+          const bx2 = cx + wrap + (rnd() - 0.5) * cw;
+          const by2 = cy - 40 - rnd() * 50;
+          const bs = 3 + rnd() * 4;
+          inkLine(x, [[bx2 - bs, by2], [bx2, by2 - bs * 0.55], [bx2 + bs, by2]], rnd, 0.9, 0.0);
+        }
+      }
       // A softer underside, so it has a base rather than a bottom edge.
       wash(x, [[cx + wrap - cw * 0.5, cy + ch * 0.3], [cx + wrap + cw * 0.5, cy + ch * 0.2],
                [cx + wrap + cw * 0.42, cy + ch * 0.7], [cx + wrap - cw * 0.44, cy + ch * 0.8]],
@@ -1217,6 +1226,64 @@ export function campForeground(): HTMLCanvasElement {
  * a hole between them. A sixth plane buys a second band a figure can walk
  * between, which is the difference between a set and a backdrop.
  */
+/**
+ * Cloud shadows: the same weather, seen on the ground.
+ *
+ * Soft dark pools drifting across the lawn a little slower than the clouds
+ * above them. This is the effect that most makes a static painted set feel
+ * like a place with air over it, and it costs one scrolling texture.
+ */
+export function cloudShadows(seed = 131): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(seed);
+  const hy = H * HORIZON;
+  for (let i = 0; i < 9; i++) {
+    const cx = rnd() * W;
+    const cy = hy + 40 + rnd() * (H - hy - 40);
+    const cw = 260 + rnd() * 420;
+    const ch = 60 + rnd() * 130;
+    for (const wrap of [-W, 0, W]) {
+      for (let k = 0; k < 5; k++) {
+        const ox = cx + wrap + (rnd() - 0.5) * cw * 0.5;
+        const oy = cy + (rnd() - 0.5) * ch * 0.5;
+        const rw = cw * (0.3 + rnd() * 0.35);
+        const rh = ch * (0.4 + rnd() * 0.4);
+        wash(x, [[ox - rw, oy], [ox - rw * 0.4, oy - rh], [ox + rw * 0.5, oy - rh * 0.85],
+                 [ox + rw, oy + rh * 0.2], [ox + rw * 0.2, oy + rh], [ox - rw * 0.6, oy + rh * 0.8]],
+          EARTH.SHADOW_SLATE, 0.032, rnd, 3);
+      }
+    }
+  }
+  return c;
+}
+
+/**
+ * Near-field motes — seed, dust, insects in a shaft of light.
+ *
+ * Tileable in both axes so it can drift diagonally forever. Kept faint enough
+ * to be felt rather than counted.
+ */
+export function motes(seed = 149): HTMLCanvasElement {
+  const { c, x } = surface(512, 512);
+  const rnd = mulberry(seed);
+  x.fillStyle = PAPER.BRIGHT;
+  for (let i = 0; i < 90; i++) {
+    const px = rnd() * 512;
+    const py = rnd() * 512;
+    const r = 0.7 + rnd() * 1.9;
+    for (const wx of [-512, 0, 512]) {
+      for (const wy of [-512, 0, 512]) {
+        x.globalAlpha = 0.10 + rnd() * 0.22;
+        x.beginPath();
+        x.arc(px + wx, py + wy, r, 0, 7);
+        x.fill();
+      }
+    }
+  }
+  x.globalAlpha = 1;
+  return c;
+}
+
 /** Cloud strips, one per set — the camp's sky is colder and heavier. */
 export const CLOUD_BANDS: Record<string, () => HTMLCanvasElement> = {
   vernon: () => cloudBand(91, EARTH.SHADOW_SLATE),

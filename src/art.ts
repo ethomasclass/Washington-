@@ -122,6 +122,58 @@ const W = 1600;
 const H = 900;
 const HORIZON = 0.34; // locked project-wide
 
+/**
+ * Atmospheric perspective.
+ *
+ * Distance does not only shrink things, it drains them: far planes lose
+ * contrast and drift toward the colour of the air between. Baking it per layer
+ * is what stops a stack of equally-crisp planes reading as flat cut paper, and
+ * it is the cheapest depth cue there is.
+ */
+function haze(c: HTMLCanvasElement, amount: number, tint: string = PAPER.BRIGHT): HTMLCanvasElement {
+  if (amount <= 0) return c;
+  const x = c.getContext('2d')!;
+  x.save();
+  // Only veil what is already drawn, so transparent regions stay transparent.
+  x.globalCompositeOperation = 'source-atop';
+  x.globalAlpha = amount;
+  x.fillStyle = tint;
+  x.fillRect(0, 0, c.width, c.height);
+  x.restore();
+  return c;
+}
+
+/** A scatter of grass tufts, stones and ruts over a band of ground. */
+function groundLitter(
+  x: Ctx,
+  rnd: () => number,
+  y0: number,
+  y1: number,
+  n: number,
+  scale = 1,
+): void {
+  for (let i = 0; i < n; i++) {
+    const t = rnd();
+    const y = y0 + (y1 - y0) * t * t;
+    const px = rnd() * W;
+    const s = (0.4 + t * 1.6) * scale;
+    const kind = rnd();
+    if (kind < 0.45) {
+      for (let k = 0; k < 3; k++) {
+        inkLine(x, [[px + k * 2 * s, y], [px + (k - 1) * 3 * s, y - (6 + rnd() * 8) * s]],
+          rnd, 0.7 * s, 0.2);
+      }
+    } else if (kind < 0.8) {
+      const r = (3 + rnd() * 6) * s;
+      wash(x, [[px - r, y], [px - r * 0.4, y - r * 0.8], [px + r * 0.6, y - r * 0.7],
+               [px + r, y + r * 0.2]], EARTH.WET_STONE, 0.3, rnd, 3);
+    } else {
+      inkLine(x, [[px, y], [px + (14 + rnd() * 40) * s, y + (rnd() - 0.5) * 5 * s]],
+        rnd, 0.6 * s, 0.3);
+    }
+  }
+}
+
 /** L0 — the backdrop. Sky only. Barely moves. */
 export function layerSky(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
@@ -297,23 +349,38 @@ export function layerMidground(): HTMLCanvasElement {
       tips.push([sx2, sy2]);
     }
 
-    // Leaf: many small dabs clustered on the tips, thinning at the edges.
-    for (const [ex, ey] of tips) {
-      const n = 9 + Math.floor(rnd() * 5);
-      for (let k = 0; k < n; k++) {
-        const r = spread * (0.10 + rnd() * 0.14);
-        const ox = ex + (rnd() - 0.5) * spread * 0.62;
-        const oy = ey + (rnd() - 0.5) * spread * 0.42;
-        wash(x, [[ox - r, oy], [ox - r * 0.3, oy - r * 0.9], [ox + r * 0.6, oy - r * 0.75],
-                 [ox + r, oy + r * 0.15], [ox + r * 0.2, oy + r * 0.8], [ox - r * 0.6, oy + r * 0.6]],
-          EARTH.TERRE_VERTE, 0.13, rnd, 3);
+    // Leaf: many small dabs clustered on the tips, thinning at the edges. Two
+    // passes — a broad soft mass, then a denser core where the boughs meet, so
+    // the crown has weight instead of reading as a wire frame with speckles.
+    for (const pass of [0, 1]) {
+      const alpha = pass ? 0.16 : 0.11;
+      const reach = pass ? 0.42 : 0.85;
+      for (const [ex, ey] of tips) {
+        const n = pass ? 10 : 18;
+        for (let k = 0; k < n; k++) {
+          const r = spread * (0.12 + rnd() * (pass ? 0.16 : 0.22));
+          const ox = ex + (rnd() - 0.5) * spread * reach;
+          const oy = ey + (rnd() - 0.5) * spread * reach * 0.68;
+          wash(x, [[ox - r, oy], [ox - r * 0.3, oy - r * 0.9], [ox + r * 0.6, oy - r * 0.75],
+                   [ox + r, oy + r * 0.15], [ox + r * 0.2, oy + r * 0.8], [ox - r * 0.6, oy + r * 0.6]],
+            EARTH.TERRE_VERTE, alpha, rnd, 3);
+        }
       }
+    }
+    // A scatter of leaf edges caught in ink, so the mass has a drawn boundary.
+    const cyc = forkY - th * 0.5;
+    for (let k = 0; k < 26; k++) {
+      const ang = rnd() * Math.PI * 2;
+      const rr = spread * (0.55 + rnd() * 0.5);
+      const px2 = tx + Math.cos(ang) * rr;
+      const py2 = cyc + Math.sin(ang) * rr * 0.66;
+      inkLine(x, [[px2, py2], [px2 + (rnd() - 0.5) * 14, py2 + (rnd() - 0.5) * 10]], rnd, 0.9, 0.25);
     }
 
     // A darker core so the crown has weight where the boughs converge.
-    wash(x, [[tx - spread * 0.5, forkY - th * 0.18], [tx + spread * 0.45, forkY - th * 0.24],
-             [tx + spread * 0.3, forkY - th * 0.02], [tx - spread * 0.36, forkY]],
-      EARTH.TERRE_VERTE, 0.14, rnd, 4);
+    wash(x, [[tx - spread * 0.62, forkY - th * 0.20], [tx + spread * 0.56, forkY - th * 0.28],
+             [tx + spread * 0.40, forkY + th * 0.02], [tx - spread * 0.46, forkY + th * 0.04]],
+      EARTH.TERRE_VERTE, 0.20, rnd, 4);
 
     shadow(tx, base, spread * 0.55);
   };
@@ -370,7 +437,7 @@ export function layerMidground(): HTMLCanvasElement {
     shadow(cx, base, w * 0.6);
   };
 
-  const base = hy + 196; // the midground stands at roughly z = 0.44
+  const base = hy + 196; // the near midground stands at roughly z = 0.40
 
   tree(W * 0.10, base + 34, 250, 168);
   hedge(W * 0.185, W * 0.335, base + 12, 54);
@@ -378,11 +445,81 @@ export function layerMidground(): HTMLCanvasElement {
   cart(W * 0.695, base + 20, 130);
   tree(W * 0.885, base + 40, 268, 182);
 
-  // A few paling posts, to break the middle without hiding it.
-  for (const px of [W * 0.385, W * 0.415, W * 0.585, W * 0.615]) {
+  // A well, and a barrow tipped against it.
+  const wx = W * 0.585;
+  wash(x, [[wx - 34, base + 8], [wx + 34, base + 4], [wx + 30, base - 40], [wx - 30, base - 44]],
+    EARTH.WET_STONE, 0.42, rnd, 4);
+  inkLine(x, [[wx - 30, base - 44], [wx + 30, base - 40], [wx + 34, base + 8]], rnd, 1.8, 0.1);
+  inkLine(x, [[wx - 26, base - 46], [wx - 20, base - 96], [wx + 22, base - 96], [wx + 28, base - 42]],
+    rnd, 1.6, 0.12);
+  inkLine(x, [[wx - 20, base - 96], [wx + 22, base - 96]], rnd, 2.0, 0.05);
+  inkLine(x, [[wx + 2, base - 94], [wx + 2, base - 58]], rnd, 1.0, 0.25);
+
+  // Paling posts, to break the middle without hiding it.
+  for (const px of [W * 0.385, W * 0.415, W * 0.66, W * 0.64]) {
     inkLine(x, [[px, base + 6], [px + (rnd() - 0.5) * 4, base - 34]], rnd, 2.2, 0.04);
   }
+  groundLitter(x, rnd, base - 20, base + 90, 90, 0.9);
   return c;
+}
+
+/**
+ * L3 for the Vernon set — the far midground.
+ *
+ * A second occlusion band between the house and the near midground. Without it
+ * everything mid-scene sits at one depth and the ground reads as two planes
+ * with a gap; with it the lawn has a middle.
+ */
+export function layerFarMidground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(59);
+  const hy = H * HORIZON;
+  const base = hy + 96;
+
+  // Paddock fence, in runs rather than one rule across the plate — an unbroken
+  // line at this distance reads as a drawn border, not as a fence.
+  const run = (x0: number, x1: number) => {
+    const n = Math.max(3, Math.round(((x1 - x0) / W) * 22));
+    const rail: [number, number][] = [];
+    for (let i = 0; i <= n; i++) {
+      const px = x0 + ((x1 - x0) * i) / n;
+      rail.push([px, base - 20 + Math.sin(i * 0.7) * 3 + rnd() * 2]);
+    }
+    inkLine(x, rail, rnd, 1.4, 0.2);
+    inkLine(x, rail.map(([px, py]) => [px, py + 15] as [number, number]), rnd, 1.3, 0.26);
+    for (let i = 0; i <= n; i += 2) {
+      const px = x0 + ((x1 - x0) * i) / n + rnd() * 5;
+      inkLine(x, [[px, base + 14], [px + (rnd() - 0.5) * 3, base - 32]], rnd, 1.7, 0.08);
+    }
+  };
+  run(0, W * 0.235);
+  run(W * 0.33, W * 0.60);   // gate gap before this run
+  run(W * 0.665, W);
+
+  // Two small outbuildings, low and pale with distance.
+  const shed = (sx: number, sw: number, sh: number) => {
+    wash(x, [[sx, base - sh], [sx + sw, base - sh], [sx + sw, base], [sx, base]],
+      PAPER.SMOKED, 0.5, rnd, 4);
+    inkLine(x, [[sx, base - sh], [sx + sw, base - sh], [sx + sw, base], [sx, base], [sx, base - sh]],
+      rnd, 1.4, 0.1);
+    wash(x, [[sx - 7, base - sh], [sx + sw / 2, base - sh - 20], [sx + sw + 7, base - sh]],
+      EARTH.RAW_UMBER, 0.4, rnd, 3);
+  };
+  shed(W * 0.155, 92, 54);
+  shed(W * 0.80, 78, 46);
+
+  // A horse in the paddock, small enough to be a shape.
+  const nx = W * 0.30;
+  wash(x, [[nx - 34, base - 30], [nx + 30, base - 34], [nx + 32, base - 12], [nx - 32, base - 8]],
+    EARTH.BISTRE, 0.5, rnd, 4);
+  wash(x, [[nx + 26, base - 34], [nx + 44, base - 52], [nx + 52, base - 44], [nx + 34, base - 24]],
+    EARTH.BISTRE, 0.5, rnd, 3);
+  for (const lx of [nx - 24, nx - 10, nx + 10, nx + 22]) {
+    inkLine(x, [[lx, base - 12], [lx + (rnd() - 0.5) * 5, base + 6]], rnd, 1.6, 0.1);
+  }
+
+  groundLitter(x, rnd, base - 6, base + 60, 40, 0.55);
+  return haze(c, 0.20);
 }
 
 /**
@@ -414,70 +551,178 @@ export function layerForeground(): HTMLCanvasElement {
 }
 
 /**
- * A character cutout: ink silhouette over a wash fill, keyed on transparency.
+ * A character cutout.
  *
- * `phase` walks the legs around a cycle, 0..1. Pass -1 for a standing pose.
- * The real pipeline segments a generated character sheet into a paper-puppet
- * rig and rotates the limbs; this bakes a handful of frames instead, which is
- * the same idea at placeholder fidelity.
+ * Rebuilt around the period silhouette rather than a coat-shaped blob, because
+ * the silhouette is the whole read at this size: a tricorne, a queue, a coat
+ * with turned-back skirts over a waistcoat, breeches to the knee, and stockings.
+ * Get those five shapes right and a figure eighty pixels tall is unmistakably
+ * of the 1770s; get them wrong and no amount of detail rescues it.
+ *
+ * `phase` walks the legs and arms around a cycle, 0..1. Pass -1 to stand.
  */
 export function characterCutout(
   coat: string,
   seed: number,
   height = 320,
   phase = -1,
+  opts: { hat?: 'tricorne' | 'round' | 'none'; build?: number } = {},
 ): HTMLCanvasElement {
-  const w = Math.round(height * 0.42);
-  const { c, x } = surface(w, height);
+  const H1 = height;
+  const w = Math.round(H1 * 0.46);
+  const { c, x } = surface(w, H1);
   const rnd = mulberry(seed);
   const cx = w / 2;
+  const build = opts.build ?? 1;
+  const hat = opts.hat ?? 'tricorne';
 
   const walking = phase >= 0;
   const a = phase * Math.PI * 2;
-  const swing = walking ? Math.sin(a) * w * 0.38 : 0;
-  // The trailing leg lifts as it comes through; the leading one is planted.
-  const liftL = walking ? Math.max(0, -Math.sin(a)) * height * 0.05 : 0;
-  const liftR = walking ? Math.max(0, Math.sin(a)) * height * 0.05 : 0;
-  // Shoulders counter-rotate against the hips.
-  const lean = walking ? -Math.sin(a) * w * 0.06 : 0;
+  const swing = walking ? Math.sin(a) * w * 0.30 : 0;
+  const liftL = walking ? Math.max(0, -Math.sin(a)) * H1 * 0.045 : 0;
+  const liftR = walking ? Math.max(0, Math.sin(a)) * H1 * 0.045 : 0;
+  const lean = walking ? -Math.sin(a) * w * 0.045 : 0;
 
-  // Cast shadow, so the figure sits on the ground rather than floating on it.
-  wash(x, [[cx - w * 0.34, height * 0.985], [cx + w * 0.3, height * 0.975],
-           [cx + w * 0.36, height], [cx - w * 0.4, height]], INK.SETTLED, 0.3, rnd, 4);
+  // Vertical landmarks, as fractions of height.
+  const yHat = 0.052;
+  const yBrim = 0.108;
+  const yChin = 0.205;
+  const ySh = 0.238;
+  const yWaist = 0.470;
+  const ySkirt = 0.600;
+  const yHem = 0.715;
+  const yKnee = 0.760;
+  const yAnkle = 0.955;
 
+  const shW = w * 0.30 * build;
+  const hipW = w * 0.26 * build;
+
+  // Cast shadow first, so the figure sits on the ground.
+  wash(x, [[cx - w * 0.32, H1 * 0.986], [cx + w * 0.28, H1 * 0.978],
+           [cx + w * 0.34, H1], [cx - w * 0.38, H1]], INK.SETTLED, 0.28, rnd, 4);
+
+  /** One leg: stocking, breeches above the knee, and a buckled shoe. */
   const leg = (hipX: number, footDx: number, lift: number) => {
-    const hy = height * 0.70;
-    const fy = height - lift;
+    const hy = H1 * ySkirt;
+    const ky = H1 * yKnee - lift * 0.5;
+    const fy = H1 * yAnkle - lift;
+    const kx = hipX + footDx * 0.55;
+    const fx = hipX + footDx;
+    // Breeches to the knee.
     wash(x, [[hipX - w * 0.075, hy], [hipX + w * 0.075, hy],
-             [hipX + footDx + w * 0.075, fy], [hipX + footDx - w * 0.085, fy]],
-      EARTH.BISTRE, 0.78, rnd, 3);
-    inkLine(x, [[hipX, hy], [hipX + footDx, fy]], rnd, 1.3, 0.25);
+             [kx + w * 0.055, ky], [kx - w * 0.06, ky]], EARTH.RAW_UMBER, 0.62, rnd, 3);
+    // Stocking below it, lighter.
+    wash(x, [[kx - w * 0.05, ky], [kx + w * 0.048, ky],
+             [fx + w * 0.042, fy], [fx - w * 0.045, fy]], PAPER.SMOKED, 0.66, rnd, 3);
+    inkLine(x, [[hipX - w * 0.07, hy], [kx - w * 0.055, ky], [fx - w * 0.042, fy]], rnd, 1.2, 0.22);
+    inkLine(x, [[hipX + w * 0.07, hy], [kx + w * 0.05, ky], [fx + w * 0.04, fy]], rnd, 1.2, 0.22);
+    inkLine(x, [[kx - w * 0.055, ky], [kx + w * 0.05, ky]], rnd, 1.0, 0.3); // knee band
+    // Shoe.
+    wash(x, [[fx - w * 0.055, fy], [fx + w * 0.05, fy],
+             [fx + w * 0.085, H1 * 0.995], [fx - w * 0.07, H1 * 0.995]], INK.FLOOR, 0.7, rnd, 3);
   };
-  leg(cx - w * 0.12, swing, liftL);
-  leg(cx + w * 0.12, -swing, liftR);
+  leg(cx - w * 0.085, swing, liftL);
+  leg(cx + w * 0.085, -swing, liftR);
 
-  // Coat.
-  wash(x, [[cx - w * 0.3 + lean, height * 0.3], [cx + w * 0.3 + lean, height * 0.3],
-           [cx + w * 0.34, height * 0.72], [cx - w * 0.34, height * 0.72]],
-    coat, 0.85, rnd, 4);
+  /** One arm, swinging against the legs, with a turned-back cuff. */
+  const arm = (side: number, dx: number) => {
+    const sx = cx + side * shW * 0.92 + lean * 0.6;
+    const sy = H1 * (ySh + 0.02);
+    const ex = sx + side * w * 0.06 + dx;
+    const ey = H1 * (yWaist + 0.075);
+    wash(x, [[sx - w * 0.055, sy], [sx + w * 0.055, sy],
+             [ex + w * 0.05, ey], [ex - w * 0.05, ey]], coat, 0.8, rnd, 3);
+    inkLine(x, [[sx + side * w * 0.055, sy], [ex + side * w * 0.05, ey]], rnd, 1.4, 0.2);
+    // Cuff.
+    inkLine(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022]], rnd, 1.3, 0.15);
+    wash(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022],
+             [ex + w * 0.048, ey], [ex - w * 0.048, ey]], PAPER.SMOKED, 0.5, rnd, 2);
+  };
+  arm(-1, -swing * 0.5);
+  arm(1, swing * 0.5);
 
-  // Head and hat.
-  wash(x, [[cx - w * 0.13 + lean, height * 0.14], [cx + w * 0.13 + lean, height * 0.14],
-           [cx + w * 0.13 + lean, height * 0.3], [cx - w * 0.13 + lean, height * 0.3]],
+  // Waistcoat, showing at the coat's open front.
+  wash(x, [[cx - w * 0.12, H1 * ySh], [cx + w * 0.12, H1 * ySh],
+           [cx + w * 0.10, H1 * ySkirt], [cx - w * 0.10, H1 * ySkirt]],
+    PAPER.SMOKED, 0.75, rnd, 3);
+
+  // The coat: shoulders in, waist nipped, skirts turned back and flaring.
+  const coatPts: [number, number][] = [
+    [cx - shW + lean, H1 * ySh],
+    [cx - shW * 0.92 + lean, H1 * yWaist],
+    [cx - hipW * 1.28, H1 * ySkirt],
+    [cx - hipW * 1.42, H1 * yHem],
+    [cx + hipW * 1.42, H1 * yHem],
+    [cx + hipW * 1.28, H1 * ySkirt],
+    [cx + shW * 0.92 + lean, H1 * yWaist],
+    [cx + shW + lean, H1 * ySh],
+  ];
+  wash(x, coatPts, coat, 0.88, rnd, 5);
+
+  // Coat outline, drawn as separate strokes so the line can break.
+  inkLine(x, coatPts.slice(0, 5), rnd, 1.7, 0.12);
+  inkLine(x, coatPts.slice(4).concat([coatPts[0]]), rnd, 1.7, 0.12);
+  // The open front, and a row of buttons down one side of it.
+  inkLine(x, [[cx - w * 0.11 + lean, H1 * (ySh + 0.02)], [cx - w * 0.095, H1 * ySkirt],
+              [cx - w * 0.12, H1 * yHem]], rnd, 1.3, 0.2);
+  inkLine(x, [[cx + w * 0.11 + lean, H1 * (ySh + 0.02)], [cx + w * 0.095, H1 * ySkirt],
+              [cx + w * 0.12, H1 * yHem]], rnd, 1.3, 0.2);
+  x.fillStyle = INK.SETTLED;
+  for (let i = 0; i < 6; i++) {
+    const t = i / 6;
+    x.globalAlpha = 0.5 + rnd() * 0.4;
+    x.beginPath();
+    x.arc(cx + w * 0.105 + lean * (1 - t), H1 * (ySh + 0.045 + t * 0.33), w * 0.017, 0, 7);
+    x.fill();
+  }
+  x.globalAlpha = 1;
+  // The hem, and the turned-back skirt corners.
+  inkLine(x, [[cx - hipW * 1.42, H1 * yHem], [cx, H1 * (yHem + 0.012)],
+              [cx + hipW * 1.42, H1 * yHem]], rnd, 1.5, 0.18);
+
+  // Neck stock, white and tight.
+  wash(x, [[cx - w * 0.075 + lean, H1 * yChin], [cx + w * 0.075 + lean, H1 * yChin],
+           [cx + w * 0.085 + lean, H1 * ySh], [cx - w * 0.085 + lean, H1 * ySh]],
+    PAPER.BRIGHT, 0.8, rnd, 2);
+
+  // Head, and the queue tied at the back of it.
+  const hx = cx + lean;
+  wash(x, [[hx - w * 0.082, H1 * yBrim], [hx + w * 0.082, H1 * yBrim],
+           [hx + w * 0.07, H1 * yChin], [hx - w * 0.07, H1 * yChin]],
     PAPER.SMOKED, 0.9, rnd, 3);
-  wash(x, [[cx - w * 0.28 + lean, height * 0.14], [cx + w * 0.28 + lean, height * 0.14],
-           [cx + w * 0.2 + lean, height * 0.05], [cx - w * 0.2 + lean, height * 0.05]],
-    INK.SETTLED, 0.8, rnd, 3);
+  inkLine(x, [[hx - w * 0.078, H1 * yBrim], [hx - w * 0.068, H1 * yChin]], rnd, 1.2, 0.3);
+  inkLine(x, [[hx + w * 0.078, H1 * yBrim], [hx + w * 0.068, H1 * yChin]], rnd, 1.2, 0.3);
+  wash(x, [[hx + w * 0.06, H1 * (yBrim + 0.02)], [hx + w * 0.115, H1 * (yBrim + 0.045)],
+           [hx + w * 0.10, H1 * (yChin + 0.03)], [hx + w * 0.05, H1 * yChin]],
+    INK.FADED, 0.55, rnd, 3);
 
-  // Outline: the two falling sides and the shoulder line only. The full
-  // rectangle reads as a box around the figure rather than as a coat.
-  inkLine(x, [[cx - w * 0.3 + lean, height * 0.31], [cx - w * 0.34, height * 0.72]], rnd, 1.6, 0.22);
-  inkLine(x, [[cx + w * 0.3 + lean, height * 0.31], [cx + w * 0.34, height * 0.72]], rnd, 1.6, 0.22);
-  inkLine(x, [[cx - w * 0.3 + lean, height * 0.32], [cx - w * 0.14 + lean, height * 0.29],
-              [cx + w * 0.14 + lean, height * 0.29], [cx + w * 0.3 + lean, height * 0.32]],
-    rnd, 1.4, 0.15);
-  inkLine(x, [[cx - w * 0.34, height * 0.72], [cx - w * 0.1, height * 0.75],
-              [cx + w * 0.12, height * 0.74], [cx + w * 0.34, height * 0.72]], rnd, 1.4, 0.3);
+  if (hat === 'tricorne') {
+    // Three cornered: a wide flat brim with the front peak and two rear points.
+    const by = H1 * yBrim;
+    const bw = w * 0.30;
+    const brim: [number, number][] = [
+      [hx - bw, by + H1 * 0.006],
+      [hx - bw * 0.42, by - H1 * 0.016],
+      [hx, by - H1 * 0.03],
+      [hx + bw * 0.42, by - H1 * 0.016],
+      [hx + bw, by + H1 * 0.006],
+      [hx + bw * 0.5, by + H1 * 0.024],
+      [hx - bw * 0.5, by + H1 * 0.024],
+    ];
+    wash(x, brim, INK.SETTLED, 0.82, rnd, 4);
+    inkLine(x, [...brim, brim[0]], rnd, 1.5, 0.06);
+    // Crown behind the brim.
+    wash(x, [[hx - w * 0.085, by], [hx - w * 0.06, H1 * yHat],
+             [hx + w * 0.06, H1 * yHat], [hx + w * 0.085, by]], INK.SETTLED, 0.8, rnd, 3);
+  } else if (hat === 'round') {
+    const by = H1 * yBrim;
+    wash(x, [[hx - w * 0.20, by], [hx + w * 0.20, by],
+             [hx + w * 0.16, by + H1 * 0.02], [hx - w * 0.16, by + H1 * 0.02]],
+      EARTH.BISTRE, 0.75, rnd, 3);
+    wash(x, [[hx - w * 0.085, by], [hx - w * 0.07, H1 * (yHat + 0.02)],
+             [hx + w * 0.07, H1 * (yHat + 0.02)], [hx + w * 0.085, by]],
+      EARTH.BISTRE, 0.72, rnd, 3);
+  }
   return c;
 }
 
@@ -487,10 +732,11 @@ export function characterFrames(
   seed: number,
   height = 320,
   steps = 8,
+  opts: { hat?: 'tricorne' | 'round' | 'none'; build?: number } = {},
 ): HTMLCanvasElement[] {
-  const out = [characterCutout(coat, seed, height, -1)];
+  const out = [characterCutout(coat, seed, height, -1, opts)];
   for (let i = 0; i < steps; i++) {
-    out.push(characterCutout(coat, seed, height, i / steps));
+    out.push(characterCutout(coat, seed, height, i / steps, opts));
   }
   return out;
 }
@@ -675,11 +921,94 @@ export function campMidground(): HTMLCanvasElement {
     }
   }
 
-  // A flagless pole, and a fire with nobody at it.
+  // A flagless pole, a cook fire with a kettle on a tripod, and stacked arms.
   inkLine(x, [[W * 0.70, base + 20], [W * 0.70, base - 130]], rnd, 2.4, 0.04);
-  wash(x, [[W * 0.335, base + 46], [W * 0.365, base + 40], [W * 0.372, base + 58], [W * 0.33, base + 60]],
-    EARTH.MADDER_LAKE, 0.22, rnd, 3);
+
+  const fx = W * 0.345;
+  const fy = base + 52;
+  wash(x, [[fx - 26, fy], [fx + 26, fy - 4], [fx + 20, fy + 14], [fx - 22, fy + 16]],
+    EARTH.MADDER_LAKE, 0.26, rnd, 3);
+  for (let i = 0; i < 3; i++) {
+    inkLine(x, [[fx - 22 + i * 20, fy + 12], [fx - 4 + i * 14, fy - 40 - i * 6]], rnd, 1.8, 0.08);
+  }
+  wash(x, [[fx - 15, fy - 42], [fx + 15, fy - 42], [fx + 11, fy - 16], [fx - 11, fy - 16]],
+    INK.SETTLED, 0.55, rnd, 3);
+  inkLine(x, [[fx - 15, fy - 42], [fx + 15, fy - 42]], rnd, 1.6, 0.1);
+
+  // Stacked arms — three muskets leaning into each other.
+  const ax = W * 0.615;
+  for (const d of [-16, 0, 16]) {
+    inkLine(x, [[ax + d, base + 34], [ax + d * 0.25, base - 62]], rnd, 2.0, 0.05);
+  }
+
+  // Laundry on a line between two poles.
+  const lx0 = W * 0.045;
+  const lx1 = W * 0.20;
+  inkLine(x, [[lx0, base - 16], [lx0, base + 36]], rnd, 2.0, 0.06);
+  inkLine(x, [[lx1, base - 22], [lx1, base + 32]], rnd, 2.0, 0.06);
+  inkLine(x, [[lx0, base - 12], [(lx0 + lx1) / 2, base - 2], [lx1, base - 18]], rnd, 1.1, 0.14);
+  for (let i = 0; i < 4; i++) {
+    const px = lx0 + 24 + i * 30;
+    const py = base - 10 + Math.sin(i) * 4;
+    wash(x, [[px, py], [px + 22, py - 2], [px + 20, py + 40], [px - 2, py + 42]],
+      PAPER.BRIGHT, 0.5, rnd, 3);
+    inkLine(x, [[px, py], [px + 22, py - 2], [px + 20, py + 40], [px - 2, py + 42]], rnd, 1.0, 0.3);
+  }
+
+  groundLitter(x, rnd, base - 10, base + 110, 80, 0.9);
   return c;
+}
+
+/**
+ * The far camp — a second occlusion band, hazed back.
+ *
+ * Thousands of men living in brush, seen as a mass rather than as shelters,
+ * with smoke standing up off it. This is the band that makes the camp read as
+ * enormous instead of as eight huts in a row.
+ */
+export function campFarMidground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(259);
+  const hy = H * HORIZON;
+  const base = hy + 92;
+
+  // A long ragged mass of distant shelter, unreadable in detail.
+  for (let i = 0; i < 60; i++) {
+    const px = rnd() * W;
+    const bw = 26 + rnd() * 40;
+    const bh = 14 + rnd() * 26;
+    const by = base - rnd() * 22;
+    wash(x, [[px, by], [px + bw * 0.3, by - bh], [px + bw, by - bh * 0.5], [px + bw, by]],
+      rnd() < 0.3 ? PAPER.BRIGHT : PAPER.SMOKED, 0.34, rnd, 3);
+    inkLine(x, [[px, by], [px + bw * 0.3, by - bh], [px + bw, by - bh * 0.5]], rnd, 1.1, 0.2);
+  }
+
+  // Cook-fire smoke, standing up straight in still air.
+  for (const sx of [W * 0.14, W * 0.33, W * 0.52, W * 0.71, W * 0.90]) {
+    const h = 90 + rnd() * 70;
+    for (let k = 0; k < 5; k++) {
+      const t = k / 5;
+      wash(x, [[sx - 8 - t * 22, base - h * t], [sx + 8 + t * 20, base - h * t - 6],
+               [sx + 6 + t * 26, base - h * (t + 0.24)], [sx - 10 - t * 18, base - h * (t + 0.2)]],
+        EARTH.WET_STONE, 0.10, rnd, 3);
+    }
+  }
+
+  // An earthwork line running across, with gabions on it.
+  const para: [number, number][] = [];
+  for (let i = 0; i <= 24; i++) para.push([(i / 24) * W, base + 16 + Math.sin(i * 0.8) * 5]);
+  wash(x, [...para, [W, base + 54], [0, base + 54]], EARTH.BISTRE, 0.26, rnd, 4);
+  inkLine(x, para, rnd, 1.4, 0.2);
+  for (let i = 0; i < 14; i++) {
+    const px = i * (W / 14) + rnd() * 20;
+    wash(x, [[px, base + 18], [px + 30, base + 16], [px + 28, base - 8], [px + 2, base - 6]],
+      EARTH.RAW_UMBER, 0.3, rnd, 3);
+    inkLine(x, [[px, base + 18], [px + 2, base - 6], [px + 28, base - 8], [px + 30, base + 16]],
+      rnd, 1.2, 0.22);
+  }
+
+  groundLitter(x, rnd, base + 20, base + 76, 34, 0.5);
+  return haze(c, 0.22, PAPER.COOL);
 }
 
 /** L4 — near clutter. Nothing here belongs to the army. */
@@ -713,7 +1042,24 @@ export function campForeground(): HTMLCanvasElement {
 }
 
 /** Plate sets, keyed by the name a scene declares. */
+/**
+ * Plate sets, keyed by the name a scene declares.
+ *
+ * Six planes, not five. The scene architecture argued for five on parallax
+ * grounds — a seventh buys sub-2px movement nobody perceives — but that
+ * argument is about apparent motion, not about occlusion. Depth sorting can
+ * only be as granular as the layer count, and with one midground band
+ * everything mid-scene shares a depth and the ground reads as two planes with
+ * a hole between them. A sixth plane buys a second band a figure can walk
+ * between, which is the difference between a set and a backdrop.
+ */
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
-  vernon: () => [layerSky(), layerHills(), layerHouse(), layerMidground(), layerForeground()],
-  camp: () => [campSky(), campHills(), campGround(), campMidground(), campForeground()],
+  vernon: () => [
+    layerSky(), layerHills(), layerHouse(),
+    layerFarMidground(), layerMidground(), layerForeground(),
+  ],
+  camp: () => [
+    campSky(), campHills(), campGround(),
+    campFarMidground(), campMidground(), campForeground(),
+  ],
 };

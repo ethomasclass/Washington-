@@ -16,8 +16,8 @@ import * as THREE from 'three';
 import { characterCutout, characterFrames, PLATE_SETS, paperTexture } from './art';
 import { MEANING, PAPER } from './palette';
 
-/** Parallax coefficients, L0..L4. */
-const PARALLAX = [0.1, 0.3, 0.62, 1.0, 1.55];
+/** Parallax coefficients, L0..L5. */
+const PARALLAX = [0.1, 0.26, 0.5, 0.74, 1.06, 1.6];
 const PARALLAX_MAX_PX = 64; // "breath", not a camera move
 
 const VIEW_W = 16;
@@ -123,8 +123,14 @@ const EASE = 1.55;
  */
 const IDLE_SHIFTS = true;
 
-/** Depth of each painted layer, so actors can pass behind them. */
-const LAYER_DEPTH = [1.0, 0.95, 0.82, 0.44, 0.02];
+/**
+ * Depth of each painted layer, so actors can pass behind them.
+ *
+ * Two midground bands (0.62 and 0.38) rather than one: a figure can now be
+ * behind the far fence and in front of the near hedge at the same time, which
+ * is what makes the ground feel occupied rather than empty.
+ */
+const LAYER_DEPTH = [1.0, 0.94, 0.80, 0.62, 0.38, 0.02];
 
 export interface GroundPos {
   x: number;

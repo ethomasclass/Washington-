@@ -22,6 +22,7 @@ import { INK, PAPER, VOICE_INK, type VoiceId } from './palette';
 import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { grainTile, portraitPlate } from './art';
 import { cellStyle, portraitFor } from './portraits';
+import type { LedgerLine, Reckoning } from './ledger';
 
 /**
  * Lay the paper.
@@ -144,7 +145,7 @@ export const CSS = `
    * --grain is set at runtime by mountSheet(); if it has not been set the rule
    * degrades to plain paper rather than to a broken url().
    */
-  .journal, .panel, .bubble, .return, .codebar, .prompt,
+  .journal, .reckoning, .panel, .bubble, .return, .codebar, .prompt,
   .plate-title, .intent, .hint, .sopt {
     background-color: ${PAPER.BRIGHT};
     background-image:
@@ -269,8 +270,55 @@ export const CSS = `
   /* Once it had a paper ground of its own it started colliding with the panel
      that sits over it. Nothing is being read from it while a panel is open, so
      it goes away — and the frame is quieter for it. */
-  #overlay:has(.panel) .hint, #overlay:has(.journal) .hint,
-  #overlay:has(.panel) .codebar, #overlay:has(.journal) .codebar { display: none; }
+  #overlay:has(.panel) .hint, #overlay:has(.journal) .hint, #overlay:has(.reckoning) .hint,
+  #overlay:has(.panel) .codebar, #overlay:has(.journal) .codebar,
+  #overlay:has(.reckoning) .codebar { display: none; }
+
+  /*
+   * THE RECKONING. What the act cost, in men, and why.
+   *
+   * Laid out as the document it is imitating: two counts six months apart with
+   * the difference itemised between them, which is the form every strength
+   * return of the war took. The player has been reading the top half of this
+   * page in the corner of the screen all act — same tabular figures, same
+   * small-caps caption — so the arithmetic arrives in handwriting they already
+   * know.
+   *
+   * What the CSS is deliberately NOT doing (08 §3, rule 4):
+   *   nothing is coloured red or green. A loss and a gain are the same ink,
+   *   because a screen that paints the losses red has told the student that
+   *   losing men is the fail state rather than the job.
+   *   nothing is emphasised for being the player's doing. The four lines they
+   *   caused sit in the same type as the three they could not, in one sorted
+   *   column, and a player who wants to know which were theirs has to recognise
+   *   their own decisions — which is the reading skill the whole game is for.
+   *   there is no total row, no last-act comparison, and no historical figure.
+   */
+  .reckoning { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+               width: min(660px, calc(100vw - 64px));
+               padding: 26px 32px 20px; pointer-events: auto; }
+  .reckoning h2 { margin: 0; font-size: 20px; font-variant: small-caps;
+                  letter-spacing: .08em; font-weight: 600; }
+  .reckoning .sub { margin: 3px 0 4px; font-size: 16px; line-height: 1.45;
+                    font-style: italic; color: ${INK.LIGHT}; }
+  /* The two counts are the frame of the page, so they are ruled off from the
+     itemised middle rather than set apart in size — a return does not shout its
+     own totals. */
+  .reckoning .count { display: flex; align-items: baseline; gap: 14px;
+                      padding: 9px 0; font-size: 17px; }
+  .reckoning .count b { flex: 0 0 78px; text-align: right; font-size: 19px; font-weight: 600;
+                        font-variant-numeric: tabular-nums; }
+  .reckoning .count.open { border-bottom: 1px solid ${INK.SETTLED}; margin-bottom: 4px; }
+  .reckoning .count.close { border-top: 1px solid ${INK.SETTLED}; margin-top: 6px; }
+  .reckoning .head { font-variant: small-caps; letter-spacing: .1em; font-size: 13px;
+                     color: ${INK.LIGHT}; font-weight: 700; margin: 12px 0 5px; }
+  .reckoning .item { display: flex; align-items: baseline; gap: 14px;
+                     font-size: 17px; line-height: 1.45; margin-bottom: 4px; }
+  .reckoning .item b { flex: 0 0 78px; text-align: right; font-weight: 600;
+                       font-variant-numeric: tabular-nums; }
+  .reckoning .continue { margin-top: 14px; font-size: 13px; color: ${INK.LIGHT};
+                         letter-spacing: .05em; }
+  .reckoning .continue b { font-weight: 600; color: ${INK.SETTLED}; }
 
   /* Speech is anchored to whoever is speaking. The figure is standing right
      there, so the bubble carries no portrait — the portrait well is for the
@@ -591,6 +639,61 @@ export class Overlay {
         : '<div class="none">Nothing yet.</div>');
     this.root.appendChild(j);
     this.panel = j;
+    this.waitForDismiss(onDone);
+  }
+
+  /**
+   * The act's reckoning: the two counts, and every man between them.
+   *
+   * This is the only screen in the game where a number the player can see moves
+   * because of something they chose, so it is also the screen most at risk of
+   * being read as a score. Three things keep it from being one, and all three
+   * are decisions made here rather than in the arithmetic:
+   *
+   *  - the lines are grouped by direction and by nothing else. Not by whose
+   *    fault they were. The 6,800 whose enlistments expired sit above the 1,100
+   *    who walked off in January in the same column, in the same ink, and the
+   *    player is never told which of the two they caused.
+   *  - the causes are printed in full and the numbers are not explained. A
+   *    student reading this page learns what happened to an army; they do not
+   *    learn what the game thought of them for it.
+   *  - the closing count is a fact with a date on it, not a result. It is set
+   *    in the same type as the opening count for exactly that reason.
+   *
+   * Rendered from `reckon()` every time. Nothing on this page is stored, and
+   * the same decisions will always print the same page.
+   */
+  showReckoning(r: Reckoning, onDone: () => void): void {
+    this.clearPanel();
+
+    // Grouped by sign, and `reckon()` has already sorted within each — heaviest
+    // first in both directions — so the page opens on the hole.
+    const gone = r.lines.filter((l) => l.n < 0);
+    const came = r.lines.filter((l) => l.n > 0);
+    const items = (ls: LedgerLine[]): string =>
+      ls
+        .map(
+          (l) =>
+            `<div class="item"><b>${Math.abs(l.n).toLocaleString()}</b>` +
+            `<span>${l.cause}</span></div>`,
+        )
+        .join('');
+
+    const el = document.createElement('div');
+    el.className = 'reckoning';
+    el.innerHTML =
+      '<h2>The army, counted twice</h2>' +
+      '<div class="sub">Everything that happened to it in between, and why.</div>' +
+      `<div class="count open"><b>${r.openedWith.toLocaleString()}</b>` +
+      `<span>on the rolls, ${r.openedOn}</span></div>` +
+      (gone.length ? `<div class="head">Gone</div>${items(gone)}` : '') +
+      (came.length ? `<div class="head">Stayed, or come in</div>${items(came)}` : '') +
+      `<div class="count close"><b>${r.closedWith.toLocaleString()}</b>` +
+      `<span>on the rolls, ${r.closedOn}</span></div>` +
+      '<div class="continue">press <b>Space</b></div>';
+
+    this.root.appendChild(el);
+    this.panel = el;
     this.waitForDismiss(onDone);
   }
 

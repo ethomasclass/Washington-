@@ -58,6 +58,19 @@ export const CB03: Scene = {
   sun: [0.72, 0.20],
   exitTo: undefined,
   exitPrompt: 'Back down the trench?',
+  /*
+   * Walking out of here ends Act 2, and the reckoning is what an act break is
+   * FOR: the world's unit of accounting, the save point, and the end of a class
+   * period, all the same moment.
+   *
+   * A STAND-IN. `08` §6 Beat 3 puts the act's close at CB-03′, 1 January — the
+   * same parapet walked again with most of the figures gone — and that is where
+   * this flag belongs. CB-03′ is not built, so the act ends here, in November,
+   * on a page dated the first of January. It reads as a page written later
+   * about the winter, which is survivable; it is not what was designed. Move
+   * the flag the day Beat 3 exists.
+   */
+  endsAct: 2,
 
   /** See V-A2.2 above. No number is quoted because none has been sourced. */
   strength: null as { fit: number; onRolls: number; dated: string } | null,
@@ -555,6 +568,9 @@ export const CB03: Scene = {
               'pass signed and no word against him.',
             favoured: ['duty', 'restraint'],
             effects: { character: 6, legitimacy: 4, loyalty: -5 },
+            // They go, and it is worse than feared and better than it might
+            // have been. The gain is small and it is entirely his.
+            ledger: [{ n: 900, cause: 'who meant to go, and did not' }],
             result:
               'They go, and it is worse than you feared and better than it might have been — the ' +
               'ones who go say where they are going, and a few hundred who meant to go do not. ' +
@@ -589,6 +605,15 @@ export const CB03: Scene = {
              */
             voiceLock: { voice: 'temper', min: 0.38 },
             effects: { loyalty: 3, legitimacy: -6, character: -4 },
+            /*
+             * Holding them works in December and is paid for in January, which
+             * is the shape of the decision and has to be the shape of the
+             * arithmetic. Two lines, one of them a cost, both of them his.
+             */
+            ledger: [
+              { n: 1400, cause: 'held past the date on their paper' },
+              { n: -1100, cause: 'who left in January without asking anybody' },
+            ],
             result:
               'The order goes out and by nightfall every man in camp knows what his enlistment is ' +
               'worth, which is nothing. Two companies go anyway. You cannot try them all, and not ' +
@@ -601,6 +626,9 @@ export const CB03: Scene = {
               'Ask Congress for money and furloughs, and buy the winter one regiment at a time.',
             favoured: ['ambition', 'vanity'],
             effects: { judgment: 5, legitimacy: -2, character: -1 },
+            // The best headcount in the act, and the bill arrives every
+            // December for eight years.
+            ledger: [{ n: 2600, cause: 're-enlisted for the bounty' }],
             result:
               'It works, at a price you will be paying for eight years: from now on the men know ' +
               'the army bids for them, and every December it will have to bid higher.',
@@ -615,6 +643,8 @@ export const CB03: Scene = {
             lockNote: 'you have not read the roll, and cannot ask for what you cannot count',
             favoured: ['duty', 'vanity', 'restraint'],
             effects: { character: 5, loyalty: 4, legitimacy: 2, judgment: -2 },
+            // The smallest gain on the page, and the only line that says why.
+            ledger: [{ n: 1100, cause: 'who stayed because you asked them to' }],
             result:
               'You are not a speaker and everybody knows it, which is most of why it lands. Some ' +
               'stay. Not enough. But the ones who stay have chosen it in front of the ones who ' +

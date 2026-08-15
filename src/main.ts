@@ -14,7 +14,8 @@
 
 import { DioramaRenderer, type GroundPos } from './renderer';
 import { setPlateLight } from './art';
-import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
+import { FIRST_SCENE, SCENES, ledgerFor, type Decision, type NpcThread, type Scene } from './content';
+import { reckon } from './ledger';
 import { CSS, mountSheet, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
 import type { VoiceId } from './palette';
@@ -472,11 +473,25 @@ function interact(): void {
   if (it.id === scene.exit) {
     const left = owed();
     const onward = scene.exitTo;
+    const ends = scene.endsAct;
     const text = left.length
       ? `${it.examine} But ${left.join(', and ')}.`
-      : `${it.examine}\n\n${onward ? scene.exitPrompt : 'Nothing here is unfinished.'}`;
+      : `${it.examine}\n\n${
+          onward || ends !== undefined ? scene.exitPrompt : 'Nothing here is unfinished.'
+        }`;
     overlay.showExamine(it.label, text, () => {
-      if (onward && !left.length) {
+      if (left.length) {
+        busy = false;
+        return;
+      }
+      // Closing the act is a thing that happens ON the way out, not instead of
+      // it: the books are shut here and the fade carries him to whatever is
+      // next, in that order.
+      if (ends !== undefined) {
+        closeAct(ends, onward);
+        return;
+      }
+      if (onward) {
         enterScene(onward);
         return;
       }
@@ -582,6 +597,37 @@ function frame(now: number): void {
   overlay.setThoughtAnchor(me.x, me.y - 6);
   renderer.render();
   requestAnimationFrame(frame);
+}
+
+/**
+ * Shut the books on an act.
+ *
+ * The reckoning is assembled from the decision record at the moment it is
+ * shown — never accumulated as the act runs — so a player who resumes from a
+ * passport code on another machine gets the identical page. That is also why
+ * nothing here writes to state: there is nothing to write.
+ *
+ * An act with no reckoning authored yet is not an error. It walks straight
+ * through to the next scene, which is what the last seven acts do today.
+ */
+function closeAct(act: number, onward: string | undefined): void {
+  const done = (): void => {
+    if (onward) {
+      enterScene(onward);
+      return;
+    }
+    // Nothing is built past here. He stays on the parapet, and the exit will
+    // hand him the page again if he wants to read it twice — it is a document,
+    // not a results screen, and re-reading a document is allowed.
+    busy = false;
+  };
+
+  const r = reckon(act, state, ledgerFor);
+  if (!r) {
+    done();
+    return;
+  }
+  overlay.showReckoning(r, done);
 }
 
 /**

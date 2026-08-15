@@ -169,6 +169,15 @@ export interface Option {
    */
   voiceLock?: { voice: VoiceId; min: number };
   effects: Partial<Record<StatId, number>>;
+  /**
+   * What this choice cost or bought, in men, for the act's reckoning.
+   *
+   * The only channel in the game where a number the player can SEE moves
+   * because of something they did. Authored per option and named in plain
+   * English — never derived from the hidden stats (08 §2.2, RT-2), because a
+   * ledger computed from stats is a scoreboard with extra steps.
+   */
+  ledger?: { n: number; cause: string }[];
   result: string;
 }
 
@@ -312,6 +321,16 @@ export interface Scene {
    * is placed out of reach of whichever is in force.
    */
   walkTo?: number;
+
+  /**
+   * Leaving this scene ends the named act, and the reckoning is shown.
+   *
+   * An act break is the game's unit of accounting (07 §1.3.1): it is where the
+   * world re-reads the stats, where the save lands, and where a class period
+   * ends. It is the only honest place to tell a player what the last forty
+   * minutes cost, because it is the only place a commander would have found out.
+   */
+  endsAct?: number;
 
   /**
    * The enlistment clock: whose contracts run out, and when.

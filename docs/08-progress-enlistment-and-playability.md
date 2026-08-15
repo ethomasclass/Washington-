@@ -2,7 +2,9 @@
 ### *In Washington's Shoes* — what the player is working toward, how they can tell, and how the first three levels prove it
 **Version 1.0 — 15 August 2026**
 **Owner:** Creative Director / Narrative Lead. **Audience:** everyone.
-**Status:** proposal. Nothing here is built yet. §9 is the build order.
+**Status:** partly built. Steps 1–6 of §9 have shipped; §9 marks what has and what has
+not, and the sections it has overtaken carry a *built as* note rather than being
+rewritten — the proposal and what got made are both worth having.
 
 ---
 
@@ -211,6 +213,50 @@ Four design rules for this screen:
 The reckoning screen is also, conveniently, **the end of a class period**. A student
 closes the laptop having just been shown, in eight lines, what their forty minutes cost
 and bought. That is the thing that makes them want Thursday.
+
+### Built as
+
+`src/ledger.ts` assembles it, `Overlay.showReckoning` prints it, and it is triggered by
+taking the exit on any scene carrying `endsAct` — for now only `CB-03`. Two departures
+from the mock above, both from putting it on a screen:
+
+**The two counts frame the page rather than heading it.** The mock stacks both totals at
+the top and itemises underneath, which reads as a result followed by its justification.
+Opening count at the top, closing count at the foot, and the itemised middle between
+them reads as *six months happening*, which is what it was. It is also the form the
+returns themselves took.
+
+**The lines are grouped by direction, and by nothing else.** *Gone*, then *Stayed, or
+come in*, heaviest first inside each. Nothing marks which lines the player caused. Rule 2
+is satisfied by the writing — *"who stayed because you asked them to"* is unmistakable —
+and not by a flag on the row, because a page that labels your four lines has told you
+where to look and turned the other three into scenery.
+
+No colour anywhere: losses and gains are the same ink. A screen that paints the losses
+red teaches that losing men is the fail state rather than the job.
+
+**The figures in the mock above were illustrative and the built ones differ** (the
+December expiry is authored at 6,800, not 5,200). The authored set lives in `ledger.ts`
+and is marked unverified there. Neither set has been checked against a primary source;
+`§10` makes that blocking for classroom use and it still is.
+
+**Where it fires is a stand-in.** §6 Beat 3 puts the reckoning after `CB-03′`, 1 January
+— the empty parapet — and that is right. `CB-03′` does not exist, so `endsAct` sits on
+`CB-03` for now, which means the act currently closes in November on a page dated
+1 January. When Beat 3 is built the flag moves and this paragraph goes.
+
+Rules 1, 3 and half of 4 are enforced by the content linter (`the ledger · 08 §3`),
+including the claim that **the largest figure on the page is never one the player
+caused** — Act 2's biggest line is the 6,800 December expiries, and the largest thing any
+decision can put on the page is 2,600. If an earned line ever outgrows the fixed loss the
+test fails, because at that point the act has quietly become a thing you can win.
+
+One dissonance worth keeping. `CB-03`'s Return card says *No return this week — four
+regiments cannot say what they have*, and then the reckoning prints exact figures. That
+is not a bug and should not be smoothed: the man on the parapet in November genuinely
+could not count, and the books closed at the year's end genuinely could. The gap between
+what a commander knows now and what the record knows later is one of the few things this
+game can show rather than say.
 
 ---
 
@@ -485,9 +531,9 @@ is cut.
 | 1 | ~~**Rewrite the player-facing strings** to §8's register, across all three scenes~~ **DONE** | `scenes/*.ts` | half a day, zero risk |
 | 2 | ~~**Return on the HUD.**~~ **DONE** — shipped as a top-level `Scene.expiring` rather than nested inside `strength`, because CB-03 has a documented date and no sourced headcount and the two must be independent | `types.ts`, `ui.ts`, `main.ts` | 1 day |
 | 3 | ~~**Two-line scene header** per §8.4~~ **DONE** | `ui.ts` | 2 hours |
-| 4 | **The ledger module.** `src/ledger.ts`: named line items with causes, written by decisions, recomputable from flags — **not** in the passport (`06` §7.2 already rules counters out of the code) | new file | 1 day |
-| 5 | **The reckoning screen** at act end | `ui.ts`, new `interlude.ts` | 2 days |
-| 6 | **Wire `A2-D4`'s four options to named line items** | `scenes/cb03.ts`, `ledger.ts` | half a day |
+| 4 | ~~**The ledger module.**~~ **DONE** — `src/ledger.ts`, recomputed from the decision record every time it is shown and stored nowhere | new file | 1 day |
+| 5 | ~~**The reckoning screen** at act end~~ **DONE** — `Overlay.showReckoning`, triggered by `Scene.endsAct`; no `interlude.ts` was needed, because the act break already existed as the fade | `ui.ts`, `main.ts` | 2 days |
+| 6 | ~~**Wire `A2-D4`'s four options to named line items**~~ **DONE** — five lines across four options; `hold_them` carries two, a gain in December and a loss in January, because that is the shape of the decision | `scenes/cb03.ts`, `types.ts` | half a day |
 | 7 | **Re-point R13's crowd count at the Return** so the November parapet and the January parapet differ visibly | `renderer.ts`, `main.ts` | half a day |
 | 8 | **Source every number.** `[V]` markers, per the `V-A2.x` convention already in `cb03.ts` | docs + scenes | ongoing, blocking for classroom |
 | 9 | Then: `CB-02` (the interior plate system), then `CB-03′` (1 January) | — | the real work |

@@ -11,7 +11,8 @@
 import { decode, deserialise, encode, FLAG_REGISTRY, PASSPORT_FLAGS, serialise } from './passport';
 import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
-import { sceneList } from './content';
+import { decisionList, ledgerFor, sceneList } from './content';
+import { reckon, RECKONED_ACTS } from './ledger';
 import { figureHalfW, frameX } from './ground';
 import { walkFar } from './art';
 import { councilFor, lockOn, rejoinderFor } from './council';
@@ -538,6 +539,100 @@ console.log('\ncontent · across scenes');
     withArmy.every((s) => s.strength!.fit <= s.strength!.onRolls));
 }
 
+/*
+ * THE LEDGER.
+ *
+ * `08` §3 gives the reckoning four rules, and three of them are checkable by a
+ * machine. This is where they get checked, because they are the rules that stop
+ * the one visible number in the game from becoming a score, and a rule that
+ * lives only in a docstring is a rule until somebody is in a hurry.
+ */
+console.log('\nthe ledger · 08 §3');
+{
+  /*
+   * Words that would turn a cause into a scoreboard readout. The four stat
+   * names are the dangerous ones — a line reading "1,100 lost to low
+   * legitimacy" hands the player the hidden model and turns the whole act into
+   * an optimisation problem — and the rest are the vocabulary a game reaches
+   * for when it has stopped writing and started reporting.
+   */
+  const BANNED = ['judgment', 'legitimacy', 'loyalty', 'character',
+    'morale', 'score', 'points', 'bonus', 'penalty', 'rating', 'level'];
+
+  for (const s of sceneList()) {
+    if (s.endsAct === undefined) continue;
+    check(`${s.id} ends act ${s.endsAct}, and that act has a page to show`,
+      RECKONED_ACTS.includes(s.endsAct));
+  }
+  for (const act of RECKONED_ACTS) {
+    const closers = sceneList().filter((s) => s.endsAct === act);
+    check(`act ${act}'s reckoning is reachable — exactly one scene closes it`,
+      closers.length === 1, closers.map((s) => s.id).join(', ') || 'no scene ends it');
+  }
+
+  const blank = initialState();
+  /** The act's page with nothing decided: the lines that arrive whatever he does. */
+  const fixed = (act: number) => reckon(act, blank, () => [])!;
+
+  for (const act of RECKONED_ACTS) {
+    const f = fixed(act);
+    // Rule 3. Without this the screen teaches that everything that happened to
+    // the army was somebody's fault, which is the opposite of the lesson.
+    check(`act ${act} carries a loss he could not have prevented (R20)`,
+      f.lines.some((l) => l.n < 0));
+
+    const movers = sceneList()
+      .filter((s) => s.act === act)
+      .flatMap((s) => s.npcs.map((n) => n.decision).filter((d): d is Decision => Boolean(d)))
+      .filter((d) => d.options.some((o) => o.ledger?.length));
+    // Rule 2. A page with no earned line is a cutscene with arithmetic on it.
+    check(`act ${act} has at least one line the player earned`, movers.length > 0);
+
+    // Every way the act's count-moving decisions can land. Small by design —
+    // most decisions in this game move the man, not the headcount.
+    let combos: [string, string][][] = [[]];
+    for (const d of movers) {
+      combos = combos.flatMap((head) =>
+        d.options.map((o): [string, string][] => [...head, [d.id, o.id]]));
+    }
+    const pages = combos.map((c) =>
+      reckon(act, { ...blank, decisions: new Map(c) }, ledgerFor)!);
+
+    const closes = pages.map((p) => p.closedWith);
+    const lo = Math.min(...closes);
+    const hi = Math.max(...closes);
+    check(`act ${act} closes between ${lo.toLocaleString()} and ${hi.toLocaleString()} ` +
+      `across ${pages.length} paths — the choices move it, and none of them ends the war`,
+      hi > lo && lo > 0);
+
+    /*
+     * The claim `ledger.ts` makes in prose, asserted: the biggest number on the
+     * page is one the player did not cause. If an earned line ever outgrows the
+     * fixed loss, the act has quietly become a thing you can win.
+     */
+    const worstFixed = Math.max(...f.lines.map((l) => Math.abs(l.n)));
+    const bestEarned = Math.max(
+      ...pages.flatMap((p) => p.lines.filter((l) => l.earned).map((l) => Math.abs(l.n))));
+    check(`act ${act}'s largest line is not his doing`, worstFixed > bestEarned,
+      `fixed ${worstFixed} vs earned ${bestEarned}`);
+  }
+
+  // Rule 1, over every cause in the content — fixed and authored alike.
+  const causes = [
+    ...RECKONED_ACTS.flatMap((a) => fixed(a).lines.map((l) => l.cause)),
+    ...decisionList().flatMap((d) => d.options.flatMap((o) => o.ledger ?? [])).map((l) => l.cause),
+  ];
+  const named = causes.filter((c) => BANNED.some((w) => c.toLowerCase().includes(w)));
+  check(`no cause names a stat or a game word (${causes.length} causes)`,
+    named.length === 0, named.join(' / '));
+  // Each one is printed after a figure, so it has to read as the tail of that
+  // sentence — "1,900 sick, or gone without being written down" — and not as a
+  // sentence of its own with the number bolted on the front.
+  const standalone = causes.filter((c) => /^[A-Z]/.test(c) || c.endsWith('.'));
+  check('every cause is a fragment that follows a number',
+    standalone.length === 0, standalone.join(' / '));
+}
+
 console.log('\ntransitions · 02 §8.6');
 {
   // Every transition the built content can actually make, and which treatment
@@ -616,7 +711,15 @@ console.log('\nchrome · 02 §8.1');
 
   // Every surface that sits on the plate must carry the ink line at full
   // opacity — the DOM half of the outline discipline.
-  const surfaces = CSS.slice(CSS.indexOf('.journal, .panel'), CSS.indexOf('* { box-sizing'));
+  /*
+   * Anchored on `.journal,` rather than on the whole selector list, because the
+   * list grows: adding `.reckoning` to it silently broke this check — indexOf
+   * returned -1, the slice came back empty, and a green test turned red for a
+   * reason that had nothing to do with the rule it guards.
+   */
+  const from = CSS.indexOf('.journal,');
+  check('the surface rule is where this check thinks it is', from > 0);
+  const surfaces = CSS.slice(from, CSS.indexOf('* { box-sizing'));
   check('the surfaces carry a full-opacity ink line',
     surfaces.includes(`border: 1px solid ${INK.SETTLED}`), surfaces.slice(0, 60));
 }

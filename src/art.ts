@@ -591,13 +591,196 @@ export function layerMidground(): HTMLCanvasElement {
     shadow(cx, base, w * 0.6);
   };
 
+  /**
+   * The chariot: a light enclosed four-wheeled carriage, packed for
+   * Philadelphia, with the trunks already on and a pair in the traces. It is
+   * the object the whole act points at, and until now it was an interactable
+   * with nothing drawn under it.
+   */
+  const chariot = (cx: number, b: number, s2: number) => {
+    const S = (v: number) => v * s2;
+
+    // Wheels first, as the frame everything else hangs from. A chariot's rear
+    // wheels are nearly twice the front, and the body is slung on braces above
+    // both axles — you can see daylight under it. Drawing it as a box sitting on
+    // four circles is what makes a carriage read as a delivery van.
+    const rwR = S(34), fwR = S(21);
+    const rwX = cx + S(42), rwY = b - rwR;
+    const fwX = cx - S(62), fwY = b - fwR;
+
+    const wheel = (wx: number, wy: number, r: number, spokes: number) => {
+      x.strokeStyle = INK.SETTLED;
+      x.lineCap = 'round';
+      x.globalAlpha = 0.55;
+      x.lineWidth = S(1.4);
+      for (let i = 0; i < spokes; i++) {
+        const ang = (i / spokes) * Math.PI * 2 + 0.2;
+        x.beginPath();
+        x.moveTo(wx + Math.cos(ang) * r * 0.14, wy + Math.sin(ang) * r * 0.14);
+        x.lineTo(wx + Math.cos(ang) * r * 0.94, wy + Math.sin(ang) * r * 0.94);
+        x.stroke();
+      }
+      x.globalAlpha = 0.9;
+      x.lineWidth = S(2.4);
+      x.beginPath();
+      x.arc(wx, wy, r, 0, Math.PI * 2);
+      x.stroke();
+      x.lineWidth = S(3.2);
+      x.beginPath();
+      x.arc(wx, wy, r * 0.13, 0, Math.PI * 2); // the hub
+      x.stroke();
+      x.globalAlpha = 1;
+    };
+    wheel(fwX, fwY, fwR, 10);
+    wheel(rwX, rwY, rwR, 12);
+
+    // Perch and axle standards: the timber that ties the two axles together and
+    // carries the body clear of them.
+    inkLine(x, [[fwX, fwY - S(2)], [cx - S(16), b - S(50)], [rwX, rwY - S(4)]], rnd, S(2.6), 0.02);
+    inkLine(x, [[fwX, fwY], [fwX + S(4), fwY - S(22)]], rnd, S(2.0), 0.05);
+    inkLine(x, [[rwX, rwY], [rwX - S(4), rwY - S(26)]], rnd, S(2.2), 0.05);
+
+    // The body. A coach body is a boat, not a crate: it swells below the
+    // waistline and tucks under, the front rakes back, and the roof cambers.
+    const bY = b - S(64); // underside of the body, clear above both axles
+    const tY = b - S(132); // roof
+    const shell: [number, number][] = [
+      [cx - S(30), tY + S(2)],
+      [cx + S(4), tY - S(3)],
+      [cx + S(36), tY + S(3)],
+      [cx + S(46), tY + S(22)],
+      [cx + S(50), tY + S(44)],
+      [cx + S(44), bY - S(6)],
+      [cx + S(28), bY],
+      [cx - S(14), bY + S(1)],
+      [cx - S(32), bY - S(10)],
+      [cx - S(38), tY + S(44)],
+      [cx - S(36), tY + S(20)],
+    ];
+    solid(x, shell, '#5A4B3C', rnd, EARTH.BISTRE, 0.22);
+    inkLine(x, [...shell, shell[0]], rnd, S(2.1), 0.04);
+
+    // Waistline, with the panel below it darker — the standard two-tone body,
+    // and the thing that most makes it read as a coach at a glance.
+    const waist = tY + S(46);
+    solid(x, [[cx - S(37), waist], [cx + S(49), waist], [cx + S(44), bY - S(6)],
+              [cx + S(28), bY], [cx - S(14), bY + S(1)], [cx - S(32), bY - S(10)]],
+      '#3E3327', rnd);
+    inkLine(x, [[cx - S(37), waist], [cx + S(49), waist]], rnd, S(1.8), 0.06);
+
+    // A single arched window with the light in it. One pale note on a dark mass
+    // is enough; two would turn it into a bus.
+    const gx0 = cx - S(22);
+    const gx1 = cx + S(22);
+    const glass: [number, number][] = [
+      [gx0, tY + S(30)], [gx0 + S(6), tY + S(15)], [gx1 - S(6), tY + S(15)],
+      [gx1, tY + S(30)], [gx1, waist - S(5)], [gx0, waist - S(5)],
+    ];
+    solid(x, glass, '#9AA6A4', rnd, EARTH.WET_STONE, 0.35);
+    inkLine(x, [...glass, glass[0]], rnd, S(1.3), 0.12);
+    // Door edge, running from the waist to the bottom of the body.
+    inkLine(x, [[cx + S(24), tY + S(20)], [cx + S(26), bY - S(4)]], rnd, S(1.2), 0.16);
+
+    // Leather braces: the body hangs from these, and they are why the whole
+    // thing sits high. Two short diagonals do the entire job.
+    inkLine(x, [[cx - S(34), bY - S(8)], [fwX + S(4), fwY - S(20)]], rnd, S(2.4), 0.03);
+    inkLine(x, [[cx + S(44), bY - S(8)], [rwX - S(4), rwY - S(24)]], rnd, S(2.6), 0.03);
+
+    // Coachman's box, forward and a little lower than the roof.
+    solid(x, [[cx - S(60), tY + S(30)], [cx - S(34), tY + S(26)],
+              [cx - S(34), tY + S(48)], [cx - S(58), tY + S(50)]], '#4C4032', rnd);
+    inkLine(x, [[cx - S(60), tY + S(30)], [cx - S(34), tY + S(26)],
+                [cx - S(34), tY + S(48)], [cx - S(58), tY + S(50)],
+                [cx - S(60), tY + S(30)]], rnd, S(1.6), 0.1);
+    inkLine(x, [[cx - S(58), tY + S(50)], [cx - S(54), bY - S(14)]], rnd, S(1.5), 0.1);
+
+    // Trunks on the rack behind — the reason it reads as packed rather than
+    // parked, and the only part of the drawing that is doing narrative work.
+    const trunk = (tx: number, ty: number, tw: number, th: number) => {
+      const pts: [number, number][] = [[tx, ty], [tx + tw, ty - S(3)],
+        [tx + tw, ty + th - S(3)], [tx, ty + th]];
+      solid(x, pts, '#6E5A3E', rnd, EARTH.RAW_UMBER, 0.26);
+      inkLine(x, [...pts, pts[0]], rnd, S(1.5), 0.1);
+      inkLine(x, [[tx + tw * 0.35, ty - S(1)], [tx + tw * 0.35, ty + th - S(1)]], rnd, S(1.2), 0.08);
+      inkLine(x, [[tx, ty + th * 0.42], [tx + tw, ty + th * 0.42 - S(3)]], rnd, S(1.1), 0.2);
+    };
+    trunk(cx + S(48), tY + S(34), S(40), S(34));
+    trunk(cx + S(54), tY + S(4), S(30), S(28));
+    inkLine(x, [[cx + S(46), tY + S(66)], [cx + S(92), tY + S(60)]], rnd, S(2.0), 0.06);
+
+    /*
+     * A pair in the traces, in profile and facing out of frame. Drawn as a
+     * curved barrel with a neck that rises off the shoulder and a head at the
+     * end of it — a box with sticks under it reads as furniture, and this is the
+     * one animal in the scene close enough for that to show.
+     */
+    const horse = (hx: number, hb: number, hs: number, coat: string) => {
+      const H = (v: number) => v * hs;
+      shadow(hx, hb, H(48));
+
+      // Legs first, so the barrel closes over their tops. Each has one joint —
+      // a straight line from belly to ground is the single thing that makes a
+      // drawn horse look like a sawhorse.
+      const leg = (lx: number, knee: number, foot: number, top: number) => {
+        inkLine(x, [[hx + H(lx), hb - H(top)], [hx + H(lx + knee), hb - H(24)],
+                    [hx + H(lx + foot), hb]], rnd, H(2.6), 0.02);
+      };
+      leg(-24, 4, 2, 50);
+      leg(20, 4, -2, 54);
+      leg(-32, -3, -8, 52);
+      leg(28, 6, 9, 56);
+
+      // Barrel: withers, a dip along the back, croup, and a belly that curves.
+      const barrel: [number, number][] = [
+        [hx - H(30), hb - H(84)], [hx + H(4), hb - H(80)], [hx + H(30), hb - H(86)],
+        [hx + H(42), hb - H(66)], [hx + H(32), hb - H(46)], [hx - H(4), hb - H(42)],
+        [hx - H(28), hb - H(48)], [hx - H(40), hb - H(58)], [hx - H(42), hb - H(74)],
+      ];
+      solid(x, barrel, coat, rnd, EARTH.BISTRE, 0.24);
+      inkLine(x, [...barrel, barrel[0]], rnd, H(1.8), 0.08);
+
+      // Neck: a broad wedge off the shoulder, crest above and throat below.
+      const neck: [number, number][] = [
+        [hx - H(26), hb - H(86)], [hx - H(62), hb - H(126)], [hx - H(52), hb - H(104)],
+        [hx - H(38), hb - H(70)],
+      ];
+      solid(x, neck, coat, rnd);
+      inkLine(x, [...neck, neck[0]], rnd, H(1.7), 0.08);
+
+      // Head: hung forward and down off the poll, not continuing the neck's
+      // line. That angle is the whole silhouette — without it the neck reads as
+      // a horn.
+      const head: [number, number][] = [
+        [hx - H(60), hb - H(128)], [hx - H(84), hb - H(118)], [hx - H(92), hb - H(106)],
+        [hx - H(82), hb - H(101)], [hx - H(54), hb - H(106)],
+      ];
+      solid(x, head, coat, rnd, EARTH.BISTRE, 0.2);
+      inkLine(x, [...head, head[0]], rnd, H(1.6), 0.06);
+      inkLine(x, [[hx - H(62), hb - H(128)], [hx - H(58), hb - H(138)]], rnd, H(1.5), 0.04); // ear
+      inkLine(x, [[hx - H(60), hb - H(126)], [hx - H(40), hb - H(96)], [hx - H(28), hb - H(84)]],
+        rnd, H(1.6), 0.16); // mane
+
+      // Tail, and the trace running back to the carriage.
+      inkLine(x, [[hx + H(40), hb - H(82)], [hx + H(54), hb - H(58)], [hx + H(48), hb - H(30)]],
+        rnd, H(2.4), 0.06);
+      inkLine(x, [[hx + H(40), hb - H(62)], [hx + H(104), hb - H(58)]], rnd, H(1.6), 0.12);
+    };
+    // The off horse first and paler, so the near one reads in front of it
+    // rather than the two merging into a single brown mass.
+    horse(cx - S(178), b - S(9), s2 * 0.84, '#8C7659');
+    horse(cx - S(140), b + S(3), s2 * 0.92, '#5E4B3A');
+
+    shadow(cx + S(6), b, S(78));
+  };
+
   const base = hy + 196; // the near midground stands at roughly z = 0.40
 
   tree(W * 0.10, base + 34, 250, 168);
   hedge(W * 0.185, W * 0.335, base + 12, 54);
   timber(W * 0.475, base + 4, 96);
-  cart(W * 0.695, base + 20, 130);
-  tree(W * 0.885, base + 40, 268, 182);
+  cart(W * 0.60, base + 16, 108);
+  chariot(W * 0.815, base + 26, 1.0);
+  tree(W * 0.905, base + 40, 268, 182);
 
   // A well, and a barrow tipped against it.
   const wx = W * 0.585;
@@ -685,6 +868,57 @@ export function layerForeground(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(67);
   const y = H * 0.94;
+
+  /*
+   * Rough grass and a little colour in the strip in front of the fence.
+   *
+   * This band was bare olive, which was survivable until there were insects in
+   * it — a butterfly crossing an empty field reads as a sprite, and the same
+   * butterfly crossing grass reads as being somewhere. Everything here is kept
+   * short and low in the frame: this plate draws over the figures, so anything
+   * tall enough to reach a walking man's chest would cut him in half.
+   */
+  for (let i = 0; i < 150; i++) {
+    const px = rnd() * W;
+    const py = H * 0.70 + rnd() * H * 0.30;
+    const depth = (py - H * 0.70) / (H * 0.30); // taller toward the bottom edge
+    const th = (7 + rnd() * 13) * (0.5 + depth);
+    const tone = rnd() < 0.35 ? EARTH.TERRE_VERTE : EARTH.RAW_UMBER;
+    x.strokeStyle = tone;
+    x.lineCap = 'round';
+    x.lineWidth = 1.1 + depth * 0.9;
+    x.globalAlpha = 0.28 + rnd() * 0.24;
+    for (let bl = 0; bl < 3; bl++) {
+      const lean = (bl - 1) * (2 + rnd() * 4);
+      x.beginPath();
+      x.moveTo(px, py);
+      x.quadraticCurveTo(px + lean * 0.4, py - th * 0.6, px + lean, py - th);
+      x.stroke();
+    }
+    x.globalAlpha = 1;
+  }
+
+  // A handful of wildflowers. Four notes of colour in a frame this olive is
+  // more than it sounds like.
+  for (let i = 0; i < 22; i++) {
+    const px = rnd() * W;
+    const py = H * 0.74 + rnd() * H * 0.24;
+    const head = ['#C7A96B', '#B8846E', '#D9CDA4', '#9FA98C'][Math.floor(rnd() * 4)];
+    x.strokeStyle = EARTH.TERRE_VERTE;
+    x.globalAlpha = 0.4;
+    x.lineWidth = 1.1;
+    x.beginPath();
+    x.moveTo(px, py);
+    x.lineTo(px + (rnd() - 0.5) * 4, py - 12 - rnd() * 8);
+    x.stroke();
+    x.globalAlpha = 0.85;
+    x.fillStyle = head;
+    x.beginPath();
+    x.arc(px + (rnd() - 0.5) * 4, py - 14 - rnd() * 8, 1.8 + rnd() * 1.6, 0, Math.PI * 2);
+    x.fill();
+    x.globalAlpha = 1;
+  }
+
   for (let i = 0; i <= 11; i++) {
     const px = i * (W / 11) + rnd() * 10;
     inkLine(x, [[px, y - 44], [px + (rnd() - 0.5) * 8, H]], rnd, 4.2, 0.0);
@@ -1253,6 +1487,64 @@ export function cloudShadows(seed = 131): HTMLCanvasElement {
           EARTH.SHADOW_SLATE, 0.032, rnd, 3);
       }
     }
+  }
+  return c;
+}
+
+/**
+ * A small flying insect, drawn at the size it will actually be seen.
+ *
+ * Two wings, a body, and nothing else — anything more is invisible at eighteen
+ * pixels and only costs fill rate. The wings are drawn spread; the flutter is
+ * done at runtime by squeezing the sprite horizontally, which reads as a
+ * wingbeat and costs nothing.
+ */
+export function insect(kind: 'butterfly' | 'fly' | 'dragonfly', seed: number): HTMLCanvasElement {
+  const size = 40;
+  const { c, x } = surface(size, size);
+  const rnd = mulberry(seed);
+  const cx = size / 2;
+  const cy = size / 2;
+
+  if (kind === 'butterfly') {
+    const wing = rnd() < 0.5 ? EARTH.YELLOW_OCHRE : '#C7A96B';
+    // Both wings cross the midline rather than meeting on it. Wings that merely
+    // touch at the centre pinch into a notched V once the runtime squeeze
+    // closes them, and the whole thing stops reading as an animal.
+    for (const side of [-1, 1]) {
+      wash(x, [[cx - side * 3, cy - 3], [cx + side * 16, cy - 13], [cx + side * 18, cy - 1],
+               [cx + side * 7, cy + 4]], wing, 0.85, rnd, 3);
+      wash(x, [[cx - side * 2, cy + 1], [cx + side * 12, cy + 3], [cx + side * 10, cy + 13],
+               [cx, cy + 6]], wing, 0.7, rnd, 3);
+      inkLine(x, [[cx, cy - 2], [cx + side * 16, cy - 13], [cx + side * 18, cy - 1],
+                  [cx + side * 7, cy + 4]], rnd, 0.9, 0.08);
+    }
+    // Body last, wide enough to survive the squeeze and hold the two halves
+    // together as one silhouette.
+    wash(x, [[cx - 2.4, cy - 8], [cx + 2.4, cy - 8], [cx + 1.8, cy + 11], [cx - 1.8, cy + 11]],
+      INK.SETTLED, 0.9, rnd, 2);
+    for (const side of [-1, 1]) {
+      inkLine(x, [[cx, cy - 7], [cx + side * 5, cy - 13]], rnd, 0.7, 0.1); // antennae
+    }
+  } else if (kind === 'dragonfly') {
+    for (const side of [-1, 1]) {
+      for (const dy of [-3, 2]) {
+        wash(x, [[cx - side * 2, cy + dy], [cx + side * 18, cy + dy - 3],
+                 [cx + side * 18, cy + dy + 3], [cx - side * 2, cy + dy + 3]],
+          EARTH.SHADOW_SLATE, 0.5, rnd, 2);
+        inkLine(x, [[cx, cy + dy], [cx + side * 18, cy + dy - 2]], rnd, 0.7, 0.14);
+      }
+    }
+    wash(x, [[cx - 2.2, cy - 6], [cx + 2.2, cy - 6], [cx + 1.2, cy + 16], [cx - 1.2, cy + 16]],
+      EARTH.TERRE_VERTE, 0.95, rnd, 2);
+    inkLine(x, [[cx, cy - 6], [cx, cy + 16]], rnd, 1.1, 0.06);
+  } else {
+    for (const side of [-1, 1]) {
+      wash(x, [[cx, cy - 1], [cx + side * 8, cy - 5], [cx + side * 8, cy + 1], [cx, cy + 2]],
+        PAPER.BRIGHT, 0.45, rnd, 2);
+    }
+    wash(x, [[cx - 2, cy - 2], [cx + 2, cy - 2], [cx + 1.6, cy + 5], [cx - 1.6, cy + 5]],
+      INK.FLOOR, 0.9, rnd, 2);
   }
   return c;
 }

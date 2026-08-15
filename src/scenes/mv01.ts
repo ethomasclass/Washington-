@@ -110,7 +110,7 @@ export const MV01: Scene = {
       id: 'amb.chariot',
       voice: 'vanity',
       line: 'They will watch you arrive. Whatever you are wearing will be the first thing said of you.',
-      x: 0.763, z: 0.55, r: 0.10, minLoudness: 0.30,
+      x: 0.80, z: 0.45, r: 0.10, minLoudness: 0.30,
     },
     {
       id: 'amb.mill',
@@ -331,8 +331,10 @@ export const MV01: Scene = {
     {
       id: 'chariot',
       label: 'the chariot',
-      x: 0.763,
-      z: 0.55,
+      // Under the painted chariot at 0.815 of the frame, a little nearer than
+      // the art sits so a player walking the front of the yard meets it.
+      x: 0.80,
+      z: 0.45,
       examine:
         'Packed for Philadelphia. Whatever the Congress decides, you are going — the only question ' +
         'is what you are when you come back.',
@@ -452,8 +454,11 @@ export const MV01: Scene = {
       id: 'lee',
       look: { coat: '#5C6673', hat: 'round', build: 0.95, tall: 0.99 },
       name: 'William Lee',
-      x: 0.815,
-      z: 0.41,
+      // Standing just forward of the chariot he has finished loading. The x has
+      // to be near the bound: depth compresses the frame toward the centre, so
+      // an actor at 0.70 lands nowhere near the painted chariot at 0.815.
+      x: 0.93,
+      z: 0.44,
       lines: [
         {
           speaker: 'William Lee',

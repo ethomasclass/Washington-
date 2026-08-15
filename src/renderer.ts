@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import {
-  characterCutout, characterFrames, cloudShadows, CLOUD_BANDS, motes,
+  characterCutout, characterFrames, cloudShadows, CLOUD_BANDS, insect, motes,
   PLATE_SETS, paperTexture,
 } from './art';
 import { MEANING, PAPER } from './palette';
@@ -200,6 +200,23 @@ export class DioramaRenderer {
   private shadowTex: THREE.CanvasTexture | null = null;
   private moteMesh: THREE.Mesh | null = null;
   private moteTex: THREE.CanvasTexture | null = null;
+  /**
+   * Foreground insects. Everything else in the frame either holds still or
+   * moves because the player did; these are the only things with somewhere of
+   * their own to be, which is most of why the air in front of the player reads
+   * as air rather than as varnish.
+   */
+  private bugs: {
+    mesh: THREE.Mesh;
+    /** Wandering path: a slow Lissajous on the ground plane, plus height. */
+    cx: number; cz: number; rx: number; rz: number;
+    fx: number; fz: number; fy: number;
+    phx: number; phz: number; phy: number;
+    hy: number; hr: number;
+    /** Wingbeat: rate in beats per second, and how far the sprite squeezes. */
+    beat: number; squeeze: number;
+    t: number;
+  }[] = [];
   private gait = 0;
   private bob = 0;
 
@@ -263,6 +280,8 @@ export class DioramaRenderer {
       m.dispose();
     };
     for (const m of [this.clouds, this.shadowMesh, this.moteMesh]) if (m) drop(m);
+    for (const b of this.bugs) drop(b.mesh);
+    this.bugs = [];
     this.clouds = null;
     this.cloudTex = null;
     this.shadowMesh = null;
@@ -334,7 +353,66 @@ export class DioramaRenderer {
     this.moteMesh.renderOrder = 6;
     this.scene.add(this.moteMesh);
 
+    this.buildBugs(plateSet);
     this.buildActors(npcPositions);
+  }
+
+  /**
+   * Three insects per scene, in the strip of ground between the player and the
+   * camera. They are placed with the same ground projection as the figures, so
+   * one that wanders toward the horizon shrinks and rises exactly as a person
+   * would — the whole point is that they occupy the same space, not a separate
+   * "effects" layer floating over the picture.
+   *
+   * The wingbeat is a horizontal squeeze of the sprite. At Mount Vernon in May
+   * that is butterflies over the garden; in camp it is flies, which is the
+   * historically louder fact about that place and does not need saying out loud.
+   */
+  private buildBugs(plateSet: string): void {
+    const kinds: ('butterfly' | 'fly' | 'dragonfly')[] =
+      plateSet === 'camp'
+        ? ['fly', 'fly', 'fly']
+        : ['butterfly', 'butterfly', 'dragonfly'];
+    // Sized as foreground, not as wildlife. These are nearer the lens than the
+    // player is, so a butterfly reads at roughly a fifth of his height; drawn to
+    // literal scale it disappears into the ground litter and looks like grit.
+    const SIZE = { butterfly: 0.52, fly: 0.24, dragonfly: 0.46 };
+    const BEAT = { butterfly: 4.2, fly: 13, dragonfly: 16 };
+    // How far the wingbeat closes. Past about half the sprite the silhouette
+    // stops being an insect and starts being a mark on the paper.
+    const SQUEEZE = { butterfly: 0.52, fly: 0.40, dragonfly: 0.26 };
+
+    kinds.forEach((kind, i) => {
+      const canvas = insect(kind, 71 + i * 37);
+      const h = SIZE[kind];
+      const w = h * (canvas.width / canvas.height);
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ map: textureFrom(canvas), transparent: true, depthWrite: false }),
+      );
+      mesh.position.z = -1.15;
+      this.scene.add(mesh);
+
+      // Three incommensurate rates per bug, so the path never visibly repeats.
+      this.bugs.push({
+        mesh,
+        cx: 0.19 + i * 0.31,
+        cz: 0.03 + (i % 2) * 0.035,
+        rx: 0.17 + i * 0.04,
+        rz: 0.022,
+        fx: 0.21 + i * 0.037,
+        fz: 0.53 + i * 0.11,
+        fy: 0.81 + i * 0.19,
+        phx: i * 2.1,
+        phz: i * 1.3,
+        phy: i * 0.7,
+        hy: 0.34 + i * 0.30,
+        hr: 0.22,
+        beat: BEAT[kind],
+        squeeze: SQUEEZE[kind],
+        t: i * 3.7,
+      });
+    });
   }
 
   private buildActors(npcPositions: Actor[]): void {
@@ -479,6 +557,25 @@ export class DioramaRenderer {
         n.off += d * Math.min(1, dt * 9);
       }
       n.mesh.position.y -= n.off * n.mesh.scale.x;
+    }
+
+    /*
+     * Insects. Unlike the NPCs these are always in motion, which is fine: they
+     * are small, they are in front, and a butterfly that stopped dead would be
+     * more distracting than one that does not. The mirror on x means each one
+     * faces the way it is going, so the path reads as intent rather than drift.
+     */
+    for (const b of this.bugs) {
+      b.t += dt;
+      const x = b.cx + b.rx * Math.sin(b.t * b.fx + b.phx);
+      const z = b.cz + b.rz * Math.sin(b.t * b.fz + b.phz);
+      const p = this.project({ x, z });
+      const facing = Math.cos(b.t * b.fx + b.phx) >= 0 ? 1 : -1;
+      const beat = 1 - b.squeeze * (0.5 - 0.5 * Math.cos(b.t * b.beat * Math.PI * 2));
+      b.mesh.scale.set(p.scale * beat * facing, p.scale, 1);
+      b.mesh.position.x = p.x;
+      b.mesh.position.y = p.y + (b.hy + b.hr * Math.sin(b.t * b.fy + b.phy)) * p.scale;
+      b.mesh.renderOrder = this.orderFor(z);
     }
 
     // Parallax breath on both axes. Walking across the frame slides the stack

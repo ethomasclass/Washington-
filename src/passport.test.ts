@@ -208,6 +208,32 @@ for (const scene of sceneList()) {
   check(`nothing shadowed (closest pair ${worst.d.toFixed(3)})`, worst.d >= REACH,
     `${worst.a} / ${worst.b}`);
 
+  /*
+   * Ground distance is not enough on its own. Depth compresses the frame toward
+   * the centre, so two figures a comfortable step apart at the front of the
+   * scene are drawn on top of each other at the back — the ground-space check
+   * above passes and the players still see one blob. This one measures the gap
+   * where it actually matters, in frame widths after projection.
+   *
+   * Figures only. Interactables are painted into the plates and have no cutout
+   * to collide with.
+   */
+  const ease = (z: number) => Math.pow(1 - z, 1.55); // EASE, from the renderer
+  const frameX = (x: number, z: number) => (x - 0.5) * 0.94 * (0.40 + 0.60 * ease(z));
+  // A cutout is 0.46 of its height wide, and a figure is 2.6 of 16 view widths tall.
+  const halfW = (z: number) => ((0.46 + 0.54 * ease(z)) * 2.6 * 0.46) / 16 / 2;
+  let tight = { a: '', b: '', gap: 1 };
+  for (let i = 0; i < scene.npcs.length; i++) {
+    for (let j = i + 1; j < scene.npcs.length; j++) {
+      const a = scene.npcs[i];
+      const c = scene.npcs[j];
+      const gap = Math.abs(frameX(a.x, a.z) - frameX(c.x, c.z)) - halfW(a.z) - halfW(c.z);
+      if (gap < tight.gap) tight = { a: a.id, b: c.id, gap };
+    }
+  }
+  check(`no two figures overlap on screen (tightest ${tight.gap.toFixed(3)} of the frame)`,
+    tight.gap >= 0.012, `${tight.a} / ${tight.b}`);
+
   const outside = pts.filter(
     (p) => p.x < BOUND.x0 || p.x > BOUND.x1 || p.z < BOUND.z0 || p.z > BOUND.z1,
   );

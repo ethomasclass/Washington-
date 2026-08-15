@@ -13,6 +13,7 @@ import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
 import { sceneList } from './content';
 import { figureHalfW, frameX } from './ground';
+import { walkFar } from './art';
 import { councilFor, lockOn, rejoinderFor } from './council';
 import { timePasses } from './transition';
 import { CSS } from './ui';
@@ -458,6 +459,63 @@ for (const scene of sceneList()) {
   );
   check('every target inside the walkable bounds', outside.length === 0,
     outside.map((p) => p.id).join(', '));
+
+  /*
+   * DEPTH AND REACH.
+   *
+   * Two failures that look identical to a player — "I can't get to it" and "it
+   * isn't there" — and neither is visible in a scene file, because both depend
+   * on numbers that live in three other modules.
+   *
+   * 1. Reach. The walkable band stops at `walkTo`; anything further than one
+   *    REACH beyond it can never be interacted with.
+   * 2. Occlusion. A plate is flat, so a figure further away than a plate's
+   *    nearest painted content is drawn behind ALL of it. Sergeant Starr stood
+   *    at z 0.62 against an earth bank whose nearest point is 0.618, so the man
+   *    the whole scene is about was painted out of it.
+   */
+  const band = scene.walkTo ?? 0.82;
+  const plateFar = walkFar(scene.plates);
+  const reachFrom = (z: number) => Math.abs(z - Math.min(Math.max(z, BOUND.z0), band)) * 0.75;
+
+  const unreachable = [
+    ...scene.npcs.map((n) => ({ k: 'npc', id: n.id, z: n.z })),
+    ...scene.tasks.map((t) => ({ k: 'task', id: t.id, z: t.z })),
+    ...scene.interactables.map((i) => ({ k: 'thing', id: i.id, z: i.z })),
+  ].filter((o) => reachFrom(o.z) > REACH);
+  check(`everything is inside arm's reach of the band (0.10..${band.toFixed(3)})`,
+    unreachable.length === 0,
+    unreachable.map((o) => `${o.k}:${o.id}@${o.z}`).join(', '));
+
+  /*
+   * Whether a plate HIDES what is behind it cannot be derived from its depth.
+   *
+   * The first cut of this check assumed it could, and flagged four figures in
+   * the camp — including Greene's sergeant — as painted out. They are not: the
+   * camp's midground is scattered tents with daylight between them and every
+   * figure shows through. Only a plate that paints something solid across the
+   * full width actually hides anyone, and nothing in PLATE_DEPTHS knows the
+   * difference between a tent row and an earth bank.
+   *
+   * So the author declares it. `walkTo` means "there is a barrier here and the
+   * ground stops"; where a scene sets one, a figure beyond it is behind that
+   * barrier and cannot be seen or spoken to. Where a scene does not, the plates
+   * are see-through and there is nothing to check.
+   */
+  if (scene.walkTo !== undefined) {
+    const hidden = [
+      ...scene.npcs.map((n) => ({ k: 'npc', id: n.id, z: n.z })),
+      ...(scene.extras ?? []).map((e, i) => ({ k: 'extra', id: `${i}`, z: e.z })),
+    ].filter((o) => o.z >= scene.walkTo!);
+    check(`no figure stands behind the barrier at z ${scene.walkTo.toFixed(3)}`,
+      hidden.length === 0, hidden.map((o) => `${o.k}:${o.id}@${o.z}`).join(', '));
+  } else if (plateFar < 0.82) {
+    // Not a failure — a note, so the debt is visible. A plate whose nearest
+    // content sits inside the walkable band MIGHT hide figures behind it, and
+    // whether it does is a question for eyes, not for arithmetic.
+    console.log(`  note ${scene.id}: midground nearest content at z ${plateFar.toFixed(3)}, ` +
+      `band runs to ${band.toFixed(2)} — check by eye that nothing back there is hidden`);
+  }
 
   check('the exit exists in the scene', scene.interactables.some((i) => i.id === scene.exit),
     scene.exit);

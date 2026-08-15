@@ -3361,6 +3361,42 @@ export const PLATE_DEPTHS: Record<string, number[]> = {
 const withAir = (_name: string, layers: HTMLCanvasElement[]): HTMLCanvasElement[] =>
   layers.map((c, i) => recede(c, i === 1 ? 1 : i === 2 ? 0.3 : 0));
 
+/**
+ * How far back the player may walk in a given set, derived from its plates.
+ *
+ * A plate is flat, so the renderer sorts a figure either wholly in front of it
+ * or wholly behind it. The midground plates paint solid things — an earth bank
+ * across the whole width of the lines, tent rows in the camp — so a figure
+ * further away than the plate's nearest content is drawn behind ALL of it and
+ * disappears.
+ *
+ * That is not a rendering bug; standing behind a parapet does hide you. It is a
+ * staging bug: the walkable band ran past the earthwork into ground the player
+ * cannot be seen on, and Washington vanished if you walked to the back of the
+ * lines. The far edge of the walkable ground IS the nearest solid thing painted
+ * across it, and now it says so in one place instead of being a hand-set 0.82
+ * that three scenes shared and none of them checked.
+ *
+ * The margin keeps his feet clearly in front rather than exactly level with it.
+ *
+ * THE COST, STATED: this shortens the walkable band, in the camp considerably,
+ * because one flat plate cannot hold both a tent row and the ground in front of
+ * it. Splitting those plates — ground wash onto the far plate, discrete objects
+ * onto a near one with an honest depth — gives the depth back. That is the real
+ * fix and it is per-scene art work; this is the correct floor under it.
+ */
+export function walkFar(plateSet: string): number {
+  const depths = PLATE_DEPTHS[plateSet] ?? PLATE_DEPTHS.vernon;
+  let far = 0.82; // the old hand-set limit, still the ceiling
+  for (const d of depths) {
+    // Depth 1 is beyond the walkable ground entirely; depth 0 is the near frame
+    // and is meant to pass in front of everything.
+    if (d >= 1 || d <= 0) continue;
+    far = Math.min(far, d - 0.03);
+  }
+  return Math.max(0.30, far);
+}
+
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
   vernon: () => withAir('vernon', [
     layerSky(), layerHills(), layerHouse(),

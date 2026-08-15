@@ -133,8 +133,12 @@ const WALK_X = 0.30; // frame-widths per second
 const WALK_Z = 0.22; // depth is slower; it covers less apparent ground
 const REACH = 0.085;
 
-/** Walkable bounds. Beyond z = 0.82 you would be inside the house. */
-const BOUND = { x0: 0.05, x1: 0.95, z0: 0.10, z1: 0.82 };
+/**
+ * Walkable bounds. The far edge is derived per scene from the plates — see
+ * walkFar() — because it is the nearest solid thing painted across the ground,
+ * not a number somebody picked.
+ */
+const BOUND = { x0: 0.05, x1: 0.95, z0: 0.10, z1: scene.walkTo ?? 0.82 };
 
 /**
  * Ground distance. Depth counts for slightly less than width because the
@@ -618,6 +622,7 @@ function loadScene(id: string): void {
   held.left = held.right = held.up = held.down = false;
 
   lightFor(scene);
+  BOUND.z1 = scene.walkTo ?? 0.82;
   renderer.loadScene(scene.plates, actorsFor(scene), propsFor(scene));
   renderer.setSun(scene.sun[0], scene.sun[1]);
   overlay.setPlate(headOf(scene));

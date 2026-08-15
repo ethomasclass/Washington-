@@ -297,6 +297,23 @@ export interface Scene {
   noStrength: string;
 
   /**
+   * How far back the player may walk in this scene. Defaults to 0.82.
+   *
+   * A plate is flat, so a figure sorts either wholly in front of it or wholly
+   * behind it. Where a midground plate paints something solid across the whole
+   * width — the earth bank on the lines — anyone further away than it is drawn
+   * behind ALL of it and disappears. That is not a rendering fault; standing
+   * behind a parapet does hide you. It is staging: the walkable ground has to
+   * stop at the parapet, because there is nowhere visible behind it.
+   *
+   * Authored rather than derived, because it is a decision about where the
+   * scene is playable, and the derived value (art.ts `walkFar`) is only the
+   * ceiling the plates impose. The linter reports both and fails when content
+   * is placed out of reach of whichever is in force.
+   */
+  walkTo?: number;
+
+  /**
    * The enlistment clock: whose contracts run out, and when.
    *
    * Separate from the return rather than nested inside it, because the two are

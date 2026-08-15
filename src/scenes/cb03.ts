@@ -64,6 +64,20 @@ export const CB03: Scene = {
   noStrength: 'No return this week. Four regiments cannot say what they have.',
 
   /*
+   * The earth bank is the back wall of this scene.
+   *
+   * linesMidground paints it as a solid mass across the entire width, with its
+   * nearest point at z 0.618 — so anyone who walked past that was drawn behind
+   * the whole plate and vanished. Washington disappeared entirely if you held
+   * ArrowUp on the parapet, which is what the depth report was about.
+   *
+   * The ground the player has is the firing step in front of the bank. That is
+   * also what the scene IS: you walk the works, you do not wander the forward
+   * slope down to the water in November within sight of the British lines.
+   */
+  walkTo: 0.588,
+
+  /*
    * The clock, with a date and no headcount.
    *
    * The date is documented and the count is not — see V-A2.3. So the counter
@@ -134,7 +148,7 @@ export const CB03: Scene = {
     },
     {
       id: 'amb.december',
-      x: 0.46, z: 0.72, r: 0.11, minLoudness: 0.32,
+      x: 0.48, z: 0.34, r: 0.11, minLoudness: 0.32,
       variants: {
         temper: 'They will go home in December because a piece of paper says they may. Paper.',
         duty: 'They signed for eight months and they have served eight months. The paper is the whole quarrel.',
@@ -168,7 +182,7 @@ export const CB03: Scene = {
     {
       id: 't3.walk',
       label: 'walk the parapet',
-      x: 0.93, z: 0.80,
+      x: 0.93, z: 0.60,
       done:
         'Half a mile of it, and you put your hand on the earth every dozen yards. It is well made ' +
         'where a man from a farm made it and badly made where a man from a counting-house did, and ' +
@@ -393,7 +407,7 @@ export const CB03: Scene = {
     {
       id: 'enlistment_roll',
       label: 'the enlistment roll',
-      x: 0.46, z: 0.72,
+      x: 0.48, z: 0.34,
       examine:
         'Every man on this hill, and against each name a date. Most of the dates are in December. ' +
         'It is not a mutiny and it is not desertion — it is the paper they signed, and it is going ' +
@@ -491,7 +505,7 @@ export const CB03: Scene = {
       look: { coat: '#8A7F66', hat: 'round', build: 1.0, tall: 0.99 },
       name: 'Sergeant Starr',
       hearFlag: 'heard.a2.starr',
-      x: 0.34, z: 0.62,
+      x: 0.34, z: 0.575,
       lines: [
         {
           speaker: 'Sergeant Starr',
@@ -615,7 +629,7 @@ export const CB03: Scene = {
     { x: 0.10, z: 0.24, coat: '#7E7059', hat: 'round', seed: 611, build: 0.96, tall: 0.97 },
     { x: 0.16, z: 0.42, coat: '#6E6350', hat: 'none', seed: 622, build: 1.04, tall: 1.0 },
     { x: 0.92, z: 0.20, coat: '#847A61', hat: 'tricorne', seed: 633, build: 1.0, tall: 1.01 },
-    { x: 0.92, z: 0.62, coat: '#726855', hat: 'round', seed: 644, build: 0.94, tall: 0.98 },
-    { x: 0.50, z: 0.80, coat: '#7A6F58', hat: 'none', seed: 655, build: 1.02, tall: 0.99 },
+    { x: 0.92, z: 0.56, coat: '#726855', hat: 'round', seed: 644, build: 0.94, tall: 0.98 },
+    { x: 0.07, z: 0.13, coat: '#7A6F58', hat: 'none', seed: 655, build: 1.02, tall: 0.99 },
   ],
 };

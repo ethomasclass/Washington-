@@ -21,6 +21,7 @@
 import { INK, PAPER, VOICE_INK, type VoiceId } from './palette';
 import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { grainTile, portraitPlate } from './art';
+import { cellStyle, portraitFor } from './portraits';
 
 /**
  * Lay the paper.
@@ -315,6 +316,11 @@ export const CSS = `
   .well { width: 300px; height: 400px; flex: 0 0 300px; display: flex; align-items: center;
           justify-content: center; background: ${PAPER.COOL}; border: 1px solid ${INK.SETTLED}; }
   .well img { width: 288px; height: 384px; display: block; }
+  /* A painted portrait is one half of a 2-up sheet, shown through the well
+     rather than cropped out of the file in post — so what is on disk stays
+     exactly what the generator returned, and stays checkable against the
+     prompt that produced it. */
+  .well.painted { background-repeat: no-repeat; }
   .panel.compact .well { display: none; }
   .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
@@ -365,6 +371,23 @@ export const CSS = `
 
   /* Moved off the top-right corner, which now belongs to the return. The code
      is an end-of-period utility, not something played with. */
+  /*
+   * "Cut = space. Fade = time." (02 §8.6)
+   *
+   * Walking through a door is a cut, because the man went somewhere. A fade is
+   * spent only where time passed — an act break, or a jump of months inside one
+   * act, which Act 2 does twice. 900ms to PAPER-BRIGHT, which is the one
+   * animation in the game permitted to run past 400ms.
+   *
+   * To bare paper rather than to black: the sheet is what everything in this
+   * game is made of, and a fade to black would be a film convention borrowed
+   * into a drawing.
+   */
+  .fade { position: absolute; inset: 0; z-index: 90; pointer-events: auto;
+          background: ${PAPER.BRIGHT}; opacity: 0;
+          transition: opacity 400ms linear; }
+  .fade.on { opacity: 1; }
+
   .codebar { position: absolute; bottom: 20px; right: 26px; pointer-events: auto;
              padding: 10px 14px;
              font-size: 13px; letter-spacing: .06em; color: ${INK.LIGHT}; }
@@ -388,7 +411,7 @@ export interface OptionView {
   lockVoice?: VoiceId;
 }
 
-type Portrait = { seed: number; coat: string };
+type Portrait = { seed: number; coat: string; id?: string };
 
 /** The two-line header: a dateline, and the job in plain English. */
 export interface SceneHead {
@@ -587,7 +610,50 @@ export class Overlay {
     return p;
   }
 
+  /**
+   * Carry a scene change through bare paper.
+   *
+   * `swap` runs at full white, so the player never sees the new plate assemble.
+   * 400ms out, a 100ms hold that does the work of a held breath, 400ms back —
+   * the 900ms 02 §8.6 specifies for an act break.
+   */
+  fadeThrough(swap: () => void, done: () => void): void {
+    const f = document.createElement('div');
+    f.className = 'fade';
+    this.root.appendChild(f);
+    // Force a style recalc so the browser has a computed opacity of 0 to
+    // transition FROM. Without it the append and the class land in one batch,
+    // there is no start value, and the fade snaps to white in a single frame —
+    // which is a cut, i.e. exactly the thing this method exists not to be.
+    void f.offsetWidth;
+    f.classList.add('on');
+
+    setTimeout(() => {
+      swap();
+      setTimeout(() => {
+        f.classList.remove('on');
+        setTimeout(() => {
+          f.remove();
+          done();
+        }, 400);
+      }, 100);
+    }, 400);
+  }
+
+  /*
+   * A painted portrait if one has been generated for this face, and the
+   * procedural stand-in if not. The fallback is not a placeholder in the
+   * disposable sense — it is what ships until 03b's eighteen sheets exist, and
+   * it must never be the thing that stops a scene being playable.
+   */
   private wellFor(p: Portrait): string {
+    const painted = portraitFor(p.id);
+    if (painted) {
+      return (
+        `<div class="well painted" style="${cellStyle(painted)}" ` +
+        `role="img" aria-label="${painted.name}"></div>`
+      );
+    }
     return `<div class="well"><img src="${portraitPlate(p.coat, p.seed).toDataURL()}" alt=""></div>`;
   }
 

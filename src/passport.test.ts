@@ -14,6 +14,7 @@ import { applyDelta, initialState, loudness, type StatId } from './state';
 import { sceneList } from './content';
 import { figureHalfW, frameX } from './ground';
 import { councilFor, lockOn, rejoinderFor } from './council';
+import { timePasses } from './transition';
 import { CSS } from './ui';
 import { INK, type VoiceId } from './palette';
 import type { Decision } from './types';
@@ -403,6 +404,24 @@ console.log('\ncontent · across scenes');
   const withArmy = sceneList().filter((s) => s.strength);
   check(`the return is shown once there is an army (${withArmy.length} of ${sceneList().length})`,
     withArmy.every((s) => s.strength!.fit <= s.strength!.onRolls));
+}
+
+console.log('\ntransitions · 02 §8.6');
+{
+  // Every transition the built content can actually make, and which treatment
+  // the rule gives it. Printed rather than merely asserted, because "which of
+  // these fades" is a thing the writers will want to read off the test output.
+  for (const from of sceneList()) {
+    const to = sceneList().find((s) => s.id === from.exitTo);
+    if (!to) continue;
+    const fade = timePasses(from, to);
+    check(`${from.id} → ${to.id} · ${fade ? 'fade' : 'cut'} (${from.when} → ${to.when})`,
+      // An act boundary must never be a cut; that is the one way to get this
+      // wrong that costs the act break its weight.
+      fade || from.act === to.act);
+  }
+  const mv = sceneList().find((s) => s.id === 'MV-01')!;
+  check('a move inside one moment is a cut, not a fade', !timePasses(mv, mv));
 }
 
 console.log('\nchrome · 02 §8.1');

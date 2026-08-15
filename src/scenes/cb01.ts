@@ -437,6 +437,7 @@ export const CB01: Scene = {
           'Nine thousand pounds of powder. Not three hundred barrels. About nine rounds to a ' +
           'man, and no battle survives nine rounds. Who is told?',
         speaker: 'Nathanael Greene',
+        portrait: 'greene',
         ...GREENE,
         voices: ['restraint', 'temper', 'duty', 'vanity', 'ambition'],
         interjections: {

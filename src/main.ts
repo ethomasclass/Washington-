@@ -17,6 +17,7 @@ import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from '
 import { CSS, mountSheet, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
 import { councilFor, lockOn, rejoinderFor } from './council';
+import { timePasses } from './transition';
 import {
   applyDelta,
   initialState,
@@ -268,7 +269,7 @@ function runDecision(d: Decision, after: () => void): void {
     };
   });
 
-  const portrait = { seed: d.portraitSeed, coat: d.coat };
+  const portrait = { seed: d.portraitSeed, coat: d.coat, id: d.portrait };
 
   // Beat 1: the council argues. Beat 2: you decide.
   overlay.showCouncil(portrait, voices, rejoinderFor(d, voices, state.stats), () => {
@@ -535,6 +536,17 @@ function frame(now: number): void {
  * knowledge, the decisions — which is the whole point of the passport.
  */
 function enterScene(id: string): void {
+  const from = scene;
+  const to = SCENES[id];
+  if (to && from !== to && timePasses(from, to)) {
+    busy = true;
+    overlay.fadeThrough(() => loadScene(id), () => {});
+    return;
+  }
+  loadScene(id);
+}
+
+function loadScene(id: string): void {
   scene = SCENES[id];
   state.scene = scene.id;
   state.act = scene.act;

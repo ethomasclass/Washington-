@@ -450,6 +450,7 @@ export const MV01: Scene = {
         id: 'A1-D2',
         prompt: 'She is not asking whether you will go. She is asking what you mean to wear.',
         speaker: 'Martha',
+        portrait: 'martha',
         ...MARTHA,
         voices: ['vanity', 'restraint', 'duty', 'temper'],
         interjections: {

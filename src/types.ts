@@ -166,6 +166,12 @@ export interface Decision {
   speaker: string;
   portraitSeed: number;
   coat: string;
+  /**
+   * Which painted portrait belongs to this speaker, keyed to src/portraits.ts.
+   * Absent until that face has a generated sheet; the procedural stand-in fills
+   * the well meanwhile, and no scene is ever blocked on art.
+   */
+  portrait?: string;
   voices: VoiceId[];
   interjections: Partial<Record<VoiceId, string>>;
   /**

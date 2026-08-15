@@ -403,7 +403,15 @@ export function layerHouse(): HTMLCanvasElement {
         // Glass reads dark and slightly green; shutters are painted.
         solid(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh]], '#4C5450', rnd);
         inkLine(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh], [wx, wy]], rnd, 0.9, 0.15);
-        inkLine(x, [[wx + ww / 2, wy], [wx + ww / 2, wy + wh]], rnd, 0.5, 0.4);
+        // Sash bars. Three lights across and four down is close enough to the
+        // twelve-over-twelve that was there, and a pane grid is what makes a
+        // dark rectangle read as glass instead of as a hole.
+        for (let k = 1; k < 3; k++) {
+          inkLine(x, [[wx + (ww * k) / 3, wy], [wx + (ww * k) / 3, wy + wh]], rnd, 0.5, 0.45);
+        }
+        for (let k = 1; k < 4; k++) {
+          inkLine(x, [[wx, wy + (wh * k) / 4], [wx + ww, wy + (wh * k) / 4]], rnd, 0.5, 0.5);
+        }
         solid(x, [[wx - ww * 0.42, wy], [wx - ww * 0.06, wy], [wx - ww * 0.06, wy + wh],
                   [wx - ww * 0.42, wy + wh]], '#5B6B5C', rnd);
         solid(x, [[wx + ww * 1.06, wy], [wx + ww * 1.42, wy], [wx + ww * 1.42, wy + wh],
@@ -517,6 +525,78 @@ export function layerHouse(): HTMLCanvasElement {
   const bx = houseCx - bw / 2;
   const by = houseBaseY - bh;
   block(bx, by, bw, bh, 5, 50);
+
+  /*
+   * The west front, in the detail it actually had.
+   *
+   * Rusticated boards: pine, bevelled and bedded in sand paint so that from
+   * twenty feet it passes for dressed stone. Washington was doing this in the
+   * 1750s and it is the single most characteristic thing about the house —
+   * without it the mansion is a white box. Drawn as courses with a light edge
+   * along the top of each, which is what the bevel does in raking light.
+   *
+   * Three dormers in the roof, a pedimented centre bay, and a water table where
+   * the boards meet the foundation. No cupola and no piazza: both are later, and
+   * the north wing behind the scaffolding is the work in hand this spring.
+   */
+  {
+    // Bevel highlights along each board course.
+    x.globalAlpha = 0.5;
+    for (let i = 1; i < 14; i++) {
+      const yy = by + (bh * i) / 14;
+      x.strokeStyle = PAPER.BRIGHT;
+      x.lineWidth = 1.1;
+      x.beginPath();
+      x.moveTo(bx + 2, yy - 1.5);
+      x.lineTo(bx + bw - 2, yy - 2.5);
+      x.stroke();
+    }
+    x.globalAlpha = 1;
+    for (let i = 1; i < 14; i++) {
+      inkLine(x, [[bx, by + (bh * i) / 14], [bx + bw, by + (bh * i) / 14 - 1]], rnd, 0.6, 0.42);
+    }
+
+    // Corner boards, which frame the rustication and stop it running off.
+    for (const cxb of [bx + 3, bx + bw - 3]) {
+      inkLine(x, [[cxb, by], [cxb, by + bh]], rnd, 1.4, 0.06);
+    }
+    // Water table at the foot of the wall.
+    solid(x, [[bx - 4, by + bh - 10], [bx + bw + 4, by + bh - 10],
+              [bx + bw + 4, by + bh], [bx - 4, by + bh]], '#C9C0A6', rnd,
+      EARTH.SHADOW_SLATE, 0.16);
+    inkLine(x, [[bx - 4, by + bh - 10], [bx + bw + 4, by + bh - 10]], rnd, 1.3, 0.08);
+
+    // The centre bay, standing slightly proud with a pediment over it.
+    const px0 = bx + bw * 0.38;
+    const pw = bw * 0.24;
+    inkLine(x, [[px0, by], [px0, by + bh]], rnd, 1.3, 0.14);
+    inkLine(x, [[px0 + pw, by], [px0 + pw, by + bh]], rnd, 1.3, 0.14);
+    const ped: [number, number][] = [[px0 - 8, by + 4], [px0 + pw / 2, by - 26],
+      [px0 + pw + 8, by + 4]];
+    solid(x, ped, '#E6E0CC', rnd, EARTH.SHADOW_SLATE, 0.12);
+    inkLine(x, [...ped, ped[0]], rnd, 1.5, 0.06);
+
+    // Three dormers in the roof, which the west front had and this did not.
+    for (const f of [0.24, 0.5, 0.76]) {
+      const dx0 = bx + bw * f;
+      // Set into the roof slope, not perched on the ridge. The first pass made
+      // them nearly as tall as the roof is deep, so they read as three boxes
+      // standing on top of the house.
+      const dwd = bw * 0.044;
+      const dh0 = 20;
+      const dy0 = by - 22;
+      solid(x, [[dx0 - dwd, dy0], [dx0 + dwd, dy0], [dx0 + dwd, dy0 + dh0], [dx0 - dwd, dy0 + dh0]],
+        '#DED7C0', rnd, EARTH.SHADOW_SLATE, 0.12);
+      solid(x, [[dx0 - dwd * 1.4, dy0], [dx0, dy0 - 11], [dx0 + dwd * 1.4, dy0]],
+        '#7E8590', rnd, EARTH.SHADOW_SLATE, 0.2);
+      inkLine(x, [[dx0 - dwd * 1.4, dy0], [dx0, dy0 - 11], [dx0 + dwd * 1.4, dy0]], rnd, 1.3, 0.08);
+      solid(x, [[dx0 - dwd * 0.6, dy0 + 4], [dx0 + dwd * 0.6, dy0 + 4],
+                [dx0 + dwd * 0.6, dy0 + dh0 - 3], [dx0 - dwd * 0.6, dy0 + dh0 - 3]],
+        '#4C5450', rnd);
+      inkLine(x, [[dx0 - dwd, dy0], [dx0 + dwd, dy0], [dx0 + dwd, dy0 + dh0],
+                  [dx0 - dwd, dy0 + dh0], [dx0 - dwd, dy0]], rnd, 1.2, 0.1);
+    }
+  }
 
   // Chimneys. Two, at the ends, per the house as it stood before the wings
   // went up. Without them the roof reads as a lid.
@@ -1263,12 +1343,31 @@ export function layerForeground(): HTMLCanvasElement {
  *
  * `phase` walks the legs and arms around a cycle, 0..1. Pass -1 to stand.
  */
+export interface LookOpts {
+  hat?: 'tricorne' | 'round' | 'none';
+  build?: number;
+  /**
+   * A gown rather than a coat: fitted bodice, full skirt to the ground, sleeves
+   * to the elbow. Every figure in the game wore a man's coat until now, which
+   * made the one woman in Act 1 a man in a brown coat.
+   */
+  gown?: boolean;
+  /** Skin. Defaulted, but never assumed — see William Lee below. */
+  skin?: string;
+  /** Hair colour, if it should not be picked from the seed. */
+  hair?: string;
+  /** Facing colour for cuffs and lapels — the whole point of a livery. */
+  facings?: string;
+  /** A white linen cap, worn indoors and out by most women, most days. */
+  cap?: boolean;
+}
+
 export function characterCutout(
   coat: string,
   seed: number,
   height = 320,
   phase = -1,
-  opts: { hat?: 'tricorne' | 'round' | 'none'; build?: number } = {},
+  opts: LookOpts = {},
 ): HTMLCanvasElement {
   const H1 = height;
   const w = Math.round(H1 * 0.46);
@@ -1277,6 +1376,9 @@ export function characterCutout(
   const cx = w / 2;
   const build = opts.build ?? 1;
   const hat = opts.hat ?? 'tricorne';
+  const gown = opts.gown ?? false;
+  const skin = opts.skin ?? '#E0D3B8';
+  const facings = opts.facings;
 
   const walking = phase >= 0;
   const a = phase * Math.PI * 2;
@@ -1330,8 +1432,17 @@ export function characterCutout(
     solid(x, [[fx - w * 0.055, fy], [fx + w * 0.05, fy],
               [fx + w * 0.085, H1 * 0.995], [fx - w * 0.07, H1 * 0.995]], '#2E2419', rnd);
   };
-  leg(cx - w * 0.085, swing, liftL);
-  leg(cx + w * 0.085, -swing, liftR);
+  if (!gown) {
+    leg(cx - w * 0.085, swing, liftL);
+    leg(cx + w * 0.085, -swing, liftR);
+  } else {
+    // A shoe toe under the hem, and nothing else. The skirt does the walking.
+    for (const s2 of [-1, 1]) {
+      const fx2 = cx + s2 * w * 0.055 + (walking ? Math.sin(a) * s2 * w * 0.03 : 0);
+      solid(x, [[fx2 - w * 0.05, H1 * 0.958], [fx2 + w * 0.045, H1 * 0.958],
+                [fx2 + w * 0.06, H1 * 0.995], [fx2 - w * 0.065, H1 * 0.995]], '#2E2419', rnd);
+    }
+  }
 
   /** One arm, swinging against the legs, with a turned-back cuff. */
   const arm = (side: number, dx: number) => {
@@ -1345,17 +1456,81 @@ export function characterCutout(
     // Cuff.
     inkLine(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022]], rnd, 1.3, 0.15);
     solid(x, [[ex - w * 0.05, ey - H1 * 0.022], [ex + w * 0.05, ey - H1 * 0.022],
-              [ex + w * 0.048, ey], [ex - w * 0.048, ey]], PAPER.SMOKED, rnd);
+              [ex + w * 0.048, ey], [ex - w * 0.048, ey]], facings ?? PAPER.SMOKED, rnd);
     // A hand out of the cuff. Two marks, but their absence is what made every
     // figure read as a coat on a stand rather than as somebody wearing one.
     solid(x, [[ex - w * 0.036, ey], [ex + w * 0.036, ey],
               [ex + w * 0.030, ey + H1 * 0.040], [ex - w * 0.030, ey + H1 * 0.040]],
-      '#D3BE9C', rnd, EARTH.RAW_UMBER, 0.22);
+      skin, rnd, EARTH.RAW_UMBER, 0.22);
     inkLine(x, [[ex - w * 0.036, ey + H1 * 0.006], [ex + w * 0.036, ey + H1 * 0.006]],
       rnd, 0.9, 0.34);
   };
 
   // The coat: shoulders in, waist nipped, skirts turned back and flaring.
+  if (gown) {
+    /*
+     * A gown, not a coat in a different colour.
+     *
+     * Fitted bodice coming to a point at the waist, then a skirt that falls
+     * full and unbroken to the floor — the silhouette is a triangle standing on
+     * a wide base, and it is nothing like the man's coat that every figure in
+     * this game wore until now. Sleeves stop at the elbow with a ruffle, and a
+     * kerchief crosses the neck, which is what married women of her rank wore
+     * every day and not only for a portrait.
+     */
+    const yBod = 0.470;
+    const skirt: [number, number][] = [
+      [cx - shW * 0.86, H1 * (ySh + 0.03)],
+      [cx - shW * 0.78, H1 * yBod],
+      [cx - hipW * 2.5, H1 * 0.72],
+      [cx - hipW * 2.9, H1 * 0.965],
+      [cx + hipW * 2.9, H1 * 0.965],
+      [cx + hipW * 2.5, H1 * 0.72],
+      [cx + shW * 0.78, H1 * yBod],
+      [cx + shW * 0.86, H1 * (ySh + 0.03)],
+    ];
+    solid(x, skirt, coat, rnd, INK.SETTLED, 0.08);
+    inkLine(x, [...skirt, skirt[0]], rnd, 1.8, 0.1);
+    // Long folds down the skirt, which is where all its weight reads.
+    for (const f of [-0.68, -0.3, 0.1, 0.5, 0.82]) {
+      inkLine(x, [[cx + shW * f * 0.7, H1 * (yBod + 0.02)],
+                  [cx + hipW * 2.7 * f, H1 * 0.955]], rnd, 1.0, 0.34);
+    }
+    // Bodice, pointed at the waist, a shade darker than the skirt.
+    const bod: [number, number][] = [
+      [cx - shW * 0.84, H1 * (ySh + 0.02)], [cx + shW * 0.84, H1 * (ySh + 0.02)],
+      [cx + shW * 0.72, H1 * (yBod - 0.02)], [cx, H1 * (yBod + 0.03)],
+      [cx - shW * 0.72, H1 * (yBod - 0.02)],
+    ];
+    solid(x, bod, coat, rnd, INK.SETTLED, 0.2);
+    inkLine(x, [...bod, bod[0]], rnd, 1.5, 0.12);
+    // Sleeves to the elbow, with the shift ruffle below them.
+    for (const s2 of [-1, 1]) {
+      const sx2 = cx + s2 * shW * 0.86;
+      solid(x, [[sx2 - w * 0.03, H1 * (ySh + 0.02)], [sx2 + s2 * w * 0.07, H1 * (ySh + 0.05)],
+                [sx2 + s2 * w * 0.06, H1 * 0.40], [sx2 - w * 0.045, H1 * 0.37]],
+        coat, rnd, INK.SETTLED, 0.14);
+      solid(x, [[sx2 - w * 0.05, H1 * 0.395], [sx2 + s2 * w * 0.075, H1 * 0.41],
+                [sx2 + s2 * w * 0.065, H1 * 0.455], [sx2 - w * 0.045, H1 * 0.44]],
+        PAPER.BRIGHT, rnd, EARTH.SHADOW_SLATE, 0.1);
+      inkLine(x, [[sx2 - w * 0.05, H1 * 0.395], [sx2 + s2 * w * 0.075, H1 * 0.41]], rnd, 1.2, 0.14);
+      // Hand below the ruffle.
+      solid(x, [[sx2 - w * 0.028, H1 * 0.452], [sx2 + s2 * w * 0.05, H1 * 0.462],
+                [sx2 + s2 * w * 0.042, H1 * 0.505], [sx2 - w * 0.024, H1 * 0.496]],
+        skin, rnd, EARTH.RAW_UMBER, 0.2);
+    }
+    // The kerchief, crossed at the breast.
+    const ker: [number, number][] = [
+      [cx - shW * 0.86, H1 * (ySh + 0.015)], [cx, H1 * (ySh - 0.005)],
+      [cx + shW * 0.86, H1 * (ySh + 0.015)], [cx + shW * 0.4, H1 * 0.33],
+      [cx, H1 * 0.375], [cx - shW * 0.4, H1 * 0.33],
+    ];
+    solid(x, ker, PAPER.BRIGHT, rnd, EARTH.SHADOW_SLATE, 0.1);
+    inkLine(x, [...ker, ker[0]], rnd, 1.3, 0.14);
+    inkLine(x, [[cx - shW * 0.3, H1 * 0.26], [cx, H1 * 0.372]], rnd, 1.1, 0.24);
+    inkLine(x, [[cx + shW * 0.3, H1 * 0.26], [cx, H1 * 0.372]], rnd, 1.1, 0.24);
+  }
+
   const coatPts: [number, number][] = [
     [cx - shW + lean, H1 * ySh],
     [cx - shW * 0.92 + lean, H1 * yWaist],
@@ -1366,11 +1541,11 @@ export function characterCutout(
     [cx + shW * 0.92 + lean, H1 * yWaist],
     [cx + shW + lean, H1 * ySh],
   ];
-  solid(x, coatPts, coat, rnd, INK.SETTLED, 0.07);
+  if (!gown) solid(x, coatPts, coat, rnd, INK.SETTLED, 0.07);
 
   // Coat outline, drawn as separate strokes so the line can break.
-  inkLine(x, coatPts.slice(0, 5), rnd, 1.7, 0.12);
-  inkLine(x, coatPts.slice(4).concat([coatPts[0]]), rnd, 1.7, 0.12);
+  if (!gown) inkLine(x, coatPts.slice(0, 5), rnd, 1.7, 0.12);
+  if (!gown) inkLine(x, coatPts.slice(4).concat([coatPts[0]]), rnd, 1.7, 0.12);
 
   /*
    * Waistcoat, in the gap where the coat hangs open.
@@ -1383,13 +1558,28 @@ export function characterCutout(
   solid(x, [[cx - w * 0.062 + lean, H1 * (ySh + 0.02)], [cx + w * 0.062 + lean, H1 * (ySh + 0.02)],
             [cx + w * 0.056, H1 * (ySkirt + 0.07)], [cx - w * 0.056, H1 * (ySkirt + 0.07)]],
     '#CFC3A6', rnd, EARTH.YELLOW_OCHRE, 0.22);
+  if (facings && !gown) {
+    // Turned-back lapels in the facing colour. A livery is defined by them —
+    // white faced scarlet is not a white coat, it is a servant of that house.
+    for (const s2 of [-1, 1]) {
+      const lap: [number, number][] = [
+        [cx + s2 * w * 0.058 + lean, H1 * (ySh + 0.01)],
+        [cx + s2 * w * 0.16 + lean, H1 * (ySh + 0.004)],
+        [cx + s2 * w * 0.14, H1 * (yWaist - 0.01)],
+        [cx + s2 * w * 0.05, H1 * (yWaist - 0.03)],
+      ];
+      solid(x, lap, facings, rnd, INK.SETTLED, s2 > 0 ? 0.18 : 0.06);
+      inkLine(x, [...lap, lap[0]], rnd, 1.3, 0.14);
+    }
+  }
+
   // The open front, and a row of buttons down one side of it.
   inkLine(x, [[cx - w * 0.11 + lean, H1 * (ySh + 0.02)], [cx - w * 0.095, H1 * ySkirt],
               [cx - w * 0.12, H1 * yHem]], rnd, 1.3, 0.2);
   inkLine(x, [[cx + w * 0.11 + lean, H1 * (ySh + 0.02)], [cx + w * 0.095, H1 * ySkirt],
               [cx + w * 0.12, H1 * yHem]], rnd, 1.3, 0.2);
   x.fillStyle = INK.SETTLED;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < (gown ? 0 : 6); i++) {
     const t = i / 6;
     x.globalAlpha = 0.5 + rnd() * 0.4;
     x.beginPath();
@@ -1405,7 +1595,7 @@ export function characterCutout(
    * do more to make a coat read as cloth than any amount of shading, because
    * they are what the eye actually uses to tell cloth from card.
    */
-  for (const f of [-0.62, -0.2, 0.28, 0.66]) {
+  for (const f of gown ? [] : [-0.62, -0.2, 0.28, 0.66]) {
     const topX = cx + shW * f * 0.8 + lean;
     const botX = cx + hipW * 1.34 * f;
     inkLine(x, [[topX, H1 * (yWaist + 0.02)], [(topX + botX) / 2, H1 * (ySkirt + 0.04)],
@@ -1413,15 +1603,19 @@ export function characterCutout(
   }
 
   // The hem, and the turned-back skirt corners.
-  inkLine(x, [[cx - hipW * 1.42, H1 * yHem], [cx, H1 * (yHem + 0.012)],
-              [cx + hipW * 1.42, H1 * yHem]], rnd, 1.5, 0.18);
+  if (!gown) {
+    inkLine(x, [[cx - hipW * 1.42, H1 * yHem], [cx, H1 * (yHem + 0.012)],
+                [cx + hipW * 1.42, H1 * yHem]], rnd, 1.5, 0.18);
+  }
 
   // Arms last of the body, because they hang in front of the coat. Drawn before
   // it — as they were while everything was translucent — an opaque coat swallows
   // them whole. They also sit a little wider than the shoulder and a shade
   // darker than the coat, or they disappear into its silhouette instead.
-  arm(-1, -swing * 0.5);
-  arm(1, swing * 0.5);
+  if (!gown) {
+    arm(-1, -swing * 0.5);
+    arm(1, swing * 0.5);
+  }
 
   // Neck stock, white and tight.
   solid(x, [[cx - w * 0.075 + lean, H1 * yChin], [cx + w * 0.075 + lean, H1 * yChin],
@@ -1432,7 +1626,7 @@ export function characterCutout(
   const hx = cx + lean;
   solid(x, [[hx - w * 0.098, H1 * yBrim], [hx + w * 0.098, H1 * yBrim],
             [hx + w * 0.086, H1 * yChin], [hx - w * 0.086, H1 * yChin]],
-    '#E0D3B8', rnd, EARTH.YELLOW_OCHRE, 0.2);
+    skin, rnd, EARTH.YELLOW_OCHRE, 0.2);
   inkLine(x, [[hx - w * 0.094, H1 * yBrim], [hx - w * 0.084, H1 * yChin]], rnd, 1.2, 0.3);
   inkLine(x, [[hx + w * 0.094, H1 * yBrim], [hx + w * 0.084, H1 * yChin]], rnd, 1.2, 0.3);
 
@@ -1456,7 +1650,30 @@ export function characterCutout(
             [hx + w * 0.10, H1 * (yChin + 0.03)], [hx + w * 0.05, H1 * yChin]],
     INK.FADED, rnd);
 
-  if (hat === 'tricorne') {
+  if (opts.cap) {
+    /*
+     * A cap of white linen, gathered and ruffled at the edge.
+     *
+     * Married women wore one indoors and out, every day, and every likeness of
+     * Martha Washington has her in one. It is the single mark that says who she
+     * is at this size — more than the gown, which any woman in the frame would
+     * wear.
+     */
+    const by = H1 * (yBrim + 0.006);
+    const crown: [number, number][] = [
+      [hx - w * 0.155, by + H1 * 0.008], [hx - w * 0.145, H1 * (yHat + 0.004)],
+      [hx - w * 0.07, H1 * (yHat - 0.012)], [hx + w * 0.07, H1 * (yHat - 0.012)],
+      [hx + w * 0.145, H1 * (yHat + 0.004)], [hx + w * 0.155, by + H1 * 0.008],
+    ];
+    solid(x, crown, PAPER.BRIGHT, rnd, EARTH.SHADOW_SLATE, 0.08);
+    inkLine(x, [...crown, crown[0]], rnd, 1.4, 0.1);
+    // The ruffle, as a run of small scallops along the front edge.
+    for (let i = 0; i < 8; i++) {
+      const rx = hx - w * 0.155 + (i * w * 0.31) / 7;
+      inkLine(x, [[rx, by + H1 * 0.008], [rx + w * 0.022, by + H1 * 0.024],
+                  [rx + w * 0.044, by + H1 * 0.008]], rnd, 1.1, 0.12);
+    }
+  } else if (hat === 'tricorne') {
     // Three cornered: a wide flat brim with the front peak and two rear points.
     const by = H1 * yBrim;
     const bw = w * 0.30;
@@ -2517,12 +2734,25 @@ export const PROP_H: Record<PropKind, number> = {
   barrel: 0.46, fire: 0.34, table: 0.52, horse: 1.06, bucket: 0.24, drum: 0.36,
 };
 
+/**
+ * Canvas box per kind, where a square one will not do.
+ *
+ * Most props are about as wide as they are tall and fit a square. A horse is
+ * not: it is half again as long as it stands, and drawing one into a 128 box
+ * put its head at x = -44 and clipped it clean off. That is why the first two
+ * attempts read as llamas — the head was never there to look at.
+ */
+const PROP_BOX: Partial<Record<PropKind, { w: number; h: number }>> = {
+  horse: { w: 230, h: 150 },
+  necessary: { w: 150, h: 128 },
+};
+
 export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
-  const S = 128;
-  const { c, x } = surface(S, S);
+  const dims = PROP_BOX[kind] ?? { w: 128, h: 128 };
+  const { c, x } = surface(dims.w, dims.h);
   const rnd = mulberry(seed);
-  const cx = S / 2;
-  const b = S - 4; // everything stands on this line
+  const cx = dims.w / 2;
+  const b = dims.h - 4; // everything stands on this line
 
   const box = (x0: number, y0: number, w: number, h: number, fill: string, tint?: string) => {
     const pts: [number, number][] = [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]];
@@ -2689,29 +2919,96 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
       break;
     }
     case 'horse': {
-      // Legs first so the barrel closes over their tops, and a chestnut coat
-      // rather than near-black: Nelson was the horse he rode for eight years,
-      // not a silhouette.
-      for (const [lx, kn, ft] of [[-24, 4, 2], [20, 4, -2], [-32, -3, -8], [28, 6, 9]] as
-           [number, number, number][]) {
-        inkLine(x, [[cx + lx, b - 50], [cx + lx + kn, b - 24], [cx + lx + ft, b]], rnd, 2.8, 0.02);
+      /*
+       * Proportions first, because that is what was wrong.
+       *
+       * A horse is about as long in the body as it is tall at the withers, its
+       * head is a bit under half the length of its neck-and-head together, and
+       * the neck comes off the shoulder low and thick and narrows to the poll.
+       * The first attempt gave it a thin neck at forty-five degrees, a small
+       * wedge head and wire legs, and the result read as a llama. Legs are
+       * drawn as tapered shapes with a joint, not as strokes: a leg with no
+       * width has no weight on it.
+       */
+      const bay = ['#7A5C3E', '#6A4A32', '#8A6A46', '#54402E'][seed % 4];
+      const dark = '#33271C';
+      const W0 = b - 92; // withers
+      const cx = dims.w / 2 + 24; // shifted back, to leave the head its room
+      const limb = (
+        hipx: number, hipy: number, kx: number, ky: number, fx2: number, wide: number, far: boolean,
+      ) => {
+        if (far) x.globalAlpha = 0.5;
+        solid(x, [[hipx - wide, hipy], [hipx + wide, hipy], [kx + wide * 0.5, ky],
+                  [kx - wide * 0.5, ky]], far ? '#5E4632' : bay, rnd, EARTH.BISTRE, 0.24);
+        solid(x, [[kx - wide * 0.42, ky], [kx + wide * 0.42, ky],
+                  [fx2 + wide * 0.30, b - 5], [fx2 - wide * 0.32, b - 5]],
+          far ? '#54402E' : bay, rnd, EARTH.BISTRE, 0.3);
+        solid(x, [[fx2 - wide * 0.42, b - 7], [fx2 + wide * 0.40, b - 7],
+                  [fx2 + wide * 0.46, b], [fx2 - wide * 0.48, b]], dark, rnd);
+        if (!far) {
+          inkLine(x, [[hipx - wide, hipy], [kx - wide * 0.5, ky], [fx2 - wide * 0.32, b - 5]],
+            rnd, 1.4, 0.16);
+        }
+        x.globalAlpha = 1;
+      };
+
+      // Off-side pair, dulled and drawn first.
+      limb(cx - 20, b - 58, cx - 16, b - 32, cx - 20, 6, true);
+      limb(cx + 26, b - 62, cx + 34, b - 34, cx + 26, 7, true);
+
+      // Barrel: deep through the girth, tucked at the flank, croup rising.
+      const barrel: [number, number][] = [
+        [cx - 40, W0 + 4], [cx - 22, W0 - 4], [cx + 6, W0 - 2], [cx + 30, W0 - 8],
+        [cx + 44, W0 + 8], [cx + 48, b - 68], [cx + 40, b - 50], [cx + 16, b - 44],
+        [cx - 12, b - 44], [cx - 34, b - 52], [cx - 44, b - 68],
+      ];
+      solid(x, barrel, bay, rnd, EARTH.BISTRE, 0.18);
+      inkLine(x, [...barrel, barrel[0]], rnd, 2.0, 0.05);
+      inkLine(x, [[cx - 34, W0 + 2], [cx - 26, b - 52]], rnd, 1.2, 0.32); // shoulder
+      inkLine(x, [[cx + 30, W0 - 4], [cx + 26, b - 50]], rnd, 1.2, 0.34); // stifle
+
+      // Neck: thick off the shoulder, narrowing to the poll, crest arched.
+      const neck: [number, number][] = [
+        [cx - 38, W0 + 6], [cx - 44, W0 - 8], [cx - 58, b - 118], [cx - 70, b - 130],
+        [cx - 80, b - 124], [cx - 68, b - 108], [cx - 50, b - 86], [cx - 30, b - 62],
+      ];
+      solid(x, neck, bay, rnd, EARTH.BISTRE, 0.1);
+      inkLine(x, [...neck, neck[0]], rnd, 1.8, 0.05);
+
+      // Head: cheek and jaw, then the muzzle forward and down off the poll.
+      const head: [number, number][] = [
+        [cx - 72, b - 134], [cx - 88, b - 130], [cx - 104, b - 110], [cx - 108, b - 100],
+        [cx - 96, b - 96], [cx - 80, b - 106], [cx - 66, b - 116],
+      ];
+      solid(x, head, bay, rnd, EARTH.BISTRE, 0.22);
+      inkLine(x, [...head, head[0]], rnd, 1.7, 0.04);
+      solid(x, [[cx - 108, b - 106], [cx - 98, b - 96], [cx - 106, b - 95]], dark, rnd);
+      inkLine(x, [[cx - 86, b - 120], [cx - 90, b - 117]], rnd, 1.8, 0.03); // eye
+      for (const d of [0, 7]) {
+        inkLine(x, [[cx - 76 + d, b - 133], [cx - 71 + d, b - 146]], rnd, 1.6, 0.03); // ears
       }
-      const barrel: [number, number][] = [[cx - 30, b - 84], [cx + 4, b - 80], [cx + 30, b - 86],
-        [cx + 42, b - 66], [cx + 32, b - 46], [cx - 4, b - 42], [cx - 28, b - 48],
-        [cx - 40, b - 58], [cx - 42, b - 74]];
-      solid(x, barrel, '#7A5C3E', rnd, EARTH.BISTRE, 0.2);
-      inkLine(x, [...barrel, barrel[0]], rnd, 2.0, 0.08);
-      const neck: [number, number][] = [[cx - 26, b - 86], [cx - 62, b - 126], [cx - 52, b - 104],
-        [cx - 38, b - 70]];
-      solid(x, neck, '#7A5C3E', rnd);
-      inkLine(x, [...neck, neck[0]], rnd, 1.8, 0.08);
-      const head: [number, number][] = [[cx - 60, b - 128], [cx - 84, b - 118], [cx - 92, b - 106],
-        [cx - 82, b - 101], [cx - 54, b - 106]];
-      solid(x, head, '#6E5236', rnd, EARTH.BISTRE, 0.18);
-      inkLine(x, [...head, head[0]], rnd, 1.7, 0.06);
-      inkLine(x, [[cx - 62, b - 128], [cx - 58, b - 138]], rnd, 1.6, 0.04); // ear
-      inkLine(x, [[cx - 60, b - 126], [cx - 40, b - 96], [cx - 28, b - 84]], rnd, 1.7, 0.16); // mane
-      inkLine(x, [[cx + 40, b - 82], [cx + 54, b - 58], [cx + 48, b - 30]], rnd, 2.6, 0.06); // tail
+      if (seed % 3 === 0) {
+        solid(x, [[cx - 82, b - 130], [cx - 74, b - 127], [cx - 100, b - 98],
+                  [cx - 106, b - 101]], '#D8CDB6', rnd); // blaze
+      }
+      // Mane down the crest.
+      for (let i = 0; i < 8; i++) {
+        const t = i / 7;
+        inkLine(x, [[cx - 40 - t * 34, W0 - 2 - t * 42], [cx - 30 - t * 32, W0 + 10 - t * 38]],
+          rnd, 1.7, 0.08);
+      }
+
+      // Near pair, in front and at full strength.
+      limb(cx - 30, b - 56, cx - 30, b - 30, cx - 34, 7, false);
+      limb(cx + 34, b - 62, cx + 44, b - 34, cx + 34, 8, false);
+
+      // Tail: from the dock, hanging behind the quarters and clear of them.
+      const tail: [number, number][] = [
+        [cx + 46, b - 76], [cx + 56, b - 72], [cx + 62, b - 44], [cx + 56, b - 18],
+        [cx + 48, b - 22], [cx + 52, b - 48], [cx + 44, b - 70],
+      ];
+      solid(x, tail, dark, rnd, EARTH.BISTRE, 0.34);
+      inkLine(x, [...tail, tail[0]], rnd, 1.4, 0.12);
       break;
     }
   }

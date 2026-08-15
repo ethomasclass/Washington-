@@ -7,7 +7,7 @@
  * a size where the drawing is legible. Not shipped to students — it is a bench,
  * like variants.html.
  */
-import { characterCutout, washingtonFrames } from './art';
+import { characterCutout, prop, washingtonFrames } from './art';
 import type { Facing } from './art';
 
 const out = document.getElementById('out')!;
@@ -58,4 +58,33 @@ for (const riband of [false, true]) {
       hat, build: 0.88 + (i % 4) * 0.08,
     })));
   }
+}
+
+/*
+ * Named people, and the horse.
+ *
+ * These three are drawn to resemble particular individuals rather than to fill
+ * a crowd, so they are worth looking at on their own.
+ */
+{
+  const sec = section('Named figures', 'named');
+  sec.append(Object.assign(document.createElement('div'), {
+    className: 'row',
+  }));
+  const r = sec.querySelector('.row')!;
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  cap.textContent = 'MV-01';
+  r.append(cap);
+  // Martha: a gown, a linen cap, and a good deal shorter than her husband.
+  r.append(characterCutout('#6B4F35', 202, 250 * 0.84, -1, {
+    gown: true, cap: true, hair: '#3E3226', build: 0.96, hat: 'none',
+  }));
+  // William Lee, in the Washington livery: white faced scarlet.
+  r.append(characterCutout('#DCD3BC', 505, 250, -1, {
+    facings: '#8E4A44', hat: 'round', skin: '#7A5237', hair: '#2B2118', build: 0.98,
+  }));
+  // Lund, for comparison — an ordinary man in an ordinary coat.
+  r.append(characterCutout('#7A5C3E', 404, 250, -1, { hat: 'round', build: 1.1 }));
+  for (const seed of [11, 12, 13]) r.append(prop('horse', seed));
 }

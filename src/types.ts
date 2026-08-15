@@ -149,6 +149,15 @@ export interface Look {
   build?: number;
   /** Height multiplier, around 1. Washington was notably tall. */
   tall?: number;
+  /** A gown rather than a coat — a different garment, not a recoloured one. */
+  gown?: boolean;
+  /** Skin and hair, which should be stated for a named person, never assumed. */
+  skin?: string;
+  hair?: string;
+  /** Cuff and lapel colour. A livery is defined by its facings. */
+  facings?: string;
+  /** A woman's linen cap. */
+  cap?: boolean;
 }
 
 export interface NpcThread {

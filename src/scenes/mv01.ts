@@ -16,6 +16,47 @@
 import type { Ambient, Business, Interactable, NpcThread, Scene, Task } from '../types';
 
 const MARTHA = { portraitSeed: 202, coat: '#6B4F35' };
+
+/**
+ * Martha Washington, from the likenesses.
+ *
+ * Small — a little under five feet, against a husband of six foot two, and the
+ * difference is worth seeing in the frame. Dark hair under the white linen cap
+ * she wears in every portrait of her, and a plain gown of a good but sober
+ * colour: she was the wealthiest widow in Virginia and dressed like someone who
+ * had nothing left to prove.
+ */
+const MARTHA_LOOK = {
+  coat: '#6B4F35',
+  hat: 'none' as const,
+  gown: true,
+  cap: true,
+  hair: '#3E3226',
+  build: 0.96,
+  tall: 0.84,
+};
+
+/**
+ * William Lee, in the Mount Vernon livery.
+ *
+ * White faced scarlet, which are the Washington arms — argent, two bars gules
+ * — and so the coat says whose household he belongs to before it says anything
+ * about him, which is precisely the fact the scene is about.
+ *
+ * REVIEW GATE: this figure is R5 / Witness Register material along with the
+ * thread it belongs to. Drawn with the same care as anyone else in the frame
+ * and no caricature in it, but the framing still needs the sign-off recorded at
+ * the head of this file before it goes near a classroom.
+ */
+const LEE_LOOK = {
+  coat: '#DCD3BC',
+  facings: '#8E4A44',
+  hat: 'round' as const,
+  skin: '#7A5237',
+  hair: '#2B2118',
+  build: 0.98,
+  tall: 1.0,
+};
 const MESSENGER = { portraitSeed: 303, coat: '#8A7B5E' };
 const LUND = { portraitSeed: 404, coat: '#7A5C3E' };
 const LEE = { portraitSeed: 505, coat: '#5F5B4C' };
@@ -356,7 +397,7 @@ export const MV01: Scene = {
   npcs: [
     {
       id: 'martha',
-      look: { coat: '#7A5C3E', hat: 'none', build: 0.90, tall: 0.93 },
+      look: MARTHA_LOOK,
       name: 'Martha',
       hearFlag: 'heard.a1.martha',
       x: 0.238,
@@ -464,7 +505,7 @@ export const MV01: Scene = {
 
     {
       id: 'lee',
-      look: { coat: '#5F5B4C', hat: 'round', build: 0.95, tall: 0.99 },
+      look: LEE_LOOK,
       name: 'William Lee',
       // Standing just forward of the chariot he has finished loading. The x has
       // to be near the bound: depth compresses the frame toward the centre, so

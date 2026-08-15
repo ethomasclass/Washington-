@@ -81,6 +81,19 @@ export const FAR_SCALE = NEAR_SCALE * FAR_LIFT;
  */
 export const FAR_SPREAD = 0.30;
 
+/**
+ * How much of the frame the walkable band spans at the near edge.
+ *
+ * Was 0.94, which left the player able to cross only 76% of the picture — a
+ * band with 127 pixels of dead ground at each side that he could see but never
+ * reach. 1.12 opens that to 90% and still leaves him clear of the frame edge
+ * with a figure's half-width to spare; 1.18 puts his shoulder off the picture.
+ *
+ * Painted ground furniture goes through the same projection, so it follows on
+ * its own. Only the buildings, which are placed by plate column, hold still.
+ */
+export const BAND_WIDTH = 1.12;
+
 /** The lawn falls away west toward the river. */
 export const SLOPE = 0.22;
 
@@ -113,7 +126,7 @@ export const scaleAt = (z: number): number => NEAR_SCALE * liftAt(z);
 /** View-space position of a ground point: x, and the y of whatever stands on it. */
 export function groundView(pos: GroundPos): { x: number; y: number; scale: number } {
   const l = liftAt(pos.z);
-  const x = (pos.x - 0.5) * VIEW_W * 0.94 * spreadAt(pos.z);
+  const x = (pos.x - 0.5) * VIEW_W * BAND_WIDTH * spreadAt(pos.z);
   const y = horizonY() + (NEAR_Y - horizonY()) * l - SLOPE * (0.5 - pos.x) * l;
   return { x, y, scale: scaleAt(pos.z) };
 }
@@ -140,7 +153,7 @@ export const figureHalfW = (z: number): number =>
   (scaleAt(z) * FIGURE_H * FIGURE_ASPECT) / VIEW_W / 2;
 
 /** Horizontal position in frame widths, measured from the centre. */
-export const frameX = (x: number, z: number): number => (x - 0.5) * 0.94 * spreadAt(z);
+export const frameX = (x: number, z: number): number => (x - 0.5) * BAND_WIDTH * spreadAt(z);
 
 /**
  * The inverse of platePx's y: what depth a given plate row stands at.
@@ -166,7 +179,7 @@ export function zAtPlateY(y: number, h: number): number {
  * painted building" becomes a calculation instead of a guess.
  */
 export function xAtPlateX(px: number, z: number, w: number): number {
-  return 0.5 + ((px / w - 0.5) * OVERSCAN) / (0.94 * spreadAt(z));
+  return 0.5 + ((px / w - 0.5) * OVERSCAN) / (BAND_WIDTH * spreadAt(z));
 }
 
 /**

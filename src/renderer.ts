@@ -17,7 +17,7 @@ import {
   characterCutout, cloudShadows, CLOUD_BANDS, insect, motes,
   PLATE_DEPTHS, PLATE_SETS, paperTexture, prop, PROP_H, washington, washingtonFrames,
 } from './art';
-import type { Facing, PropKind } from './art';
+import type { Facing, LookOpts, PropKind } from './art';
 import { PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
@@ -149,10 +149,8 @@ export interface PropPlacement extends GroundPos {
 }
 
 /** A figure on the ground plane, with the build that distinguishes them. */
-export interface Actor extends GroundPos {
+export interface Actor extends GroundPos, LookOpts {
   coat: string;
-  hat?: 'tricorne' | 'round' | 'none';
-  build?: number;
   tall?: number;
   seed: number;
 }
@@ -471,7 +469,10 @@ export class DioramaRenderer {
 
     npcPositions.forEach((a, i) => {
       const mesh = mk(
-        characterCutout(a.coat, a.seed, 320, -1, { hat: a.hat, build: a.build }),
+        characterCutout(a.coat, a.seed, 320, -1, {
+          hat: a.hat, build: a.build, gown: a.gown, skin: a.skin,
+          hair: a.hair, facings: a.facings, cap: a.cap,
+        }),
         -1.25,
         a.tall ?? 1,
       );

@@ -52,6 +52,11 @@ const actorsFor = (sc: Scene) => [
     hat: n.look?.hat,
     build: n.look?.build,
     tall: n.look?.tall,
+    gown: n.look?.gown,
+    skin: n.look?.skin,
+    hair: n.look?.hair,
+    facings: n.look?.facings,
+    cap: n.look?.cap,
   })),
   // Extras are drawn by the same path as the threads, so they take their size
   // and position from depth for free and cannot drift out of scale.

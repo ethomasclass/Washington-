@@ -96,6 +96,37 @@ function wash(
   x.globalAlpha = 1;
 }
 
+/**
+ * An opaque form with a washed surface.
+ *
+ * Buildings have to stop the light. `wash` is many low-alpha passes, which is
+ * right for foliage and ground but leaves a wall you can see the hills through,
+ * and nothing breaks a painted set faster. So: lay an opaque ground first,
+ * then wash over it for tone. Slight edge jitter keeps it from reading as a
+ * vector shape.
+ */
+function solid(
+  x: Ctx,
+  pts: [number, number][],
+  base: string,
+  rnd: () => number,
+  tint?: string,
+  tintAlpha = 0.3,
+): void {
+  x.save();
+  x.globalAlpha = 1;
+  x.fillStyle = base;
+  x.beginPath();
+  x.moveTo(pts[0][0] + (rnd() - 0.5) * 1.6, pts[0][1] + (rnd() - 0.5) * 1.6);
+  for (let i = 1; i < pts.length; i++) {
+    x.lineTo(pts[i][0] + (rnd() - 0.5) * 1.6, pts[i][1] + (rnd() - 0.5) * 1.6);
+  }
+  x.closePath();
+  x.fill();
+  x.restore();
+  if (tint) wash(x, pts, tint, tintAlpha, rnd, 3);
+}
+
 /** A drawn line with a little wobble and a lost edge or two. */
 function inkLine(
   x: Ctx,
@@ -199,6 +230,45 @@ export function layerSky(): HTMLCanvasElement {
   return c;
 }
 
+/**
+ * A tileable band of cloud, drawn on transparency so it can drift across a sky
+ * without carrying the sky with it.
+ *
+ * Every form is drawn three times — at x, x-W and x+W — so the strip wraps
+ * seamlessly and can scroll forever on one texture.
+ */
+export function cloudBand(seed = 91, tint: string = EARTH.SHADOW_SLATE): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(seed);
+  const hy = H * HORIZON;
+
+  for (let i = 0; i < 14; i++) {
+    const cx = rnd() * W;
+    const cy = rnd() * hy * 0.82;
+    const cw = 120 + rnd() * 320;
+    const ch = 18 + rnd() * 34;
+    const alpha = 0.05 + rnd() * 0.07;
+    // A cloud is a run of overlapping lobes with a flat-ish base.
+    const lobes = 3 + Math.floor(rnd() * 4);
+    for (const wrap of [-W, 0, W]) {
+      for (let k = 0; k < lobes; k++) {
+        const t = k / Math.max(1, lobes - 1);
+        const lx = cx + wrap + (t - 0.5) * cw;
+        const lr = ch * (0.7 + rnd() * 0.9);
+        wash(x, [[lx - lr, cy + ch * 0.4], [lx - lr * 0.6, cy - lr * 0.5],
+                 [lx + lr * 0.3, cy - lr * 0.7], [lx + lr, cy - lr * 0.1],
+                 [lx + lr * 0.8, cy + ch * 0.45], [lx - lr * 0.5, cy + ch * 0.5]],
+          tint, alpha, rnd, 3);
+      }
+      // A softer underside, so it has a base rather than a bottom edge.
+      wash(x, [[cx + wrap - cw * 0.5, cy + ch * 0.3], [cx + wrap + cw * 0.5, cy + ch * 0.2],
+               [cx + wrap + cw * 0.42, cy + ch * 0.7], [cx + wrap - cw * 0.44, cy + ch * 0.8]],
+        tint, alpha * 0.7, rnd, 3);
+    }
+  }
+  return c;
+}
+
 /** L1 — far hills. */
 export function layerHills(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
@@ -228,8 +298,13 @@ export function layerHouse(): HTMLCanvasElement {
 
   // The ground: horizon to the bottom of the frame. The lawn falls away west
   // toward the river, so the wash warms and darkens as it comes forward.
-  wash(x, [[0, hy + 8], [W, hy - 6], [W, H], [0, H]], EARTH.YELLOW_OCHRE, 0.30, rnd);
-  wash(x, [[0, hy + 150], [W, hy + 120], [W, H], [0, H]], EARTH.BISTRE, 0.16, rnd);
+  // Lawn: green under, warmed with ochre where the sun has been on it, and
+  // browner as it comes forward toward the river bank.
+  solid(x, [[0, hy + 8], [W, hy - 6], [W, H], [0, H]], '#D2CFB9', rnd);
+  wash(x, [[0, hy + 8], [W, hy - 6], [W, H], [0, H]], EARTH.TERRE_VERTE, 0.17, rnd);
+  wash(x, [[0, hy + 40], [W * 0.7, hy + 20], [W, hy + 180], [0, hy + 220]],
+    EARTH.YELLOW_OCHRE, 0.13, rnd);
+  wash(x, [[0, hy + 190], [W, hy + 150], [W, H], [0, H]], EARTH.BISTRE, 0.13, rnd);
 
   // Mown bands. Short broken strokes rather than full-width rules, so they
   // read as ground texture instead of as ruled lines across the plate.
@@ -247,18 +322,41 @@ export function layerHouse(): HTMLCanvasElement {
 
   // A block: wash body, ink outline, roof, and a row of windows.
   const block = (bx: number, by: number, bw: number, bh: number, wins: number, ridge: number) => {
-    wash(x, [[bx, by], [bx + bw, by], [bx + bw, by + bh], [bx, by + bh]], PAPER.SMOKED, 0.55, rnd);
+    // Rusticated boards, painted white and sanded — opaque, then washed warm
+    // on the lit side and cool in the lee.
+    solid(x, [[bx, by], [bx + bw, by], [bx + bw, by + bh], [bx, by + bh]], '#E3DCC8', rnd);
+    wash(x, [[bx + bw * 0.55, by], [bx + bw, by], [bx + bw, by + bh], [bx + bw * 0.55, by + bh]],
+      EARTH.SHADOW_SLATE, 0.11, rnd, 3);
+    wash(x, [[bx, by], [bx + bw * 0.5, by], [bx + bw * 0.5, by + bh], [bx, by + bh]],
+      EARTH.YELLOW_OCHRE, 0.045, rnd, 2);
     inkLine(x, [[bx, by], [bx + bw, by], [bx + bw, by + bh], [bx, by + bh], [bx, by]], rnd, 1.5, 0.1);
-    wash(x, [[bx - 8, by], [bx + bw / 2, by - ridge], [bx + bw + 8, by]], EARTH.RAW_UMBER, 0.4, rnd);
+    // Board courses.
+    for (let i = 1; i < 7; i++) {
+      inkLine(x, [[bx, by + (bh * i) / 7], [bx + bw, by + (bh * i) / 7 - 1]], rnd, 0.5, 0.55);
+    }
+    // Slate roof, blue-grey and opaque.
+    solid(x, [[bx - 8, by], [bx + bw / 2, by - ridge], [bx + bw + 8, by]], '#848A94', rnd,
+      EARTH.SHADOW_SLATE, 0.18);
     inkLine(x, [[bx - 8, by], [bx + bw / 2, by - ridge], [bx + bw + 8, by]], rnd, 1.5, 0.08);
+    for (let i = 1; i < 5; i++) {
+      const t = i / 5;
+      inkLine(x, [[bx - 8 + bw * 0.5 * t, by - ridge * t], [bx + bw + 8 - bw * 0.5 * t, by - ridge * t]],
+        rnd, 0.5, 0.5);
+    }
     for (let r = 0; r < (bh > 90 ? 2 : 1); r++) {
       for (let i = 0; i < wins; i++) {
         const wx = bx + bw * 0.12 + (i * bw * 0.76) / Math.max(1, wins - 1);
         const wy = by + 18 + r * bh * 0.42;
         const ww = bw * 0.075;
         const wh = bh * 0.2;
-        wash(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh]], INK.FADED, 0.5, rnd, 3);
-        inkLine(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh], [wx, wy]], rnd, 0.8, 0.2);
+        // Glass reads dark and slightly green; shutters are painted.
+        solid(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh]], '#4C5450', rnd);
+        inkLine(x, [[wx, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx, wy + wh], [wx, wy]], rnd, 0.9, 0.15);
+        inkLine(x, [[wx + ww / 2, wy], [wx + ww / 2, wy + wh]], rnd, 0.5, 0.4);
+        solid(x, [[wx - ww * 0.42, wy], [wx - ww * 0.06, wy], [wx - ww * 0.06, wy + wh],
+                  [wx - ww * 0.42, wy + wh]], '#5B6B5C', rnd);
+        solid(x, [[wx + ww * 1.06, wy], [wx + ww * 1.42, wy], [wx + ww * 1.42, wy + wh],
+                  [wx + ww * 1.06, wy + wh]], '#5B6B5C', rnd);
       }
     }
   };
@@ -287,6 +385,12 @@ export function layerHouse(): HTMLCanvasElement {
   // house. They give the far ground something other than lawn.
   block(bx - W * 0.13, by + 66, W * 0.085, 74, 2, 22);
   block(bx + bw + W * 0.05, by + 70, W * 0.08, 70, 2, 20);
+  // Warm shingle over the two dependencies, so the roofline is not all slate.
+  for (const [rx, rw, ry] of [[bx - W * 0.13, W * 0.085, by + 66], [bx + bw + W * 0.05, W * 0.08, by + 70]]) {
+    solid(x, [[rx - 7, ry], [rx + rw / 2, ry - 21], [rx + rw + 7, ry]], '#9C8065', rnd,
+      EARTH.MADDER_LAKE, 0.16);
+    inkLine(x, [[rx - 7, ry], [rx + rw / 2, ry - 21], [rx + rw + 7, ry]], rnd, 1.4, 0.1);
+  }
 
   // The house throws its shadow west across the lawn in the afternoon.
   wash(x, [[bx - 20, by + bh], [bx + bw + 40, by + bh - 6], [bx + bw + 10, by + bh + 74],
@@ -774,7 +878,13 @@ export function portraitPlate(coat: string, seed: number): HTMLCanvasElement {
 export function campSky(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(211);
-  x.fillStyle = PAPER.COOL;
+  // Overcast, but not colourless: a cold blue-grey aloft warming to pale straw
+  // at the horizon, which is what a flat July sky over water actually does.
+  const g = x.createLinearGradient(0, 0, 0, H * HORIZON + 40);
+  g.addColorStop(0, '#AFB6BE');
+  g.addColorStop(0.55, '#CBCCC6');
+  g.addColorStop(1, '#E4DFCE');
+  x.fillStyle = g;
   x.fillRect(0, 0, W, H);
   const hy = H * HORIZON;
   for (let i = 0; i < 9; i++) {
@@ -799,13 +909,19 @@ export function campHills(): HTMLCanvasElement {
   for (let i = 0; i < 16; i++) {
     const rx = bx + i * 13 + rnd() * 5;
     const rh = 10 + rnd() * 12;
-    wash(x, [[rx, hy - 10], [rx + 11, hy - 10], [rx + 11, hy - 10 - rh], [rx, hy - 10 - rh]],
-      EARTH.WET_STONE, 0.4, rnd, 3);
+    solid(x, [[rx, hy - 10], [rx + 11, hy - 10], [rx + 11, hy - 10 - rh], [rx, hy - 10 - rh]],
+      rnd() < 0.35 ? '#9B8478' : '#8E939A', rnd);
   }
   inkLine(x, [[bx + 96, hy - 14], [bx + 96, hy - 62], [bx + 100, hy - 76], [bx + 104, hy - 62],
               [bx + 104, hy - 14]], rnd, 1.4, 0.1);
-  // The water between.
-  wash(x, [[0, hy - 6], [W, hy - 10], [W, hy + 22], [0, hy + 26]], EARTH.WET_STONE, 0.3, rnd);
+  // The water between — opaque, and colder than the land.
+  solid(x, [[0, hy - 6], [W, hy - 10], [W, hy + 22], [0, hy + 26]], '#8D97A0', rnd,
+    EARTH.SHADOW_SLATE, 0.28);
+  for (let i = 0; i < 22; i++) {
+    const wy2 = hy - 2 + rnd() * 24;
+    inkLine(x, [[rnd() * W, wy2], [rnd() * W * 0.2 + rnd() * W * 0.7, wy2 + (rnd() - 0.5) * 3]],
+      rnd, 0.6, 0.3);
+  }
   inkLine(x, ridge, rnd, 1.0, 0.35);
   return c;
 }
@@ -816,12 +932,14 @@ export function campGround(): HTMLCanvasElement {
   const rnd = mulberry(237);
   const hy = H * HORIZON;
 
-  wash(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], EARTH.RAW_UMBER, 0.26, rnd);
-  wash(x, [[0, hy + 170], [W, hy + 140], [W, H], [0, H]], EARTH.BISTRE, 0.20, rnd);
+  solid(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], '#CAC5AE', rnd);
+  wash(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], EARTH.RAW_UMBER, 0.16, rnd);
+  wash(x, [[0, hy + 170], [W, hy + 140], [W, H], [0, H]], EARTH.BISTRE, 0.12, rnd);
 
-  // The lane: a pale churned band widening toward the camera.
-  wash(x, [[W * 0.42, hy + 16], [W * 0.58, hy + 16], [W * 0.86, H], [W * 0.10, H]],
-    PAPER.SHADOW, 0.34, rnd, 5);
+  // Trodden grass either side, and a churned lane down the middle.
+  wash(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], EARTH.TERRE_VERTE, 0.13, rnd);
+  solid(x, [[W * 0.42, hy + 16], [W * 0.58, hy + 16], [W * 0.86, H], [W * 0.10, H]],
+    '#A99A85', rnd, EARTH.RAW_UMBER, 0.24);
 
   // Ruts and standing water.
   for (let i = 0; i < 26; i++) {
@@ -861,12 +979,15 @@ export function campMidground(): HTMLCanvasElement {
   const shanty = (cx: number, b: number, w: number, h: number, kind: number) => {
     // Lighter wash, harder line. These have to read as built things, not as
     // boulders — the structure is the whole content of the shot.
-    const tone = [PAPER.SMOKED, PAPER.BRIGHT, PAPER.SHADOW, EARTH.RAW_UMBER][kind % 4];
+    // Weathered board, dirty sailcloth, cut turf, brush. Opaque, then tinted —
+    // a shelter you can see the water through is not a shelter.
+    const tone = ['#C6BFA9', '#D8D3C2', '#8E8A74', '#7C6B52'][kind % 4];
+    const tint = [EARTH.RAW_UMBER, EARTH.WET_STONE, EARTH.TERRE_VERTE, EARTH.BISTRE][kind % 4];
     const ridgeX = cx - w / 2 + w * 0.22;
     const ridgeY = b - h;
     const backY = b - h * 0.48;
-    wash(x, [[cx - w / 2, b], [ridgeX, ridgeY], [cx + w / 2, backY], [cx + w / 2, b]],
-      tone, 0.28, rnd, 4);
+    solid(x, [[cx - w / 2, b], [ridgeX, ridgeY], [cx + w / 2, backY], [cx + w / 2, b]], tone, rnd,
+      tint, 0.26);
     // Ridge, back slope, and the two uprights.
     inkLine(x, [[cx - w / 2, b], [ridgeX, ridgeY]], rnd, 2.4, 0.03);
     inkLine(x, [[ridgeX, ridgeY], [cx + w / 2, backY]], rnd, 2.4, 0.03);
@@ -898,7 +1019,9 @@ export function campMidground(): HTMLCanvasElement {
 
   /** A proper wedge tent, of the kind Rhode Island bought. */
   const tent = (cx: number, b: number, w: number, h: number) => {
-    wash(x, [[cx - w / 2, b], [cx, b - h], [cx + w / 2, b]], PAPER.BRIGHT, 0.62, rnd, 4);
+    solid(x, [[cx - w / 2, b], [cx, b - h], [cx + w / 2, b]], '#E8E4D4', rnd);
+    // One lit face and one shaded, so a row of tents is not a row of triangles.
+    wash(x, [[cx, b - h], [cx + w / 2, b], [cx, b]], EARTH.SHADOW_SLATE, 0.22, rnd, 3);
     inkLine(x, [[cx - w / 2, b], [cx, b - h], [cx + w / 2, b], [cx - w / 2, b]], rnd, 1.5, 0.06);
     inkLine(x, [[cx, b - h], [cx, b]], rnd, 0.9, 0.4);
     shadow(cx, b, w * 0.5);
@@ -1053,6 +1176,12 @@ export function campForeground(): HTMLCanvasElement {
  * a hole between them. A sixth plane buys a second band a figure can walk
  * between, which is the difference between a set and a backdrop.
  */
+/** Cloud strips, one per set — the camp's sky is colder and heavier. */
+export const CLOUD_BANDS: Record<string, () => HTMLCanvasElement> = {
+  vernon: () => cloudBand(91, EARTH.SHADOW_SLATE),
+  camp: () => cloudBand(97, EARTH.WET_STONE),
+};
+
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
   vernon: () => [
     layerSky(), layerHills(), layerHouse(),

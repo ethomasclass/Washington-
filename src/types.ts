@@ -123,8 +123,26 @@ export interface Decision {
   options: Option[];
 }
 
+/**
+ * How a figure is built, so a crowd is not one person in five coats.
+ *
+ * Silhouette does most of the differentiating at this size — a round hat reads
+ * differently from a tricorne at eighty pixels, and height and build separate
+ * people faster than colour does.
+ */
+export interface Look {
+  coat: string;
+  hat?: 'tricorne' | 'round' | 'none';
+  /** Shoulder and hip width multiplier, around 1. */
+  build?: number;
+  /** Height multiplier, around 1. Washington was notably tall. */
+  tall?: number;
+}
+
 export interface NpcThread {
   id: string;
+  /** Appearance in the world, distinct from the dialogue portrait. */
+  look?: Look;
   /** Set once their lines have been heard, so documents can contradict them. */
   hearFlag?: string;
   /** Shown on the interaction prompt. "speak" tells the player nothing. */

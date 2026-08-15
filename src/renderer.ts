@@ -13,7 +13,7 @@
  */
 
 import * as THREE from 'three';
-import { characterCutout, characterFrames, PLATE_SETS, paperTexture } from './art';
+import { characterCutout, characterFrames, CLOUD_BANDS, PLATE_SETS, paperTexture } from './art';
 import { MEANING, PAPER } from './palette';
 
 /** Parallax coefficients, L0..L5. */
@@ -137,6 +137,15 @@ export interface GroundPos {
   z: number;
 }
 
+/** A figure on the ground plane, with the build that distinguishes them. */
+export interface Actor extends GroundPos {
+  coat: string;
+  hat?: 'tricorne' | 'round' | 'none';
+  build?: number;
+  tall?: number;
+  seed: number;
+}
+
 const horizonY = (): number => 9 / 2 - HORIZON * 9;
 
 export class DioramaRenderer {
@@ -156,6 +165,9 @@ export class DioramaRenderer {
   }[] = [];
   /** Walk-cycle textures for the player: index 0 is the standing pose. */
   private playerFrames: THREE.CanvasTexture[] = [];
+  /** Cloud strip, scrolled rather than animated. */
+  private clouds: THREE.Mesh | null = null;
+  private cloudTex: THREE.CanvasTexture | null = null;
   private gait = 0;
   private bob = 0;
 
@@ -168,7 +180,7 @@ export class DioramaRenderer {
   private breath = 0;
   private breathZ = 0;
 
-  constructor(canvas: HTMLCanvasElement, plateSet: string, npcPositions: GroundPos[] = []) {
+  constructor(canvas: HTMLCanvasElement, plateSet: string, npcPositions: Actor[] = []) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.scene.background = new THREE.Color(PAPER.WARM);
@@ -208,7 +220,7 @@ export class DioramaRenderer {
    * rather than orphaned — an eight-act game that leaks a plate set per scene
    * change would not survive a class period on a Chromebook.
    */
-  loadScene(plateSet: string, npcPositions: GroundPos[]): void {
+  loadScene(plateSet: string, npcPositions: Actor[]): void {
     const drop = (mesh: THREE.Mesh) => {
       this.scene.remove(mesh);
       mesh.geometry.dispose();
@@ -216,6 +228,11 @@ export class DioramaRenderer {
       m.map?.dispose();
       m.dispose();
     };
+    if (this.clouds) {
+      drop(this.clouds);
+      this.clouds = null;
+      this.cloudTex = null;
+    }
     for (const l of this.layers) drop(l.mesh);
     for (const n of this.npcs) drop(n.mesh);
     if (this.player) drop(this.player);
@@ -243,14 +260,27 @@ export class DioramaRenderer {
       this.layers.push({ mesh, parallax: PARALLAX[i], depth: LAYER_DEPTH[i] });
     });
 
+    // Cloud strip, between the sky and the hills. It never occludes anything,
+    // so it sits outside the sorted layer stack and just drifts.
+    const cloudBuild = CLOUD_BANDS[plateSet] ?? CLOUD_BANDS.vernon;
+    this.cloudTex = textureFrom(cloudBuild());
+    this.cloudTex.wrapS = THREE.RepeatWrapping;
+    this.clouds = new THREE.Mesh(
+      new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
+      new THREE.MeshBasicMaterial({ map: this.cloudTex, transparent: true, depthWrite: false }),
+    );
+    this.clouds.position.z = -0.25;
+    this.clouds.renderOrder = 0.5;
+    this.scene.add(this.clouds);
+
     this.buildActors(npcPositions);
   }
 
-  private buildActors(npcPositions: GroundPos[]): void {
-    const mk = (canvas: HTMLCanvasElement, z: number) => {
+  private buildActors(npcPositions: Actor[]): void {
+    const mk = (canvas: HTMLCanvasElement, z: number, tall = 1) => {
       const tex = textureFrom(canvas);
       const aspect = canvas.width / canvas.height;
-      const h = 2.6;
+      const h = 2.6 * tall;
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(h * aspect, h),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }),
@@ -263,16 +293,21 @@ export class DioramaRenderer {
 
     // Washington is the only figure in Continental blue. Everyone else wears
     // the earth range, so the eye finds him in one pass without a marker.
-    const frames = characterFrames(MEANING.CONTINENTAL_BLUE, 101);
+    // Washington: the only Continental blue in the frame, and the tallest man
+    // in it. He was six foot two in a room where that was remarkable.
+    const frames = characterFrames(MEANING.CONTINENTAL_BLUE, 101, 320, 8, { build: 1.02 });
     this.playerFrames = frames.map(textureFrom);
-    this.player = mk(frames[0], -1.2);
+    this.player = mk(frames[0], -1.2, 1.09);
     (this.player.material as THREE.MeshBasicMaterial).map = this.playerFrames[0];
 
-    const coats = ['#6B4F35', '#7A5C3E', '#5C6673', '#55627A', '#6E5B45'];
-    npcPositions.forEach((pos, i) => {
-      const mesh = mk(characterCutout(coats[i % coats.length], 202 + i * 101), -1.25);
+    npcPositions.forEach((a, i) => {
+      const mesh = mk(
+        characterCutout(a.coat, a.seed, 320, -1, { hat: a.hat, build: a.build }),
+        -1.25,
+        a.tall ?? 1,
+      );
       // Staggered so nobody moves at the same moment as anybody else.
-      this.npcs.push({ mesh, pos, wait: 5 + i * 4.4, off: 0, target: 0 });
+      this.npcs.push({ mesh, pos: { x: a.x, z: a.z }, wait: 5 + i * 4.4, off: 0, target: 0 });
     });
   }
 
@@ -340,6 +375,12 @@ export class DioramaRenderer {
   }
 
   setPlayerPos(pos: GroundPos, dt = 0): void {
+    // Weather moves whether or not the player does. It is the one thing in the
+    // frame allowed to, because a sky that holds perfectly still reads as a
+    // painted backdrop rather than as air.
+    if (this.cloudTex) this.cloudTex.offset.x -= dt * 0.0022;
+    if (this.clouds) this.clouds.position.x = -this.breath * 0.16 * ((PARALLAX_MAX_PX / 1600) * VIEW_W);
+
     this.place(this.player, pos);
     this.player.position.y += this.bob;
 

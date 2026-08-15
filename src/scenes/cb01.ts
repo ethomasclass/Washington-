@@ -290,6 +290,7 @@ export const CB01: Scene = {
   npcs: [
     {
       id: 'greene',
+      look: { coat: '#4E5A6B', hat: 'tricorne', build: 1.06, tall: 1.01 },
       name: 'General Greene',
       hearFlag: 'heard.a2.greene',
       x: 0.735, z: 0.46,
@@ -388,6 +389,7 @@ export const CB01: Scene = {
 
     {
       id: 'bragg',
+      look: { coat: '#B8AE93', hat: 'none', build: 1.02, tall: 1.04 },
       name: 'Sergeant Bragg',
       x: 0.60, z: 0.68,
       lines: [
@@ -410,6 +412,7 @@ export const CB01: Scene = {
 
     {
       id: 'whitcomb',
+      look: { coat: '#7C6B52', hat: 'round', build: 0.88, tall: 0.92 },
       name: 'Private Whitcomb',
       x: 0.42, z: 0.33,
       lines: [
@@ -430,6 +433,7 @@ export const CB01: Scene = {
 
     {
       id: 'lee2',
+      look: { coat: '#5C6673', hat: 'round', build: 0.95, tall: 0.99 },
       name: 'William Lee',
       x: 0.135, z: 0.55,
       lines: [

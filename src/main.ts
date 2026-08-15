@@ -42,11 +42,19 @@ takeSnapshot(state);
 let scene: Scene = SCENES[state.scene] ?? SCENES[FIRST_SCENE];
 state.scene = scene.id;
 
-const renderer = new DioramaRenderer(
-  canvas,
-  scene.plates,
-  scene.npcs.map((n) => ({ x: n.x, z: n.z })),
-);
+/** Everything the renderer needs to stand a figure up, from the scene data. */
+const actorsFor = (sc: Scene) =>
+  sc.npcs.map((n, i) => ({
+    x: n.x,
+    z: n.z,
+    seed: n.lines[0]?.portraitSeed ?? 200 + i * 97,
+    coat: n.look?.coat ?? n.lines[0]?.coat ?? '#6B4F35',
+    hat: n.look?.hat,
+    build: n.look?.build,
+    tall: n.look?.tall,
+  }));
+
+const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene));
 const overlay = new Overlay(overlayRoot, scene.title, scene.subtitle);
 
 /** Interactables looked at this session, for the journal. */
@@ -432,7 +440,7 @@ function enterScene(id: string): void {
   pos.z = 0.34;
   held.left = held.right = held.up = held.down = false;
 
-  renderer.loadScene(scene.plates, scene.npcs.map((n) => ({ x: n.x, z: n.z })));
+  renderer.loadScene(scene.plates, actorsFor(scene));
   overlay.setPlate(scene.title, scene.subtitle);
   refreshCode();
   refreshIntent();

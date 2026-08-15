@@ -328,6 +328,7 @@ export const MV01: Scene = {
   npcs: [
     {
       id: 'martha',
+      look: { coat: '#7A5C3E', hat: 'none', build: 0.90, tall: 0.93 },
       name: 'Martha',
       hearFlag: 'heard.a1.martha',
       x: 0.238,
@@ -410,6 +411,7 @@ export const MV01: Scene = {
 
     {
       id: 'lund',
+      look: { coat: '#6E5B45', hat: 'round', build: 1.10, tall: 0.97 },
       name: 'Lund',
       hearFlag: 'heard.a1.lund',
       x: 0.658,
@@ -434,6 +436,7 @@ export const MV01: Scene = {
 
     {
       id: 'lee',
+      look: { coat: '#5C6673', hat: 'round', build: 0.95, tall: 0.99 },
       name: 'William Lee',
       x: 0.815,
       z: 0.41,
@@ -454,6 +457,7 @@ export const MV01: Scene = {
 
     {
       id: 'messenger',
+      look: { coat: '#55627A', hat: 'tricorne', build: 0.94, tall: 1.00 },
       name: 'the messenger',
       x: 0.5,
       z: 0.34,

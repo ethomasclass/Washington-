@@ -174,6 +174,34 @@ export const SCENE = {
   title: 'Mount Vernon — the west front',
   subtitle: 'May 1775',
 
+  /**
+   * What this act is for, in one line.
+   *
+   * The goal of the game is that the army still exists at the end — not that it
+   * wins battles, which it mostly did not. Washington's achievement was that
+   * the Continental Army was continuously in being from 1775 to 1783, and the
+   * British could never finish it. Each act states its share of that.
+   *
+   * Act 1 is the exception, and deliberately so: there is no army yet. The only
+   * thing at stake this morning is which man goes to Philadelphia.
+   */
+  purpose: 'Decide what kind of man goes to Philadelphia.',
+
+  /**
+   * The return: strength present and fit for duty.
+   *
+   * Visible, unlike the four stats, and the distinction is the point. He could
+   * count his army to the man and wrote returns to Congress constantly; he
+   * could not count his own character. So what you HAVE is shown and what you
+   * ARE is not.
+   *
+   * Null here because in May 1775 there is no army to count — which is the
+   * first thing Act 2 will teach, when the first return arrives and the number
+   * is enormous and useless.
+   */
+  strength: null as { fit: number; onRolls: number; dated: string } | null,
+  noStrength: 'There is no army. That is the whole of the difficulty.',
+
   /** Shown once, on arrival, before the player has control. */
   opening: [
     'You have been home since the autumn, and you have not been still for a day of it.',

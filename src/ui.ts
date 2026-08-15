@@ -53,6 +53,12 @@ export const CSS = `
                 letter-spacing: .1em; color: ${INK.LIGHT}; font-weight: 700; }
   .journal ul { margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }
   .journal .none { font-size: 17px; color: ${INK.LIGHT}; font-style: italic; }
+  .journal .purpose { font-size: 18px; line-height: 1.5; margin: 2px 0 4px;
+                      color: ${INK.SETTLED}; }
+  /* The return is shown because he could count it. The four stats are not,
+     because he could not. */
+  .journal .strength { font-size: 17px; color: ${INK.SETTLED};
+                       font-variant-numeric: tabular-nums; }
 
   .hint { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
           font-size: 14px; color: ${INK.LIGHT}; letter-spacing: .04em; }
@@ -219,6 +225,8 @@ export class Overlay {
 
   /** What he has looked at, noticed, and still owes. Opened on demand. */
   showJournal(
+    purpose: string,
+    strength: string,
     read: string[],
     owed: string[],
     noticed: string[],
@@ -230,6 +238,8 @@ export class Overlay {
     j.className = 'journal';
     j.innerHTML =
       '<h2>What remains</h2>' +
+      `<div class="purpose">${purpose}</div>` +
+      `<h3>The army</h3><div class="strength">${strength}</div>` +
       '<h3>Owed an answer</h3>' +
       (owed.length
         ? `<ul>${owed.map((o) => `<li>${o}</li>`).join('')}</ul>`

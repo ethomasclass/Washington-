@@ -136,7 +136,11 @@ function openJournal(): void {
   const doneTasks = SCENE.tasks
     .filter((t) => state.knowledge.has(t.grants))
     .map((t) => t.note);
-  overlay.showJournal(read, owed(), noticed, doneTasks, () => {
+  const strength = SCENE.strength
+    ? `Return of ${SCENE.strength.dated}: ${SCENE.strength.fit.toLocaleString()} present and ` +
+      `fit for duty, of ${SCENE.strength.onRolls.toLocaleString()} on the rolls.`
+    : SCENE.noStrength;
+  overlay.showJournal(SCENE.purpose, strength, read, owed(), noticed, doneTasks, () => {
     busy = false;
   });
 }
@@ -404,7 +408,7 @@ requestAnimationFrame(frame);
 // Chromebook next period should not sit through the scene-setting again.
 if (!resumed) {
   busy = true;
-  overlay.showOpening(SCENE.title, SCENE.subtitle, SCENE.opening, () => {
+  overlay.showOpening(SCENE.title, SCENE.subtitle, [...SCENE.opening, SCENE.purpose], () => {
     busy = false;
   });
 }

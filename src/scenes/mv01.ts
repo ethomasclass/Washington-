@@ -99,10 +99,10 @@ export const MV01: Scene = {
       x: 0.553, z: 0.79, r: 0.11, minLoudness: 0.36,
     },
     {
-      id: 'amb.landing',
+      id: 'amb.river',
       voice: 'duty',
       line: 'The herring will come up in April whether you are here to count them or not.',
-      x: 0.08, z: 0.72, r: 0.11, minLoudness: 0.32,
+      x: 0.30, z: 0.78, r: 0.11, minLoudness: 0.32,
     },
     {
       id: 'amb.chariot',
@@ -281,13 +281,25 @@ export const MV01: Scene = {
       },
     },
     {
-      id: 'dock',
-      label: 'the landing',
+      id: 'bowling_green',
+      label: 'the bowling green',
       x: 0.08,
       z: 0.72,
       examine:
-        'The Potomac runs flat and brown below the bluff. The herring come up in April in numbers ' +
-        'that beggar description. You will miss them next year.',
+        'You laid it out yourself, and the serpentine walks either side of it, and you moved grown ' +
+        'trees to stand where you wanted them. Nothing on this side of the house grew where it ' +
+        'chose to.',
+    },
+    {
+      id: 'river_view',
+      label: 'the river beyond',
+      x: 0.30,
+      z: 0.78,
+      examine:
+        'The Potomac shows over the roofline, near two miles across, with Maryland a low green ' +
+        'line above it. The herring come up in April in numbers that beggar description. You will ' +
+        'not be here to count them.',
+      grants: 'obs.a1.river',
     },
     {
       id: 'paddock',

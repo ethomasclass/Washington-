@@ -40,6 +40,7 @@ export const FLAG_REGISTRY: string[] = [
   'task.a1.orders',
   'task.a1.nelson',
   'obs.a1.house_in_order',
+  'obs.a1.river',
   'doc.a2.ration_return',
   'doc.a2.reed_letter',
   'doc.a2.emerson',
@@ -89,14 +90,26 @@ function base32ToBits(s: string): number[] {
   return bits;
 }
 
+/**
+ * CRC-16/CCITT over the payload.
+ *
+ * This was CRC-8, and CRC-8 was enough while the flag registry was short. At
+ * thirty-four flags the payload outgrew it: the round-trip test found two
+ * single-character typos in eighty-nine that collided to the same checksum and
+ * would have decoded as a silently different run. Sixteen bits costs two more
+ * characters on the code and restores the guarantee.
+ */
+const CRC_BITS = 16;
+
 function checksum(bits: number[]): number {
-  // CRC-8 over the payload. Cheap, and catches every single-character slip.
-  let crc = 0xff;
+  let crc = 0xffff;
   for (let i = 0; i < bits.length; i += 8) {
     let byte = 0;
     for (let j = 0; j < 8; j++) byte = (byte << 1) | (bits[i + j] ?? 0);
-    crc ^= byte;
-    for (let k = 0; k < 8; k++) crc = crc & 0x80 ? ((crc << 1) ^ 0x31) & 0xff : (crc << 1) & 0xff;
+    crc ^= (byte & 0xff) << 8;
+    for (let k = 0; k < 8; k++) {
+      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
   }
   return crc;
 }
@@ -113,7 +126,7 @@ export function encode(state: GameState): string {
   const payload = w.bitArray();
   const crc = checksum(payload);
   const all = payload.slice();
-  for (let i = 7; i >= 0; i--) all.push((crc >> i) & 1);
+  for (let i = CRC_BITS - 1; i >= 0; i--) all.push((crc >> i) & 1);
 
   const raw = bitsToBase32(all);
   return (raw.match(/.{1,4}/g) ?? []).join('-');
@@ -124,11 +137,11 @@ export function decode(code: string): GameState {
   const bits = base32ToBits(clean);
 
   const payloadLen = 4 + 4 + 5 + 7 * 8 + FLAG_REGISTRY.length;
-  if (bits.length < payloadLen + 8) throw new Error('code is too short');
+  if (bits.length < payloadLen + CRC_BITS) throw new Error('code is too short');
 
   const payload = bits.slice(0, payloadLen);
   let given = 0;
-  for (let i = 0; i < 8; i++) given = (given << 1) | bits[payloadLen + i];
+  for (let i = 0; i < CRC_BITS; i++) given = (given << 1) | bits[payloadLen + i];
   if (checksum(payload) !== given) throw new Error('that code has a typo in it');
 
   let p = 0;

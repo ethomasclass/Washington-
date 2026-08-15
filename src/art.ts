@@ -269,18 +269,59 @@ export function cloudBand(seed = 91, tint: string = EARTH.SHADOW_SLATE): HTMLCan
   return c;
 }
 
-/** L1 — far hills. */
+/**
+ * L1 — the Potomac, and the Maryland shore beyond it.
+ *
+ * The canonical view is from the west, the land side, so the river lies BEYOND
+ * the house rather than in front of it: the mansion stands on the bluff and the
+ * water shows over its roofline with the far shore as a low wooded line above
+ * that. The act's palette is "river haze, spring green, PAPER sky", and the
+ * haze is the point — this is the widest thing in the game and it should read
+ * as distance, not as a blue stripe.
+ */
 export function layerHills(): HTMLCanvasElement {
   const { c, x } = surface(W, H);
   const rnd = mulberry(23);
   const hy = H * HORIZON;
+
+  // The far shore: a low wooded ridge, hazed almost to nothing.
   const ridge: [number, number][] = [];
-  for (let i = 0; i <= 18; i++) {
-    ridge.push([(i / 18) * W, hy - 40 + Math.sin(i * 0.7) * 22 + rnd() * 12]);
+  for (let i = 0; i <= 22; i++) {
+    ridge.push([(i / 22) * W, hy - 66 + Math.sin(i * 0.6) * 9 + rnd() * 6]);
   }
-  wash(x, [...ridge, [W, hy + 30], [0, hy + 30]], EARTH.TERRE_VERTE, 0.32, rnd);
-  inkLine(x, ridge, rnd, 1.1, 0.3);
-  return c;
+  solid(x, [...ridge, [W, hy - 34], [0, hy - 34]], '#93A08E', rnd);
+  wash(x, [...ridge, [W, hy - 34], [0, hy - 34]], EARTH.TERRE_VERTE, 0.30, rnd);
+  // Tree texture along the top of it, kept tiny.
+  for (let i = 0; i < 120; i++) {
+    const px = rnd() * W;
+    const py = hy - 66 + Math.sin((px / W) * 22 * 0.6) * 9 + rnd() * 8;
+    inkLine(x, [[px, py + 4], [px + (rnd() - 0.5) * 4, py - 2 - rnd() * 5]], rnd, 0.6, 0.35);
+  }
+
+  // The Potomac. Nearly two miles across here, so it is a broad flat band.
+  solid(x, [[0, hy - 36], [W, hy - 36], [W, hy + 2], [0, hy + 2]], '#9DA9AD', rnd);
+  wash(x, [[0, hy - 36], [W, hy - 36], [W, hy + 2], [0, hy + 2]], EARTH.SHADOW_SLATE, 0.22, rnd);
+  // A little light on the water, and one sail.
+  for (let i = 0; i < 26; i++) {
+    const wy = hy - 32 + rnd() * 32;
+    const sx = rnd() * W;
+    inkLine(x, [[sx, wy], [sx + 20 + rnd() * 90, wy + (rnd() - 0.5) * 2]], rnd, 0.5, 0.35);
+  }
+  const sailX = W * 0.70;
+  const sailY = hy - 18;
+  solid(x, [[sailX, sailY], [sailX + 9, sailY - 22], [sailX + 13, sailY]], PAPER.BRIGHT, rnd);
+  inkLine(x, [[sailX, sailY], [sailX + 9, sailY - 22], [sailX + 13, sailY]], rnd, 0.9, 0.15);
+
+  // The near bank, rising to the bluff the house stands on.
+  const bank: [number, number][] = [];
+  for (let i = 0; i <= 18; i++) {
+    bank.push([(i / 18) * W, hy - 2 + Math.sin(i * 0.8) * 7 + rnd() * 5]);
+  }
+  solid(x, [...bank, [W, hy + 40], [0, hy + 40]], '#B6B79C', rnd);
+  wash(x, [...bank, [W, hy + 40], [0, hy + 40]], EARTH.TERRE_VERTE, 0.26, rnd);
+  inkLine(x, bank, rnd, 1.0, 0.34);
+
+  return haze(c, 0.30);
 }
 
 /**

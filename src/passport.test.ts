@@ -10,9 +10,12 @@
 
 import { decode, encode, FLAG_REGISTRY } from './passport';
 import { SCENE_ORDER } from './scene-order';
-import { applyDelta, initialState } from './state';
+import { applyDelta, initialState, loudness, type StatId } from './state';
 import { sceneList } from './content';
 import { figureHalfW, frameX } from './ground';
+import { councilFor, lockOn, rejoinderFor } from './council';
+import type { VoiceId } from './palette';
+import type { Decision } from './types';
 
 let failures = 0;
 
@@ -209,6 +212,50 @@ for (const scene of sceneList()) {
   check('option emblems cite only voices present', orphans.length === 0, orphans.join('; '));
   check('every gated option explains its lock', unnoted.length === 0, unnoted.join(', '));
 
+  /*
+   * The council's rules, checked rather than remembered.
+   *
+   * These are the ones a writer breaks by accident at 11pm: a rejoinder for a
+   * voice that is not in the set, a voice lock on a threshold nothing can
+   * reach, or — the bad one — enough locks on one decision that a player can
+   * arrive at it with nothing to say.
+   */
+  const councilFaults: string[] = [];
+  for (const n of scene.npcs) {
+    const d = n.decision;
+    if (!d) continue;
+    const authored = new Set(d.voices);
+
+    for (const v of Object.keys(d.rejoinders ?? {}) as VoiceId[]) {
+      if (!authored.has(v)) councilFaults.push(`${d.id}: rejoinder for unauthored ${v}`);
+      const words = (d.rejoinders![v] ?? '').split(/\s+/).filter(Boolean).length;
+      // A rejoinder is an interruption, not a second speech.
+      if (words > 14) councilFaults.push(`${d.id}/${v}: rejoinder ${words} words, cap 14`);
+    }
+
+    for (const o of d.options) {
+      const vl = o.voiceLock;
+      if (!vl) continue;
+      if (!authored.has(vl.voice))
+        councilFaults.push(`${d.id}/${o.id}: voice-locked on ${vl.voice}, who is not in the room`);
+      // A threshold outside a voice's attainable range is a permanently dead
+      // option wearing the costume of a choice.
+      if (vl.min <= 0 || vl.min >= 0.95)
+        councilFaults.push(`${d.id}/${o.id}: threshold ${vl.min} is unreachable`);
+      if (o.requires)
+        councilFaults.push(`${d.id}/${o.id}: double-locked — a player can only be told one reason`);
+    }
+
+    // R4 needs somewhere to land: an authored set must be able to seat two.
+    if (d.voices.filter((v) => (d.interjections[v] ?? '').length > 0).length < 2)
+      councilFaults.push(`${d.id}: fewer than two voices can actually speak`);
+
+    const alwaysOpen = d.options.filter((o) => !o.requires && !o.voiceLock).length;
+    if (alwaysOpen < 2)
+      councilFaults.push(`${d.id}: only ${alwaysOpen} option(s) open to every player`);
+  }
+  check('the council obeys its own rules', councilFaults.length === 0, councilFaults.join('; '));
+
   const silentTasks = scene.tasks.filter((t) => t.requires && !t.requiresNote).map((t) => t.id);
   check('every gated task explains itself', silentTasks.length === 0, silentTasks.join(', '));
 
@@ -355,6 +402,103 @@ console.log('\ncontent · across scenes');
   const withArmy = sceneList().filter((s) => s.strength);
   check(`the return is shown once there is an army (${withArmy.length} of ${sceneList().length})`,
     withArmy.every((s) => s.strength!.fit <= s.strength!.onRolls));
+}
+
+console.log('\nthe council');
+{
+  const decisions: Decision[] = sceneList()
+    .flatMap((s) => s.npcs.map((n) => n.decision))
+    .filter((d): d is Decision => Boolean(d));
+
+  // R4, exercised against every authored set at four corners of the stat space
+  // rather than only at the vector the prototype happens to produce.
+  const CORNERS: Record<string, Record<StatId, number>> = {
+    opening: { judgment: 48, legitimacy: 55, loyalty: 40, character: 60 },
+    ruined: { judgment: 0, legitimacy: 0, loyalty: 0, character: 0 },
+    exemplary: { judgment: 100, legitimacy: 100, loyalty: 100, character: 100 },
+    'loved and slipping': { judgment: 50, legitimacy: 20, loyalty: 95, character: 15 },
+  };
+
+  const faults: string[] = [];
+  for (const d of decisions) {
+    for (const [where, stats] of Object.entries(CORNERS)) {
+      const spoke = councilFor(d, stats);
+      if (spoke.length < 2) faults.push(`${d.id} @ ${where}: ${spoke.length} voice(s) — floor is 2`);
+      if (spoke.length > 4) faults.push(`${d.id} @ ${where}: ${spoke.length} voices — cap is 4`);
+      if (new Set(spoke.map((v) => v.id)).size !== spoke.length)
+        faults.push(`${d.id} @ ${where}: a voice speaks twice`);
+      for (let i = 1; i < spoke.length; i++) {
+        if (loudness(spoke[i - 1].id, stats) < loudness(spoke[i].id, stats))
+          faults.push(`${d.id} @ ${where}: out of order at ${spoke[i].id}`);
+      }
+      if (spoke.some((v) => !v.line.trim())) faults.push(`${d.id} @ ${where}: an empty line spoke`);
+      // Insistence may only ever be the voice that opened, and only its own line.
+      const r = rejoinderFor(d, spoke, stats);
+      if (r && r.id !== spoke[0].id) faults.push(`${d.id} @ ${where}: ${r.id} rejoined out of turn`);
+      if (r && r.line !== d.rejoinders?.[r.id]) faults.push(`${d.id} @ ${where}: invented rejoinder`);
+    }
+  }
+  check(`R4 holds at every corner (${decisions.length} decisions × 4 vectors)`,
+    faults.length === 0, faults.slice(0, 4).join('; '));
+
+  /*
+   * Voice locks must be live content, not decoration.
+   *
+   * A threshold nothing can reach is a permanently struck line that promises a
+   * choice it will never give; a threshold everything clears is a lock the
+   * player never sees work. Both are failures, and neither is visible by
+   * reading the scene file — it depends on what the deltas upstream can do. So
+   * walk every path through the authored decisions and require each lock to be
+   * observed both open and shut.
+   */
+  const locked: Record<string, { open: number; shut: number }> = {};
+  const walk = (seq: Decision[], i: number, stats: Record<StatId, number>): void => {
+    if (i === seq.length) return;
+    const d = seq[i];
+    for (const o of d.options) {
+      if (!o.voiceLock) continue;
+      const key = `${d.id}/${o.id}`;
+      locked[key] ??= { open: 0, shut: 0 };
+      // Knowledge empty on purpose: this asks what the VOICE locks do alone.
+      lockOn(o, stats, new Set<string>()).locked ? locked[key].shut++ : locked[key].open++;
+    }
+    for (const o of d.options) {
+      const next = { ...stats };
+      const s = { stats: next } as Parameters<typeof applyDelta>[0];
+      for (const [k, v] of Object.entries(o.effects)) applyDelta(s, k as StatId, v as number);
+      walk(seq, i + 1, next);
+    }
+  };
+
+  /*
+   * Scenes are visited in order; the people inside one are not. A player picks
+   * who to speak to first, and Act 1's lock turns entirely on that choice — so
+   * a walk that fixed the authoring order would report the lock as dead when it
+   * is merely order-dependent. Permute within each scene, chain the scenes.
+   */
+  const permute = <T,>(xs: T[]): T[][] =>
+    xs.length <= 1
+      ? [xs]
+      : xs.flatMap((x, i) =>
+          permute([...xs.slice(0, i), ...xs.slice(i + 1)]).map((rest) => [x, ...rest]),
+        );
+
+  let sequences: Decision[][] = [[]];
+  for (const id of SCENE_ORDER) {
+    const sc = sceneList().find((s) => s.id === id);
+    if (!sc) continue;
+    const here = sc.npcs.map((n) => n.decision).filter((d): d is Decision => Boolean(d));
+    if (!here.length) continue;
+    sequences = sequences.flatMap((head) => permute(here).map((tail) => [...head, ...tail]));
+  }
+  for (const seq of sequences) walk(seq, 0, { ...CORNERS.opening });
+
+  const dead = Object.entries(locked).filter(([, c]) => c.open === 0 || c.shut === 0);
+  const summary = Object.entries(locked)
+    .map(([k, c]) => `${k} ${c.open}/${c.open + c.shut} open`)
+    .join(', ');
+  check(`every voice lock is reachable both ways — ${summary}`, dead.length === 0,
+    dead.map(([k, c]) => `${k}: open ${c.open}, shut ${c.shut}`).join('; '));
 }
 
 console.log(failures === 0 ? '\nall checks passed' : `\n${failures} FAILED`);

@@ -12,6 +12,16 @@ clock through Acts 1–3, and the player-facing writing register. **Steps 1–3 
 build order are done** (interface strings rewritten, the Return on the HUD, the
 two-line header). Step 4 — the ledger — is the next real work.
 
+**The Council now matches `07-stat-and-voice-system.md` §3.** The five loudness
+formulas were audited against the spec and three were wrong (Duty read no
+Legitimacy at all); they are corrected. R4's floor of two, insistence/rejoinders,
+voice-locked options and the ambient interjection budget are all built. The
+selection rules live in `src/council.ts` as pure functions so the linter can
+assert them — it checks R4 at four corners of the stat space and walks every
+path through the authored decisions to prove each voice lock is reachable both
+open and shut. Two voice locks exist: `A1-D1/decline` (restraint) and
+`A2-D4/hold_them` (temper).
+
 **Run it:** `npm install && npm run dev`. `npm test` is the codec plus the
 content linter and must be green before any commit. `npm run build` before
 pushing.

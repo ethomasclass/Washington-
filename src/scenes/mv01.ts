@@ -462,6 +462,11 @@ export const MV01: Scene = {
           duty: 'You hold a commission. It is not a costume.',
           temper: 'Let them ask you plainly, or let them find another man.',
         },
+        rejoinders: {
+          vanity: 'They will describe the coat in their letters home. Every one of them.',
+          restraint: 'Wear it once and you cannot afterwards be a man who did not.',
+          duty: 'She is asking what you mean to be. Answer that, not the coat.',
+        },
         options: [
           {
             id: 'wear_uniform',
@@ -607,6 +612,11 @@ export const MV01: Scene = {
           vanity: 'Let them arrive at the name themselves. It is not asking if they say it first.',
           temper: 'Twenty years they passed you over for a royal commission. Twenty years.',
         },
+        rejoinders: {
+          restraint: 'You have commanded a regiment. They are offering you a continent.',
+          duty: 'They will vote tomorrow whether you answer or not.',
+          vanity: 'Say no slowly. Nobody remembers a quick refusal.',
+        },
         options: [
           {
             id: 'accept_plain',
@@ -647,6 +657,25 @@ export const MV01: Scene = {
             label: 'Decline',
             full: 'Say the command should go to a man the New England troops already trust.',
             favoured: ['restraint', 'temper'],
+            /*
+             * The voice lock of Act 1.
+             *
+             * Refusing is a real historical position and he weighed it. But a
+             * man can only decline the largest thing he has ever been offered
+             * if the part of him that preserves is already the loudest part —
+             * and at the opening vector it is not, by two thousandths.
+             *
+             * So the option is struck for a player who rides to the messenger
+             * first, and open for one who has settled the house before
+             * answering Philadelphia. Nothing in the game says so. What the
+             * player sees is that a sentence they could not say this morning
+             * is available to a man who put his affairs in order first.
+             *
+             * Note it is not the option Washington took, which is the point:
+             * if every locked option were the historically correct one, the
+             * lesson would be "raise the stat to find the right answer."
+             */
+            voiceLock: { voice: 'restraint', min: 0.58 },
             effects: { character: 3, legitimacy: -6, judgment: 1 },
             result:
               'You say it, and they do not accept it, and the saying of it is remembered as ' +

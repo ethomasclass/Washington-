@@ -14,11 +14,11 @@
 
 import { DioramaRenderer, type GroundPos } from './renderer';
 import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
-import { CSS, Overlay, type OptionView, type VoiceView } from './ui';
+import { CSS, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
+import { councilFor, lockOn, rejoinderFor } from './council';
 import {
   applyDelta,
-  DROP_BELOW,
   initialState,
   loudness,
   moodScalar,
@@ -97,6 +97,18 @@ overlay.setReturn(returnOf(scene));
 const seen = new Set<string>();
 /** Ambient voices already spoken, so none repeats. */
 const heardAmbient = new Set<string>();
+
+/*
+ * The interjection budget. Without it, a player who walks the diagonal across a
+ * camp collects four interior thoughts in six seconds and the Council reads as
+ * a tooltip system rather than as a man thinking.
+ */
+const AMBIENT_GAP = 40_000; // ms between any two interjections
+const VOICE_GAP = 120_000; // ms before the same voice speaks again
+const AMBIENT_PER_SCENE = 4;
+let lastAmbientAt = -Infinity;
+let spokenThisScene = 0;
+const lastVoiceAt = new Map<string, number>();
 
 /** Player position on the ground plane. */
 const pos: GroundPos = { x: 0.5, z: 0.34 };
@@ -213,47 +225,52 @@ function openJournal(): void {
  */
 function checkAmbient(): void {
   if (busy) return;
+  // The interior is a presence, not a broadcast. Four thoughts is a scene's
+  // whole ration, and a player who crosses three zones at a run hears one of
+  // them and carries the other two as something almost said.
+  if (spokenThisScene >= AMBIENT_PER_SCENE) return;
+  const now = performance.now();
+  if (now - lastAmbientAt < AMBIENT_GAP) return;
+
   for (const a of scene.ambient) {
     if (heardAmbient.has(a.id)) continue;
     if (groundDist(pos, a) > a.r) continue;
+    // A voice that has just spoken holds off, so no one part of him narrates a
+    // whole scene by virtue of standing nearest the door.
+    if (now - (lastVoiceAt.get(a.voice) ?? -Infinity) < VOICE_GAP) continue;
     heardAmbient.add(a.id);
     if (loudness(a.voice, state.stats) < a.minLoudness) continue; // too quiet to speak
     overlay.showThought(a.voice, a.line);
     const me = renderer.screenPos(pos);
     overlay.setThoughtAnchor(me.x, me.y - 6);
+    lastAmbientAt = now;
+    lastVoiceAt.set(a.voice, now);
+    spokenThisScene++;
     return;
   }
 }
 
-/**
- * Two to four voices speak, loudest first. A voice too quiet to reach the
- * threshold does not speak at all — that silence is itself a stat readout.
- */
-function councilFor(d: Decision): VoiceView[] {
-  return d.voices
-    .map((id) => ({ id, l: loudness(id, state.stats) }))
-    .filter((v) => v.l >= DROP_BELOW)
-    .sort((a, b) => b.l - a.l)
-    .slice(0, 4)
-    .map((v) => ({ id: v.id, line: d.interjections[v.id] ?? '' }))
-    .filter((v) => v.line.length > 0);
-}
-
 function runDecision(d: Decision, after: () => void): void {
-  const voices = councilFor(d);
-  const options: OptionView[] = d.options.map((o) => ({
-    id: o.id,
-    label: o.label,
-    full: o.full,
-    favoured: o.favoured,
-    locked: !!o.requires && !state.knowledge.has(o.requires),
-    lockNote: o.lockNote,
-  }));
+  const voices = councilFor(d, state.stats);
+  const options: OptionView[] = d.options.map((o) => {
+    const lock = lockOn(o, state.stats, state.knowledge);
+    return {
+      id: o.id,
+      label: o.label,
+      full: o.full,
+      favoured: o.favoured,
+      locked: lock.locked,
+      lockNote: lock.locked && lock.kind === 'knowledge' ? lock.note : undefined,
+      // The voice's own emblem replaces the letter glyph, so the two kinds of
+      // lock are told apart at a glance and before either is read.
+      lockVoice: lock.locked && lock.kind === 'voice' ? lock.voice : undefined,
+    };
+  });
 
   const portrait = { seed: d.portraitSeed, coat: d.coat };
 
   // Beat 1: the council argues. Beat 2: you decide.
-  overlay.showCouncil(portrait, voices, () => {
+  overlay.showCouncil(portrait, voices, rejoinderFor(d, voices, state.stats), () => {
     overlay.showDecision(d.speaker, d.prompt, portrait, voices, options, (id) => {
       const picked = d.options.find((o) => o.id === id)!;
       // Decisions move stats. Documents never do.
@@ -526,6 +543,10 @@ function enterScene(id: string): void {
 
   seen.clear();
   heardAmbient.clear();
+  // The budget is per scene, and the cooldowns do not follow him through a door.
+  spokenThisScene = 0;
+  lastAmbientAt = -Infinity;
+  lastVoiceAt.clear();
   speaking = null;
   pos.x = 0.5;
   pos.z = 0.34;

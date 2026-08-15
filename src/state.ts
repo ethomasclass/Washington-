@@ -96,19 +96,36 @@ export function moodScalar(s: Record<StatId, number>): number {
 export function loudness(voice: string, s: Record<StatId, number>): number {
   const n = (k: StatId) => s[k] / 100;
   switch (voice) {
+    // Grievance is the ranks' as much as his: the more the army trusts him, the
+    // more freely he is furious on its behalf.
     case 'temper':
       return 0.55 * n('loyalty') + 0.45 * (1 - n('character'));
+    // The voice that would save him fades first, as he frays and as his
+    // standing collapses.
     case 'restraint':
       return 0.55 * n('character') + 0.45 * n('legitimacy');
+    // Good judgment with slipping self-government — a genuinely dangerous man,
+    // and he is the one who hears the spur loudest.
     case 'ambition':
-      return 0.55 * n('judgment') + 0.45 * (1 - n('legitimacy'));
+      return 0.60 * n('judgment') + 0.40 * (1 - n('character'));
+    // The only even split and the only formula with no inverted term. The
+    // plainest voice gets the plainest arithmetic.
     case 'duty':
-      return 0.55 * n('character') + 0.45 * n('judgment');
+      return 0.50 * n('legitimacy') + 0.50 * n('character');
+    // Inverted against standing (R5): as the credit collapses, the mirror gets
+    // louder. The student sees no number; they notice a preening voice that
+    // will not shut up.
     case 'vanity':
-      return 0.55 * (1 - n('legitimacy')) + 0.45 * (1 - n('character'));
+      return 0.65 * (1 - n('legitimacy')) + 0.35 * n('judgment');
     default:
       return 0;
   }
 }
 
+/** Below this a voice is dropped from an authored set — subject to the floor. */
 export const DROP_BELOW = 0.28;
+/** At or above this a voice will not let the argument end, and speaks again. */
+export const INSIST_ABOVE = 0.72;
+/** R4: never fewer than two voices at a decision, and never all five. */
+export const COUNCIL_MIN = 2;
+export const COUNCIL_MAX = 4;

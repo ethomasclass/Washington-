@@ -142,6 +142,20 @@ export interface Option {
   /** Knowledge flag required. Without it the option is struck, not hidden. */
   requires?: string;
   lockNote?: string;
+  /**
+   * A voice lock (R1). The other kind of lock, and the harsher one.
+   *
+   * A knowledge lock says *go and find the thing*, and can always be opened by
+   * going and finding it. A voice lock says *this part of you is not loud
+   * enough to say this*, and cannot be opened in this act at all — the player
+   * can see precisely which part of himself is insufficient and can do nothing
+   * about it today. That is the entire payload of a Disco Elysium red check
+   * delivered with no dice and no number.
+   *
+   * Read from LIVE stats, never the snapshot: a decision made in scene 2 must
+   * be able to open or close a sentence in scene 4, or the act is a sealed box.
+   */
+  voiceLock?: { voice: VoiceId; min: number };
   effects: Partial<Record<StatId, number>>;
   result: string;
 }
@@ -154,6 +168,15 @@ export interface Decision {
   coat: string;
   voices: VoiceId[];
   interjections: Partial<Record<VoiceId, string>>;
+  /**
+   * Insistence. A voice loud enough not to let the argument end speaks once
+   * more, after everyone else has finished — fourteen words at most.
+   *
+   * Authored only for the voices plausibly loud at this decision, so a set of
+   * five carries one or two. A voice with no rejoinder here simply never gets
+   * the last word, which is a writer's decision and not an engine default.
+   */
+  rejoinders?: Partial<Record<VoiceId, string>>;
   options: Option[];
 }
 

@@ -255,6 +255,12 @@ export const CSS = `
 
   .council { margin: 16px 0 4px; border-left: 2px solid ${PAPER.SHADOW}; padding-left: 14px; }
   .voice { margin-bottom: 11px; }
+  /* The rejoinder. Set in after the others, and indented off them, because it
+     is a second attempt rather than a new speaker. */
+  .voice.again { margin-left: 22px; margin-top: -2px;
+                 animation: rejoin .32s ease both; }
+  @keyframes rejoin { from { opacity: 0; transform: translateY(4px); }
+                      to   { opacity: 1; transform: none; } }
   .voice-name { font-variant: small-caps; letter-spacing: .11em; font-size: 15px; font-weight: 700;
                 display: flex; align-items: center; gap: 8px; }
   .voice-line { font-style: italic; font-size: 18px; line-height: 1.5; color: ${INK.SETTLED};
@@ -297,10 +303,9 @@ export const CSS = `
                font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
 `;
 
-export interface VoiceView {
-  id: VoiceId;
-  line: string;
-}
+// Defined with the selection rules that produce it, not here.
+import type { VoiceView } from './council';
+export type { VoiceView };
 
 export interface OptionView {
   id: string;
@@ -308,7 +313,10 @@ export interface OptionView {
   full: string;
   favoured: VoiceId[];
   locked: boolean;
+  /** Set for a knowledge lock: what has not been read, in his own accusation. */
   lockNote?: string;
+  /** Set for a voice lock: which part of him is not loud enough to say it. */
+  lockVoice?: VoiceId;
 }
 
 type Portrait = { seed: number; coat: string };
@@ -737,20 +745,43 @@ export class Overlay {
   }
 
   /** Beat 1 — the council argues. The player only listens. */
-  showCouncil(portrait: Portrait, voices: VoiceView[], onDone: () => void): void {
+  showCouncil(
+    portrait: Portrait,
+    voices: VoiceView[],
+    rejoinder: VoiceView | null,
+    onDone: () => void,
+  ): void {
     const p = this.makePanel();
+    const voiceHtml = (v: VoiceView, again: boolean): string =>
+      `<div class="voice${again ? ' again' : ''}">` +
+      `<span class="voice-name" style="color:${VOICE_INK[v.id]}">${EMBLEM[v.id]}${v.id}</span>` +
+      `<span class="voice-line">${v.line}</span></div>`;
+
     p.innerHTML =
       this.wellFor(portrait) +
-      '<div class="body"><div class="speaker">the council</div><div class="council">' +
-      voices
-        .map(
-          (v) =>
-            `<div class="voice"><span class="voice-name" style="color:${VOICE_INK[v.id]}">` +
-            `${EMBLEM[v.id]}${v.id}</span>` +
-            `<span class="voice-line">${v.line}</span></div>`,
-        )
-        .join('') +
-      '</div><div class="continue">press <b>Space</b> to decide</div></div>';
+      '<div class="body"><div class="speaker">the council</div>' +
+      `<div class="council">${voices.map((v) => voiceHtml(v, false)).join('')}</div>` +
+      '<div class="continue">press <b>Space</b> to decide</div></div>';
+
+    /*
+     * The insistence beat.
+     *
+     * The rejoinder is not in the initial paint: it arrives after everyone has
+     * finished, on its own, which is the whole effect — a part of him that will
+     * not let the argument end. The prompt is withheld until it lands so the
+     * player cannot skip past it without seeing it happen.
+     */
+    if (rejoinder) {
+      const council = p.querySelector('.council')!;
+      const prompt = p.querySelector<HTMLElement>('.continue')!;
+      prompt.style.visibility = 'hidden';
+      setTimeout(() => {
+        if (!council.isConnected) return;
+        council.insertAdjacentHTML('beforeend', voiceHtml(rejoinder, true));
+        prompt.style.visibility = '';
+      }, 600);
+    }
+
     this.waitForDismiss(onDone);
   }
 
@@ -769,8 +800,21 @@ export class Overlay {
 
     const draw = (): void => {
       const f = options[focus];
+      /*
+       * The two refusals read differently on purpose.
+       *
+       * A knowledge lock is an accusation about something he has not looked at,
+       * and it is openable: go and find the thing. A voice lock names the part
+       * of him that is too quiet, and it is not openable today by any means at
+       * all. Neither is greyed — both stay at full contrast, struck and glyphed,
+       * because greying text to indicate state is the accessibility failure
+       * this project has committed to not making.
+       */
       const why = f.locked
-        ? `<span class="why">Locked — ${f.lockNote ?? 'not available to you'}.</span>`
+        ? f.lockVoice
+          ? `<span class="why" style="color:${VOICE_INK[f.lockVoice]}">` +
+            `${f.lockVoice} is not loud enough to say this.</span>`
+          : `<span class="why">Locked — ${f.lockNote ?? 'not available to you'}.</span>`
         : f.favoured.length
           ? `<span class="why">${f.favoured.join(' and ')} would have it so.</span>`
           : '';
@@ -796,7 +840,12 @@ export class Overlay {
                   .map((v) => `<span style="color:${VOICE_INK[v]}">${EMBLEM[v]}</span>`)
                   .join('')}</span>`
               : '';
-            const lock = o.locked ? `<span class="glyph">${LOCK_GLYPH}</span>` : '';
+            const lock = !o.locked
+              ? ''
+              : o.lockVoice
+                ? `<span class="glyph" style="color:${VOICE_INK[o.lockVoice]}">` +
+                  `${EMBLEM[o.lockVoice]}</span>`
+                : `<span class="glyph">${LOCK_GLYPH}</span>`;
             return (
               `<li><button class="opt${o.locked ? ' locked' : ''}${i === focus ? ' on' : ''}" ` +
               `data-i="${i}"${o.locked ? ' aria-disabled="true"' : ''}>` +

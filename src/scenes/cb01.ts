@@ -451,6 +451,11 @@ export const CB01: Scene = {
             'A general who announces he cannot fight has announced it to his own men as well.',
           temper: 'Someone counted three hundred barrels. Find him and let him explain it to me.',
         },
+        rejoinders: {
+          restraint: 'Whoever you tell today, you cannot untell in January.',
+          duty: 'They cannot send what they have not been asked for.',
+          ambition: 'Every week Howe does not know is a week you are given.',
+        },
         options: [
           {
             id: 'tell_nobody',

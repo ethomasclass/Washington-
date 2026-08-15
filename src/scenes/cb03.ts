@@ -511,6 +511,11 @@ export const CB03: Scene = {
             'It will be said of you either that you kept an army or that you let one walk home. ' +
             'Only one of those is said kindly.',
         },
+        rejoinders: {
+          duty: 'Eight months is what the paper says. You have read it.',
+          restraint: 'Whatever you do on the tenth, you will do again next December.',
+          temper: 'Starr is standing there. Say it to him, not to the roll.',
+        },
         options: [
           {
             id: 'let_go',
@@ -531,6 +536,28 @@ export const CB03: Scene = {
             full:
               'Nobody leaves this hill while the enemy is a mile off it, paper or no paper.',
             favoured: ['temper'],
+            /*
+             * The voice lock of Act 2, and it works the opposite way round to
+             * Act 1's.
+             *
+             * This is the worst option on the page — it tells eleven hundred
+             * men what their signature is worth and costs Legitimacy six and
+             * Character four. It is available only to a Washington in whom the
+             * fury is genuinely present: loyalty high enough that he speaks for
+             * the ranks, self-government slipped enough that he speaks at all.
+             *
+             * So a player who has governed himself is quietly protected from
+             * the blunder by the man he has become, and is never told that he
+             * was. A player who has been trading character for the army's love
+             * gets handed the option and has to refuse it himself. That
+             * refusing-anyway is the actual lesson of the life, and it is only
+             * available if the alternative is on the screen.
+             *
+             * 0.38 because the reachable band at this decision is 0.326–0.432:
+             * roughly a third of paths open it, which is often enough to be a
+             * real branch and rare enough to be a discovery.
+             */
+            voiceLock: { voice: 'temper', min: 0.38 },
             effects: { loyalty: 3, legitimacy: -6, character: -4 },
             result:
               'The order goes out and by nightfall every man in camp knows what his enlistment is ' +

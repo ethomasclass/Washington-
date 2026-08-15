@@ -205,6 +205,71 @@ const ACCENTS = [
   '#4E6B6B', // cold verdigris
 ];
 
+/* ------------------------------------------------------------------- light
+ *
+ * The plate painter's key light.
+ *
+ * The post shader already warms the frame toward the sun and cools it away
+ * (renderer MOOD_FRAG), but that is a wash over the whole picture: it tints a
+ * flat thing without lighting anything. Nothing in the plates knew where the
+ * sun was, so every mass was evenly coloured and the pictures read flat no
+ * matter how much brushwork went on top of them.
+ *
+ * This is form lighting. One direction per plate, set before the plate set is
+ * built, read by `solid()` for every mass in it. Module state rather than a
+ * parameter because `solid()` has 172 call sites and none of them should have
+ * to care where the sun is.
+ *
+ * The rule that does the actual work is not the brightness, it is the
+ * temperature: **warm light, cool shadow.** A form lit warm on one side and
+ * cooled on the other reads as three-dimensional even when the value range is
+ * narrow, and it is the single cheapest thing a painter does that a flat fill
+ * cannot.
+ */
+const LIGHT = { dx: 0.36, dy: 0.93, k: 1 };
+
+/**
+ * Point the key light, from a sun position in frame uv (0..1 across, 0 at top).
+ *
+ * `k` scales the whole effect: 1 for a clear day with a real key, lower for
+ * overcast, where there is a light direction but no shadow worth the name.
+ */
+export function setPlateLight(sunX: number, sunY: number, k = 1): void {
+  // Direction the light travels: from the sun toward the middle of the frame.
+  const vx = 0.5 - sunX;
+  const vy = 0.5 - sunY;
+  const m = Math.hypot(vx, vy) || 1;
+  LIGHT.dx = vx / m;
+  LIGHT.dy = vy / m;
+  LIGHT.k = k;
+}
+
+/**
+ * Aerial perspective, applied per plate.
+ *
+ * Distance is carried by air, not by scale: the further a thing is, the more
+ * atmosphere sits in front of it, so it loses contrast and shifts toward the
+ * colour of the sky. The plates are already depth-sorted layers, so this is
+ * one composite per layer and it does more for the sense of space than any
+ * amount of drawing.
+ *
+ * `source-atop` so only painted pixels take the air — a layer is mostly
+ * transparent and tinting the holes would fill the sky with fog.
+ */
+const AIR = '#9AA3A0';
+
+function recede(c: HTMLCanvasElement, depth: number): HTMLCanvasElement {
+  if (depth <= 0.02) return c;
+  const x = c.getContext('2d')!;
+  x.save();
+  x.globalCompositeOperation = 'source-atop';
+  x.globalAlpha = Math.min(0.30, depth * 0.30);
+  x.fillStyle = AIR;
+  x.fillRect(0, 0, c.width, c.height);
+  x.restore();
+  return c;
+}
+
 /**
  * A mass, painted rather than filled.
  *
@@ -299,10 +364,20 @@ function solid(
   const len = Math.max(11, Math.min(78, span * 0.34));
   const n = Math.max(3, Math.min(260, Math.round((w * h) / (len * width * 0.85))));
 
-  /** `high` biases the stroke toward the top of the form, where light falls. */
-  const laySt = (l: number, colour: string, wid: number, alpha: number, high = false): void => {
-    const cx = x0 + rnd() * w;
-    const cy = y0 + rnd() * h * (high ? 0.5 : 1);
+  /**
+   * `bias` pulls the stroke toward one side of the form: -1 toward the light,
+   * +1 into the shadow, 0 anywhere.
+   */
+  const laySt = (
+    l: number,
+    colour: string,
+    wid: number,
+    alpha: number,
+    bias = 0,
+  ): void => {
+    const pull = bias * 0.3;
+    const cx = x0 + w * 0.5 + (rnd() - 0.5) * w * 0.9 + LIGHT.dx * pull * w;
+    const cy = y0 + h * 0.5 + (rnd() - 0.5) * h * 0.9 + LIGHT.dy * pull * h;
     x.strokeStyle = colour;
     x.lineWidth = wid;
     x.globalAlpha = alpha;
@@ -340,22 +415,38 @@ function solid(
   }
 
   /*
-   * The loaded strokes go UP, where the light is.
-   *
-   * Scattered evenly they are not paint, they are scratches — the previous cut
-   * put bright tan slashes across the dark near-field tents, because a lifted
-   * stroke on a dark mass with no reason to be there reads as damage. Biased to
-   * the top half of the form they read as the light catching a raised edge,
-   * which is what they are meant to be.
+   * The shadow side. Cooler as well as darker, which is the half of the trick
+   * people forget: a shadow that is only darker reads as dirt on the paint.
    */
-  const loaded = Math.max(2, Math.min(8, Math.round(n * 0.07)));
+  const k = LIGHT.k;
+  const shade = Math.max(2, Math.min(12, Math.round(n * 0.1)));
+  for (let i = 0; i < shade; i++) {
+    laySt(
+      len * (0.6 + rnd() * 0.6),
+      vary(base, -(0.05 + rnd() * 0.08) * k, -(0.35 + rnd() * 0.5) * k),
+      width * (1.0 + rnd() * 0.7),
+      0.3 + rnd() * 0.3,
+      1,
+    );
+  }
+
+  /*
+   * The loaded strokes go toward the light.
+   *
+   * Scattered evenly they are not paint, they are scratches — an earlier cut
+   * put bright tan slashes across the dark near-field tents, because a lifted
+   * stroke with no reason to be where it is reads as damage. Pulled to the lit
+   * side of the form they read as the light catching a raised edge, which is
+   * what they are meant to be. Warm, because sunlight is.
+   */
+  const loaded = Math.max(2, Math.min(9, Math.round(n * 0.08)));
   for (let i = 0; i < loaded; i++) {
     laySt(
       len * (0.5 + rnd() * 0.6),
-      vary(base, 0.045 + rnd() * 0.085, 0.25 + rnd() * 0.5),
+      vary(base, (0.05 + rnd() * 0.09) * k, (0.35 + rnd() * 0.55) * k),
       width * (1.05 + rnd() * 0.6),
-      0.4 + rnd() * 0.3,
-      true,
+      0.42 + rnd() * 0.3,
+      -1,
     );
   }
 
@@ -3248,21 +3339,43 @@ export const PLATE_DEPTHS: Record<string, number[]> = {
   lines: [1, 1, 1, 1, nearestOn(H * HORIZON + 214), 0],
 };
 
+/**
+ * Lay the air over a built set.
+ *
+ * Distance comes from the layer's position in the stack, NOT from
+ * `PLATE_DEPTHS`. That table is parallax depth, and it puts the house, the far
+ * midground and the sky all at 1 because they do not scroll independently —
+ * using it as atmospheric depth greyed the house as hard as the horizon and
+ * flattened the whole picture, which is the opposite of the point.
+ *
+ * Only the two furthest layers take air, and layer 0 — the sky — takes none,
+ * because the sky is not seen THROUGH atmosphere, it IS the atmosphere.
+ *
+ * Spreading it smoothly down the stack was the second thing tried and it was
+ * also wrong, for a reason worth writing down: **one layer is not one
+ * distance.** The ground plate runs from the horizon to the player's feet, so
+ * any air laid on it hazes grass a yard away as hard as the far shore. Haze
+ * belongs where the depth actually is — the hills and the water — and the rest
+ * of the picture keeps its colour.
+ */
+const withAir = (_name: string, layers: HTMLCanvasElement[]): HTMLCanvasElement[] =>
+  layers.map((c, i) => recede(c, i === 1 ? 1 : i === 2 ? 0.3 : 0));
+
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
-  vernon: () => [
+  vernon: () => withAir('vernon', [
     layerSky(), layerHills(), layerHouse(),
     layerFarMidground(), layerMidground(), layerForeground(),
-  ],
-  camp: () => [
+  ]),
+  camp: () => withAir('camp', [
     campSky(), campHills(), campGround(),
     campFarMidground(), campMidground(), campForeground(),
-  ],
+  ]),
   // Same sky and same far shore as the camp: from these hills you are looking
   // at the same Boston, which is the point of the scene.
-  lines: () => [
+  lines: () => withAir('lines', [
     campSky(), campHills(), linesGround(),
     linesFarMidground(), linesMidground(), linesForeground(),
-  ],
+  ]),
 };
 
 /* -------------------------------------------------------------- set pieces

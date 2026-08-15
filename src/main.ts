@@ -13,6 +13,7 @@
  */
 
 import { DioramaRenderer, type GroundPos } from './renderer';
+import { setPlateLight } from './art';
 import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
 import { CSS, mountSheet, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
@@ -83,6 +84,16 @@ const propsFor = (sc: Scene) =>
       seed: [...o.id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 9973, 7),
     }));
 
+/*
+ * Point the key light before the plates are painted, not after: the lighting
+ * is baked into the strokes, so it has to be set while they are being laid.
+ * The third term is how much of a key there is at all — Cambridge in July is
+ * flat overcast (sun y 0.05, no shadow worth the name) and gets a weak one.
+ */
+const lightFor = (sc: Scene): void =>
+  setPlateLight(sc.sun[0], sc.sun[1], sc.sun[1] < 0.1 ? 0.45 : 1);
+
+lightFor(scene);
 const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene), propsFor(scene));
 renderer.setSun(scene.sun[0], scene.sun[1]);
 const headOf = (sc: Scene) => ({ when: sc.when, title: sc.title, purpose: sc.purpose });
@@ -565,6 +576,7 @@ function loadScene(id: string): void {
   pos.z = 0.34;
   held.left = held.right = held.up = held.down = false;
 
+  lightFor(scene);
   renderer.loadScene(scene.plates, actorsFor(scene), propsFor(scene));
   renderer.setSun(scene.sun[0], scene.sun[1]);
   overlay.setPlate(headOf(scene));

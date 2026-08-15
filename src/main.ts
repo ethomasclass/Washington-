@@ -13,7 +13,7 @@
  */
 
 import { DioramaRenderer, type GroundPos } from './renderer';
-import { SCENE, type Decision, type NpcThread } from './content';
+import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
 import { CSS, Overlay, type OptionView, type VoiceView } from './ui';
 import {
   applyDelta,
@@ -34,15 +34,20 @@ document.head.appendChild(style);
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
 const overlayRoot = document.getElementById('overlay') as HTMLElement;
 
-const renderer = new DioramaRenderer(
-  canvas,
-  SCENE.npcs.map((n) => ({ x: n.x, z: n.z })),
-);
-const overlay = new Overlay(overlayRoot, SCENE.title, SCENE.subtitle);
-
 const resumed = loadAutosave();
 const state: GameState = resumed ?? initialState();
 takeSnapshot(state);
+
+/** The composed view currently on screen. */
+let scene: Scene = SCENES[state.scene] ?? SCENES[FIRST_SCENE];
+state.scene = scene.id;
+
+const renderer = new DioramaRenderer(
+  canvas,
+  scene.plates,
+  scene.npcs.map((n) => ({ x: n.x, z: n.z })),
+);
+const overlay = new Overlay(overlayRoot, scene.title, scene.subtitle);
 
 /** Interactables looked at this session, for the journal. */
 const seen = new Set<string>();
@@ -79,14 +84,14 @@ interface Target {
 function nearest(): Target | null {
   let best: Target | null = null;
   let bestD = REACH;
-  for (const it of SCENE.interactables) {
+  for (const it of scene.interactables) {
     const d = groundDist(pos, it);
     if (d < bestD) {
       bestD = d;
       best = { kind: 'thing', id: it.id, label: it.label, pos: { x: it.x, z: it.z } };
     }
   }
-  for (const t of SCENE.tasks) {
+  for (const t of scene.tasks) {
     if (state.knowledge.has(t.grants)) continue; // done; nothing left to do here
     const d = groundDist(pos, t);
     if (d < bestD) {
@@ -94,7 +99,7 @@ function nearest(): Target | null {
       best = { kind: 'task', id: t.id, label: t.label, pos: { x: t.x, z: t.z } };
     }
   }
-  for (const n of SCENE.npcs) {
+  for (const n of scene.npcs) {
     const d = groundDist(pos, n);
     if (d < bestD) {
       bestD = d;
@@ -114,12 +119,12 @@ function anchorSpeech(): void {
 
 /** Business still owed. Optional discoveries are deliberately not listed. */
 const owed = (): string[] =>
-  SCENE.business.filter((b) => !state.decisions.has(b.decision)).map((b) => b.pending);
+  scene.business.filter((b) => !state.decisions.has(b.decision)).map((b) => b.pending);
 
 function refreshIntent(): void {
   const left = owed();
   if (!left.length) {
-    overlay.setIntent(SCENE.settled);
+    overlay.setIntent(scene.settled);
     return;
   }
   // Sentence-case the first clause, join with "and", end with a full stop.
@@ -129,18 +134,18 @@ function refreshIntent(): void {
 
 function openJournal(): void {
   busy = true;
-  const read = SCENE.interactables.filter((i) => seen.has(i.id)).map((i) => i.label);
-  const noticed = SCENE.interactables
+  const read = scene.interactables.filter((i) => seen.has(i.id)).map((i) => i.label);
+  const noticed = scene.interactables
     .filter((i) => i.contradicts && state.knowledge.has(i.contradicts.grants))
     .map((i) => i.contradicts!.note);
-  const doneTasks = SCENE.tasks
+  const doneTasks = scene.tasks
     .filter((t) => state.knowledge.has(t.grants))
     .map((t) => t.note);
-  const strength = SCENE.strength
-    ? `Return of ${SCENE.strength.dated}: ${SCENE.strength.fit.toLocaleString()} present and ` +
-      `fit for duty, of ${SCENE.strength.onRolls.toLocaleString()} on the rolls.`
-    : SCENE.noStrength;
-  overlay.showJournal(SCENE.purpose, strength, read, owed(), noticed, doneTasks, () => {
+  const strength = scene.strength
+    ? `Return of ${scene.strength.dated}: ${scene.strength.fit.toLocaleString()} present and ` +
+      `fit for duty, of ${scene.strength.onRolls.toLocaleString()} on the rolls.`
+    : scene.noStrength;
+  overlay.showJournal(scene.purpose, strength, read, owed(), noticed, doneTasks, () => {
     busy = false;
   });
 }
@@ -152,7 +157,7 @@ function openJournal(): void {
  */
 function checkAmbient(): void {
   if (busy) return;
-  for (const a of SCENE.ambient) {
+  for (const a of scene.ambient) {
     if (heardAmbient.has(a.id)) continue;
     if (groundDist(pos, a) > a.r) continue;
     heardAmbient.add(a.id);
@@ -256,12 +261,12 @@ function interact(): void {
   if (!near) return;
 
   if (near.kind === 'npc') {
-    runThread(SCENE.npcs.find((x) => x.id === near.id)!);
+    runThread(scene.npcs.find((x) => x.id === near.id)!);
     return;
   }
 
   if (near.kind === 'task') {
-    const t = SCENE.tasks.find((x) => x.id === near.id)!;
+    const t = scene.tasks.find((x) => x.id === near.id)!;
     busy = true;
     // Gated tasks say why rather than going quiet — nothing here refuses the
     // player without explaining itself.
@@ -273,8 +278,8 @@ function interact(): void {
     }
     state.knowledge.add(t.grants);
     let text = t.done;
-    if (SCENE.tasks.every((x) => state.knowledge.has(x.grants))) {
-      state.knowledge.add(SCENE.allTasksFlag);
+    if (scene.tasks.every((x) => state.knowledge.has(x.grants))) {
+      state.knowledge.add(scene.allTasksFlag);
       text += '\n\nThat is the last of it. The place is in order, and there is nothing ' +
         'left to do here but go.';
     }
@@ -286,7 +291,7 @@ function interact(): void {
     return;
   }
 
-  const it = SCENE.interactables.find((x) => x.id === near.id)!;
+  const it = scene.interactables.find((x) => x.id === near.id)!;
   busy = true;
   seen.add(it.id);
   // Documents unlock options. They never grant stats.
@@ -296,12 +301,17 @@ function interact(): void {
 
   // The exit reports what is still owed rather than refusing to open. Nothing
   // in this game blocks the player; it only tells them what they are leaving.
-  if (it.id === SCENE.exit) {
+  if (it.id === scene.exit) {
     const left = owed();
+    const onward = scene.exitTo;
     const text = left.length
       ? `${it.examine} But ${left.join(', and ')}.`
-      : `${it.examine}\n\nYou could leave now. Nothing here is unfinished.`;
+      : `${it.examine}\n\n${onward ? scene.exitPrompt : 'Nothing here is unfinished.'}`;
     overlay.showExamine(it.label, text, () => {
+      if (onward && !left.length) {
+        enterScene(onward);
+        return;
+      }
       busy = false;
     });
     return;
@@ -400,6 +410,39 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+/**
+ * Move to another composed view.
+ *
+ * Everything scene-scoped resets: position, what has been looked at, which
+ * interior voices have spoken. What persists is the state — the stats, the
+ * knowledge, the decisions — which is the whole point of the passport.
+ */
+function enterScene(id: string): void {
+  scene = SCENES[id];
+  state.scene = scene.id;
+  state.act = scene.act;
+  // A new act reads the world's mood from where the last one left the man.
+  takeSnapshot(state);
+  autosave(state);
+
+  seen.clear();
+  heardAmbient.clear();
+  speaking = null;
+  pos.x = 0.5;
+  pos.z = 0.34;
+  held.left = held.right = held.up = held.down = false;
+
+  renderer.loadScene(scene.plates, scene.npcs.map((n) => ({ x: n.x, z: n.z })));
+  overlay.setPlate(scene.title, scene.subtitle);
+  refreshCode();
+  refreshIntent();
+
+  busy = true;
+  overlay.showOpening(scene.title, scene.subtitle, [...scene.opening, scene.purpose], () => {
+    busy = false;
+  });
+}
+
 refreshCode();
 refreshIntent();
 requestAnimationFrame(frame);
@@ -408,7 +451,7 @@ requestAnimationFrame(frame);
 // Chromebook next period should not sit through the scene-setting again.
 if (!resumed) {
   busy = true;
-  overlay.showOpening(SCENE.title, SCENE.subtitle, [...SCENE.opening, SCENE.purpose], () => {
+  overlay.showOpening(scene.title, scene.subtitle, [...scene.opening, scene.purpose], () => {
     busy = false;
   });
 }

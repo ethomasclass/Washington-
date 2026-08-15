@@ -10,6 +10,7 @@
  */
 
 import { initialState, type GameState, type StatId } from './state';
+import { SCENE_ORDER } from './scene-order';
 
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
 const STATS: StatId[] = ['judgment', 'legitimacy', 'loyalty', 'character'];
@@ -39,6 +40,21 @@ export const FLAG_REGISTRY: string[] = [
   'task.a1.orders',
   'task.a1.nelson',
   'obs.a1.house_in_order',
+  'doc.a2.ration_return',
+  'doc.a2.reed_letter',
+  'doc.a2.emerson',
+  'doc.a2.enlistment',
+  'obs.a2.powder_horn',
+  'obs.a2.greene_tents',
+  'obs.a2.boston',
+  'heard.a2.greene',
+  'obs.a2.greene_contradiction',
+  'obs.a2.powder_arithmetic',
+  'task.a2.orders',
+  'task.a2.rounds',
+  'task.a2.return',
+  'task.a2.reed',
+  'obs.a2.orders_issued',
 ];
 
 class BitWriter {
@@ -89,6 +105,7 @@ export function encode(state: GameState): string {
   const w = new BitWriter();
   w.write(1, 4); // format version
   w.write(state.act, 4);
+  w.write(Math.max(0, SCENE_ORDER.indexOf(state.scene)), 5);
   for (const s of STATS) w.write(state.stats[s], 7);
   for (const s of STATS) w.write(state.snapshot[s], 7);
   for (const flag of FLAG_REGISTRY) w.write(state.knowledge.has(flag) ? 1 : 0, 1);
@@ -106,7 +123,7 @@ export function decode(code: string): GameState {
   const clean = code.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/I/g, '1').replace(/L/g, '1').replace(/O/g, '0');
   const bits = base32ToBits(clean);
 
-  const payloadLen = 4 + 4 + 7 * 8 + FLAG_REGISTRY.length;
+  const payloadLen = 4 + 4 + 5 + 7 * 8 + FLAG_REGISTRY.length;
   if (bits.length < payloadLen + 8) throw new Error('code is too short');
 
   const payload = bits.slice(0, payloadLen);
@@ -126,6 +143,7 @@ export function decode(code: string): GameState {
 
   const state = initialState();
   state.act = read(4);
+  state.scene = SCENE_ORDER[read(5)] ?? SCENE_ORDER[0];
   for (const s of STATS) state.stats[s] = read(7);
   for (const s of STATS) state.snapshot[s] = read(7);
   state.knowledge = new Set<string>();

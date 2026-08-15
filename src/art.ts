@@ -513,3 +513,207 @@ export function portraitPlate(coat: string, seed: number): HTMLCanvasElement {
   x.globalAlpha = 1;
   return c;
 }
+
+
+/* ------------------------------------------------------------------ Act 2 --
+ * Cambridge, July 1775.
+ *
+ * Flat overcast, no directional key, cool grey. Mud, unbleached linen,
+ * weathered board. The only saturated colour in the act is the distant red of
+ * the British lines, and it is not in this plate — it lives at the end of a
+ * spyglass on the siege line, which is the act's thesis in one shot.
+ */
+
+/** L0 — flat overcast. No sun anywhere in it. */
+export function campSky(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(211);
+  x.fillStyle = PAPER.COOL;
+  x.fillRect(0, 0, W, H);
+  const hy = H * HORIZON;
+  for (let i = 0; i < 9; i++) {
+    const y = rnd() * hy;
+    wash(x, [[0, y], [W * 0.5, y - 26], [W, y + 14], [W * 0.4, y + 62]],
+      EARTH.WET_STONE, 0.09, rnd);
+  }
+  return c;
+}
+
+/** L1 — the far shore, and Boston on it. */
+export function campHills(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(223);
+  const hy = H * HORIZON;
+  const ridge: [number, number][] = [];
+  for (let i = 0; i <= 20; i++) ridge.push([(i / 20) * W, hy - 26 + Math.sin(i * 0.5) * 12 + rnd() * 8]);
+  wash(x, [...ridge, [W, hy + 24], [0, hy + 24]], EARTH.SHADOW_SLATE, 0.24, rnd);
+
+  // Boston: roofs and one spire, small and grey.
+  const bx = W * 0.44;
+  for (let i = 0; i < 16; i++) {
+    const rx = bx + i * 13 + rnd() * 5;
+    const rh = 10 + rnd() * 12;
+    wash(x, [[rx, hy - 10], [rx + 11, hy - 10], [rx + 11, hy - 10 - rh], [rx, hy - 10 - rh]],
+      EARTH.WET_STONE, 0.4, rnd, 3);
+  }
+  inkLine(x, [[bx + 96, hy - 14], [bx + 96, hy - 62], [bx + 100, hy - 76], [bx + 104, hy - 62],
+              [bx + 104, hy - 14]], rnd, 1.4, 0.1);
+  // The water between.
+  wash(x, [[0, hy - 6], [W, hy - 10], [W, hy + 22], [0, hy + 26]], EARTH.WET_STONE, 0.3, rnd);
+  inkLine(x, ridge, rnd, 1.0, 0.35);
+  return c;
+}
+
+/** L2 — the lane itself, churned to mud, running away from the camera. */
+export function campGround(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(237);
+  const hy = H * HORIZON;
+
+  wash(x, [[0, hy + 10], [W, hy + 4], [W, H], [0, H]], EARTH.RAW_UMBER, 0.26, rnd);
+  wash(x, [[0, hy + 170], [W, hy + 140], [W, H], [0, H]], EARTH.BISTRE, 0.20, rnd);
+
+  // The lane: a pale churned band widening toward the camera.
+  wash(x, [[W * 0.42, hy + 16], [W * 0.58, hy + 16], [W * 0.86, H], [W * 0.10, H]],
+    PAPER.SHADOW, 0.34, rnd, 5);
+
+  // Ruts and standing water.
+  for (let i = 0; i < 26; i++) {
+    const t = rnd();
+    const y = hy + 30 + t * t * (H - hy - 40);
+    const spread = 0.06 + t * 0.34;
+    const sx = W * (0.5 - spread) + rnd() * W * spread * 2;
+    const len = 24 + t * 150;
+    inkLine(x, [[sx, y], [sx + len, y + (rnd() - 0.5) * 8]], rnd, 0.7 + t * 1.6, 0.25);
+    if (rnd() < 0.4) {
+      wash(x, [[sx, y], [sx + len * 0.7, y - 3], [sx + len * 0.6, y + 9], [sx - 4, y + 11]],
+        EARTH.SHADOW_SLATE, 0.16, rnd, 3);
+    }
+  }
+  return c;
+}
+
+/**
+ * L3 — the camp itself.
+ *
+ * Emerson's list, literally: shelters of boards, of sailcloth, of board and
+ * sailcloth mixed, of stone and turf, of birch, of brush. And stage right,
+ * Greene's Rhode Islanders in proper tents in ordered rows — one regiment that
+ * looks like an army, surrounded by thousands of men living in brush piles.
+ */
+export function campMidground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(251);
+  const hy = H * HORIZON;
+  const base = hy + 196;
+
+  const shadow = (cx: number, b: number, r: number) =>
+    wash(x, [[cx - r, b], [cx + r, b - 3], [cx + r * 0.7, b + r * 0.22], [cx - r * 0.8, b + r * 0.24]],
+      EARTH.BISTRE, 0.20, rnd, 3);
+
+  /** A lean-to of whatever the regiment had. */
+  const shanty = (cx: number, b: number, w: number, h: number, kind: number) => {
+    // Lighter wash, harder line. These have to read as built things, not as
+    // boulders — the structure is the whole content of the shot.
+    const tone = [PAPER.SMOKED, PAPER.BRIGHT, PAPER.SHADOW, EARTH.RAW_UMBER][kind % 4];
+    const ridgeX = cx - w / 2 + w * 0.22;
+    const ridgeY = b - h;
+    const backY = b - h * 0.48;
+    wash(x, [[cx - w / 2, b], [ridgeX, ridgeY], [cx + w / 2, backY], [cx + w / 2, b]],
+      tone, 0.28, rnd, 4);
+    // Ridge, back slope, and the two uprights.
+    inkLine(x, [[cx - w / 2, b], [ridgeX, ridgeY]], rnd, 2.4, 0.03);
+    inkLine(x, [[ridgeX, ridgeY], [cx + w / 2, backY]], rnd, 2.4, 0.03);
+    inkLine(x, [[cx + w / 2, backY], [cx + w / 2, b]], rnd, 2.0, 0.08);
+    inkLine(x, [[ridgeX, ridgeY], [ridgeX, b]], rnd, 1.5, 0.28);
+
+    if (kind % 2) {
+      // Boarded: parallel planks following the slope.
+      for (let i = 1; i < 6; i++) {
+        const t = i / 6;
+        inkLine(x, [[cx - w / 2 + w * 0.22 * t, b - h * t],
+                    [cx + w / 2 - w * 0.1 * (1 - t), backY + (b - backY) * (1 - t) * 0.55]],
+          rnd, 1.0, 0.22);
+      }
+    } else {
+      // Brush: cut boughs laid over the frame, sticking past the ridge.
+      for (let i = 0; i < 16; i++) {
+        const t = rnd();
+        const sx2 = cx - w / 2 + w * 0.22 * t + rnd() * w * 0.5;
+        const sy2 = b - h * t * 0.9;
+        inkLine(x, [[sx2, sy2], [sx2 + 10 + rnd() * 26, sy2 + 6 + rnd() * 16]], rnd, 1.1, 0.14);
+      }
+    }
+    // A dark mouth, so it reads as somewhere a man goes into.
+    wash(x, [[cx - w * 0.12, b], [cx + w * 0.1, b], [cx + w * 0.07, b - h * 0.4],
+             [cx - w * 0.08, b - h * 0.44]], INK.SETTLED, 0.30, rnd, 3);
+    shadow(cx, b, w * 0.55);
+  };
+
+  /** A proper wedge tent, of the kind Rhode Island bought. */
+  const tent = (cx: number, b: number, w: number, h: number) => {
+    wash(x, [[cx - w / 2, b], [cx, b - h], [cx + w / 2, b]], PAPER.BRIGHT, 0.62, rnd, 4);
+    inkLine(x, [[cx - w / 2, b], [cx, b - h], [cx + w / 2, b], [cx - w / 2, b]], rnd, 1.5, 0.06);
+    inkLine(x, [[cx, b - h], [cx, b]], rnd, 0.9, 0.4);
+    shadow(cx, b, w * 0.5);
+  };
+
+  // The shanty town, ragged and unaligned, on the left and centre.
+  const shanties: [number, number, number, number][] = [
+    [0.075, 0.30, 120, 92], [0.155, 0.10, 96, 74], [0.225, 0.42, 138, 104],
+    [0.315, 0.02, 88, 68], [0.40, 0.26, 112, 86], [0.485, -0.06, 78, 60],
+    [0.575, 0.20, 104, 80], [0.655, -0.02, 84, 64],
+  ];
+  shanties.forEach(([fx, dy, w, h], i) => shanty(W * fx, base + dy * 120, w, h, i));
+
+  // Greene's Rhode Islanders: ordered rows, straight streets, tents that match.
+  for (let row = 0; row < 3; row++) {
+    for (let i = 0; i < 4; i++) {
+      const b = base - row * 34 + 26;
+      const cx = W * (0.755 + i * 0.052) + row * 12;
+      tent(cx, b, 76 - row * 9, 60 - row * 7);
+    }
+  }
+
+  // A flagless pole, and a fire with nobody at it.
+  inkLine(x, [[W * 0.70, base + 20], [W * 0.70, base - 130]], rnd, 2.4, 0.04);
+  wash(x, [[W * 0.335, base + 46], [W * 0.365, base + 40], [W * 0.372, base + 58], [W * 0.33, base + 60]],
+    EARTH.MADDER_LAKE, 0.22, rnd, 3);
+  return c;
+}
+
+/** L4 — near clutter. Nothing here belongs to the army. */
+export function campForeground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(267);
+  const y = H * 0.95;
+
+  // A stack of firewood and two leaning muskets at the frame edge.
+  for (let i = 0; i < 5; i++) {
+    const yy = y - i * 13 - 8;
+    wash(x, [[10, yy], [190 - i * 8, yy - 4], [190 - i * 8, yy + 11], [10, yy + 13]],
+      EARTH.BISTRE, 0.44, rnd, 3);
+    inkLine(x, [[10, yy], [190 - i * 8, yy - 4]], rnd, 1.3, 0.14);
+  }
+  inkLine(x, [[W - 150, H], [W - 108, y - 128]], rnd, 2.6, 0.05);
+  inkLine(x, [[W - 118, H], [W - 96, y - 132]], rnd, 2.6, 0.05);
+
+  // Trodden ground and a scatter of stakes across the very bottom.
+  for (let i = 0; i < 60; i++) {
+    const px = rnd() * W;
+    const h = 10 + rnd() * 22;
+    inkLine(x, [[px, H], [px + (rnd() - 0.5) * 8, H - h]], rnd, 1.0, 0.15);
+  }
+  for (let i = 0; i < 7; i++) {
+    const py = y - 30 + rnd() * 60;
+    inkLine(x, [[rnd() * W * 0.5, py], [rnd() * W * 0.5 + W * 0.4, py + (rnd() - 0.5) * 10]],
+      rnd, 1.4, 0.3);
+  }
+  return c;
+}
+
+/** Plate sets, keyed by the name a scene declares. */
+export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
+  vernon: () => [layerSky(), layerHills(), layerHouse(), layerMidground(), layerForeground()],
+  camp: () => [campSky(), campHills(), campGround(), campMidground(), campForeground()],
+};

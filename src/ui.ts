@@ -198,6 +198,12 @@ export class Overlay {
     root.appendChild(hint);
   }
 
+  /** Retitle the frame when the composed view changes. */
+  setPlate(title: string, subtitle: string): void {
+    const el = this.root.querySelector<HTMLElement>('.plate-title');
+    if (el) el.innerHTML = `<b>${title}</b>${subtitle}`;
+  }
+
   /**
    * The standing sense of what is unfinished, in Washington's own voice.
    * Deliberately not a quest marker: it names the people waiting on him rather

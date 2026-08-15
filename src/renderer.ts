@@ -13,16 +13,7 @@
  */
 
 import * as THREE from 'three';
-import {
-  characterCutout,
-  characterFrames,
-  layerForeground,
-  layerHills,
-  layerHouse,
-  layerSky,
-  layerMidground,
-  paperTexture,
-} from './art';
+import { characterCutout, characterFrames, PLATE_SETS, paperTexture } from './art';
 import { MEANING, PAPER } from './palette';
 
 /** Parallax coefficients, L0..L4. */
@@ -171,7 +162,7 @@ export class DioramaRenderer {
   private breath = 0;
   private breathZ = 0;
 
-  constructor(canvas: HTMLCanvasElement, npcPositions: GroundPos[] = []) {
+  constructor(canvas: HTMLCanvasElement, plateSet: string, npcPositions: GroundPos[] = []) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.scene.background = new THREE.Color(PAPER.WARM);
@@ -181,22 +172,7 @@ export class DioramaRenderer {
     );
     this.camera.position.z = 20;
 
-    const plates = [layerSky(), layerHills(), layerHouse(), layerMidground(), layerForeground()];
-    plates.forEach((plate, i) => {
-      const geo = new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14);
-      const mat = new THREE.MeshBasicMaterial({
-        map: textureFrom(plate),
-        transparent: i > 0,
-        depthWrite: false,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.z = -i * 0.5;
-      mesh.renderOrder = i;
-      this.scene.add(mesh);
-      this.layers.push({ mesh, parallax: PARALLAX[i], depth: LAYER_DEPTH[i] });
-    });
-
-    this.buildActors(npcPositions);
+    this.loadScene(plateSet, npcPositions);
 
     this.target = new THREE.WebGLRenderTarget(1, 1, {
       minFilter: THREE.LinearFilter,
@@ -219,6 +195,49 @@ export class DioramaRenderer {
 
     this.resize();
     addEventListener('resize', () => this.resize());
+  }
+
+  /**
+   * Swap in a different composed view. Textures and geometry are disposed
+   * rather than orphaned — an eight-act game that leaks a plate set per scene
+   * change would not survive a class period on a Chromebook.
+   */
+  loadScene(plateSet: string, npcPositions: GroundPos[]): void {
+    const drop = (mesh: THREE.Mesh) => {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      const m = mesh.material as THREE.MeshBasicMaterial;
+      m.map?.dispose();
+      m.dispose();
+    };
+    for (const l of this.layers) drop(l.mesh);
+    for (const n of this.npcs) drop(n.mesh);
+    if (this.player) drop(this.player);
+    for (const t of this.playerFrames) t.dispose();
+    this.layers = [];
+    this.npcs = [];
+    this.playerFrames = [];
+    this.gait = 0;
+    this.bob = 0;
+    this.breath = 0;
+    this.breathZ = 0;
+
+    const build = PLATE_SETS[plateSet] ?? PLATE_SETS.vernon;
+    build().forEach((plate, i) => {
+      const geo = new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14);
+      const mat = new THREE.MeshBasicMaterial({
+        map: textureFrom(plate),
+        transparent: i > 0,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.z = -i * 0.5;
+      mesh.renderOrder = i;
+      this.scene.add(mesh);
+      this.layers.push({ mesh, parallax: PARALLAX[i], depth: LAYER_DEPTH[i] });
+    });
+
+    this.buildActors(npcPositions);
   }
 
   private buildActors(npcPositions: GroundPos[]): void {

@@ -416,6 +416,7 @@ function frame(now: number): void {
     pos.z = Math.max(BOUND.z0, Math.min(BOUND.z1, pos.z + dz * WALK_Z * dt));
     // Gait is driven by ground actually covered, so walking into a bound stops
     // the legs instead of leaving them running on the spot.
+    renderer.setFacing(pos.x - px, pos.z - pz);
     renderer.setGait(Math.hypot(pos.x - px, pos.z - pz), dt);
   } else {
     renderer.setGait(0, dt);

@@ -2644,3 +2644,305 @@ export function prop(kind: PropKind, seed: number): HTMLCanvasElement {
   }
   return c;
 }
+
+/* ------------------------------------------------------------- Washington
+ *
+ * The general, drawn properly and from three sides.
+ *
+ * Until now the player used the same generic period cutout as everyone else in
+ * a different colour. He is the one figure on screen for the whole game and the
+ * only one the player is, so he gets his own drawing and his own set of
+ * facings.
+ *
+ * The uniform is blue faced buff — the Fairfax militia colours he chose before
+ * anyone made him anything, and afterwards the Continental ones. Buff waistcoat
+ * and breeches, tall black boots, white stock, and the hair grey and clubbed
+ * back in a queue.
+ *
+ * The pale blue riband across the breast is his rank, and it is documented to
+ * the day: general orders, Cambridge, 14 July 1775 — "The Commander in Chief is
+ * to be distinguished by a light blue Ribband, worn across his breast, between
+ * his Coat and Waistcoat." So it belongs from Act 2 onward and not before, and
+ * `riband` is off by default for that reason.
+ */
+export type Facing = 'front' | 'back' | 'side';
+
+const BUFF = '#D8C79A';
+
+export function washington(
+  facing: Facing,
+  phase = -1,
+  opts: { riband?: boolean; height?: number } = {},
+): HTMLCanvasElement {
+  const H1 = opts.height ?? 320;
+  const w = Math.round(H1 * 0.46);
+  const { c, x } = surface(w, H1);
+  const rnd = mulberry(1732); // his birth year, and a stable seed
+  const cx = w / 2;
+
+  const walking = phase >= 0;
+  const a = walking ? phase * Math.PI * 2 : 0;
+
+  /*
+   * How the legs move, per facing.
+   *
+   * Seen from the side a walking man's feet travel a long way fore and aft and
+   * the scissor is the whole read. Seen head-on or from behind that travel is
+   * almost entirely toward and away from the viewer, so it foreshortens to
+   * nearly nothing — what is left is the lift of the knee and a small lateral
+   * splay. Using the side-on swing for all three is what makes a front-facing
+   * walk look like a man shuffling sideways.
+   */
+  const side = facing === 'side';
+  const swingAmp = side ? w * 0.30 : w * 0.085;
+  const liftAmp = side ? H1 * 0.03 : H1 * 0.075;
+  const swing = walking ? Math.sin(a) * swingAmp : 0;
+  const liftL = walking ? Math.max(0, Math.sin(a)) * liftAmp : 0;
+  const liftR = walking ? Math.max(0, -Math.sin(a)) * liftAmp : 0;
+  const lean = walking ? -Math.sin(a) * w * (side ? 0.02 : 0.035) : 0;
+
+  /*
+   * Proportions.
+   *
+   * A man is about seven and a half heads tall and his legs are half of him.
+   * The first cut hung the coat to 0.69 of the height, which left a third of a
+   * figure below it and read as a bell-shaped tunic with boots under it. An
+   * eighteenth-century coat skirt stops just above the knee: hem at 0.625, boot
+   * tops immediately below it, and the leg gets the room it should have.
+   */
+  const yHair = 0.028;
+  const yBrow = 0.074;
+  const yChin = 0.152;
+  const ySh = 0.198;
+  const yWaist = 0.380;
+  const ySkirt = 0.478;
+  const yHem = 0.625;
+  const yBoot = 0.662;
+  const yAnkle = 0.952;
+
+  // Edge-on he is narrower across and deeper front to back.
+  const shW = w * (side ? 0.145 : 0.26);
+  const hipW = w * (side ? 0.132 : 0.20);
+
+  wash(x, [[cx - w * 0.32, H1 * 0.986], [cx + w * 0.28, H1 * 0.978],
+           [cx + w * 0.34, H1], [cx - w * 0.38, H1]], INK.SETTLED, 0.26, rnd, 4);
+
+  /** One leg: buff breeches to the knee, then a tall boot. */
+  const leg = (hipX: number, footDx: number, lift: number, back: boolean) => {
+    const hy = H1 * (ySkirt + 0.02);
+    const ky = H1 * yBoot - lift * 0.55;
+    const fy = H1 * yAnkle - lift;
+    const kx = hipX + footDx * 0.5;
+    const fx = hipX + footDx;
+    const shade = back ? 0.34 : 0.12;
+    solid(x, [[hipX - w * 0.072, hy], [hipX + w * 0.072, hy],
+              [kx + w * 0.056, ky], [kx - w * 0.058, ky]], BUFF, rnd, EARTH.SHADOW_SLATE, shade);
+    // The boot. Turned-down top, then a hard black shaft to the instep.
+    solid(x, [[kx - w * 0.062, ky - H1 * 0.018], [kx + w * 0.062, ky - H1 * 0.018],
+              [kx + w * 0.058, ky + H1 * 0.022], [kx - w * 0.058, ky + H1 * 0.022]],
+      '#4A3A2C', rnd);
+    solid(x, [[kx - w * 0.052, ky + H1 * 0.018], [kx + w * 0.05, ky + H1 * 0.018],
+              [fx + w * 0.046, fy], [fx - w * 0.05, fy]], '#241C16', rnd);
+    solid(x, [[fx - w * 0.052, fy - H1 * 0.006], [fx + w * 0.05, fy - H1 * 0.006],
+              [fx + w * (side ? 0.135 : 0.085), H1 * 0.995],
+              [fx - w * 0.07, H1 * 0.995]], '#1C1611', rnd);
+    inkLine(x, [[kx - w * 0.062, ky - H1 * 0.018], [kx + w * 0.062, ky - H1 * 0.018]], rnd, 1.4, 0.1);
+  };
+  // Back leg first, so the near one closes over it.
+  const hipL = cx - w * (side ? 0.03 : 0.085);
+  const hipR = cx + w * (side ? 0.03 : 0.085);
+  if (swing >= 0) {
+    leg(hipR, -swing, liftR, true);
+    leg(hipL, swing, liftL, false);
+  } else {
+    leg(hipL, swing, liftL, true);
+    leg(hipR, -swing, liftR, false);
+  }
+
+  /** One arm, in the coat's sleeve, with a turned-back buff cuff. */
+  const arm = (sideSign: number, dx: number, behind: boolean) => {
+    const sx = cx + sideSign * shW * (side ? 0.5 : 1.04) + lean * 0.6;
+    const sy = H1 * (ySh + 0.02);
+    const ex = sx + sideSign * w * 0.05 + dx;
+    const ey = H1 * (yWaist + 0.085);
+    solid(x, [[sx - w * 0.056, sy], [sx + w * 0.056, sy],
+              [ex + w * 0.05, ey], [ex - w * 0.05, ey]], MEANING.CONTINENTAL_BLUE, rnd,
+      INK.SETTLED, behind ? 0.34 : 0.16);
+    inkLine(x, [[sx + sideSign * w * 0.056, sy], [ex + sideSign * w * 0.05, ey]], rnd, 1.4, 0.18);
+    // Cuff, buff and deep, which is the whole point of "faced buff".
+    solid(x, [[ex - w * 0.054, ey - H1 * 0.036], [ex + w * 0.054, ey - H1 * 0.036],
+              [ex + w * 0.05, ey], [ex - w * 0.05, ey]], BUFF, rnd, EARTH.SHADOW_SLATE,
+      behind ? 0.3 : 0.08);
+    inkLine(x, [[ex - w * 0.054, ey - H1 * 0.036], [ex + w * 0.054, ey - H1 * 0.036]], rnd, 1.3, 0.12);
+  };
+
+  // The coat: shoulders square, waist in, skirts turned back and flaring.
+  const coatPts: [number, number][] = side
+    ? [
+        [cx - shW * 1.45 + lean, H1 * ySh],
+        [cx - shW * 1.15 + lean, H1 * yWaist],
+        [cx - hipW * 1.5, H1 * ySkirt],
+        [cx - hipW * 2.0, H1 * yHem],
+        [cx + hipW * 1.7, H1 * yHem],
+        [cx + hipW * 1.15, H1 * ySkirt],
+        [cx + shW * 0.95 + lean, H1 * yWaist],
+        [cx + shW * 1.15 + lean, H1 * ySh],
+      ]
+    : [
+        [cx - shW + lean, H1 * ySh],
+        [cx - shW * 0.78 + lean, H1 * yWaist],
+        [cx - hipW * 1.16, H1 * ySkirt],
+        [cx - hipW * 1.62, H1 * yHem],
+        [cx + hipW * 1.62, H1 * yHem],
+        [cx + hipW * 1.16, H1 * ySkirt],
+        [cx + shW * 0.78 + lean, H1 * yWaist],
+        [cx + shW + lean, H1 * ySh],
+      ];
+
+  arm(-1, -swing * 0.42, true);
+  solid(x, coatPts, MEANING.CONTINENTAL_BLUE, rnd, INK.SETTLED, 0.08);
+  inkLine(x, [...coatPts, coatPts[0]], rnd, 1.8, 0.1);
+
+  if (facing === 'front') {
+    // Buff waistcoat in the opening, then the lapels turned back over it.
+    solid(x, [[cx - w * 0.052 + lean, H1 * (ySh + 0.016)], [cx + w * 0.052 + lean, H1 * (ySh + 0.016)],
+              [cx + w * 0.048, H1 * (yWaist + 0.055)], [cx - w * 0.048, H1 * (yWaist + 0.055)]],
+      BUFF, rnd, EARTH.YELLOW_OCHRE, 0.16);
+    for (const s2 of [-1, 1]) {
+      const lap: [number, number][] = [
+        [cx + s2 * w * 0.062 + lean, H1 * (ySh + 0.012)],
+        [cx + s2 * w * 0.17 + lean, H1 * (ySh + 0.004)],
+        [cx + s2 * w * 0.15, H1 * yWaist],
+        [cx + s2 * w * 0.055, H1 * (yWaist - 0.02)],
+      ];
+      solid(x, lap, BUFF, rnd, EARTH.SHADOW_SLATE, s2 > 0 ? 0.16 : 0.06);
+      inkLine(x, [...lap, lap[0]], rnd, 1.4, 0.14);
+    }
+    // Buttons down the lapel edges.
+    x.fillStyle = '#B8933F';
+    for (const s2 of [-1, 1]) {
+      for (let i = 0; i < 5; i++) {
+        x.globalAlpha = 0.85;
+        x.beginPath();
+        x.arc(cx + s2 * w * 0.135 + lean * (1 - i / 5), H1 * (ySh + 0.05 + i * 0.042),
+          w * 0.017, 0, 7);
+        x.fill();
+      }
+    }
+    x.globalAlpha = 1;
+
+    if (opts.riband) {
+      // Right shoulder to left hip, over the waistcoat and under the coat.
+      const rb: [number, number][] = [
+        [cx + w * 0.16 + lean, H1 * (ySh + 0.01)], [cx + w * 0.235 + lean, H1 * (ySh + 0.05)],
+        [cx - w * 0.10, H1 * (yWaist + 0.03)], [cx - w * 0.165, H1 * (yWaist - 0.01)],
+      ];
+      solid(x, rb, '#8FA6C4', rnd, PAPER.BRIGHT, 0.1);
+      inkLine(x, [...rb, rb[0]], rnd, 1.2, 0.2);
+    }
+  } else if (facing === 'back') {
+    // From behind: the coat's centre vent and the two skirt pleats.
+    inkLine(x, [[cx + lean, H1 * (ySh + 0.03)], [cx, H1 * yHem]], rnd, 1.5, 0.16);
+    for (const s2 of [-1, 1]) {
+      inkLine(x, [[cx + s2 * hipW * 0.7, H1 * ySkirt], [cx + s2 * hipW * 0.85, H1 * yHem]],
+        rnd, 1.3, 0.2);
+    }
+  } else {
+    // Edge-on: one lapel and the skirt's turned-back corner.
+    const lap: [number, number][] = [[cx - shW * 1.2 + lean, H1 * (ySh + 0.01)],
+      [cx - shW * 0.5 + lean, H1 * (ySh + 0.03)], [cx - shW * 0.6, H1 * yWaist],
+      [cx - shW * 1.1, H1 * (yWaist - 0.03)]];
+    solid(x, lap, BUFF, rnd, EARTH.SHADOW_SLATE, 0.12);
+    inkLine(x, [...lap, lap[0]], rnd, 1.4, 0.16);
+    inkLine(x, [[cx + hipW * 1.2, H1 * ySkirt], [cx + hipW * 1.5, H1 * yHem]], rnd, 1.3, 0.2);
+  }
+
+  // Epaulettes. Bullion, gold, and the one bright thing on him.
+  const epaulette = (s2: number) => {
+    const ex = cx + s2 * shW * (side ? 0.7 : 1.0) + lean;
+    const ey = H1 * (ySh + 0.006);
+    solid(x, [[ex - w * 0.055, ey - H1 * 0.016], [ex + w * 0.055, ey - H1 * 0.014],
+              [ex + w * 0.05, ey + H1 * 0.016], [ex - w * 0.05, ey + H1 * 0.014]],
+      '#C6A247', rnd, EARTH.YELLOW_OCHRE, 0.24);
+    inkLine(x, [[ex - w * 0.055, ey - H1 * 0.016], [ex + w * 0.055, ey - H1 * 0.014]], rnd, 1.2, 0.1);
+    for (let i = 0; i < 4; i++) {
+      inkLine(x, [[ex - w * 0.042 + i * w * 0.028, ey + H1 * 0.014],
+                  [ex - w * 0.046 + i * w * 0.028, ey + H1 * 0.042]], rnd, 1.1, 0.14);
+    }
+  };
+  if (side) epaulette(-1); else { epaulette(-1); epaulette(1); }
+
+  arm(1, swing * 0.42, false);
+
+  // Neck stock, white and high.
+  solid(x, [[cx - w * 0.062 + lean, H1 * yChin], [cx + w * 0.062 + lean, H1 * yChin],
+            [cx + w * 0.075 + lean, H1 * ySh], [cx - w * 0.075 + lean, H1 * ySh]],
+    PAPER.BRIGHT, rnd);
+  inkLine(x, [[cx - w * 0.062 + lean, H1 * yChin], [cx + w * 0.062 + lean, H1 * yChin]], rnd, 1.2, 0.24);
+
+  // Head. Narrower edge-on, and the face only where there is a face.
+  const hx = cx + lean;
+  const headW = w * (side ? 0.082 : 0.098);
+  solid(x, [[hx - headW, H1 * yBrow], [hx + headW, H1 * yBrow],
+            [hx + headW * 0.86, H1 * yChin], [hx - headW * 0.86, H1 * yChin]],
+    facing === 'back' ? '#CFC0A4' : '#E2D2B4', rnd, EARTH.YELLOW_OCHRE, 0.18);
+  inkLine(x, [[hx - headW, H1 * yBrow], [hx - headW * 0.86, H1 * yChin]], rnd, 1.2, 0.3);
+  inkLine(x, [[hx + headW, H1 * yBrow], [hx + headW * 0.86, H1 * yChin]], rnd, 1.2, 0.3);
+  if (facing === 'front') {
+    // The long nose and the set jaw, in three marks. More than that turns into
+    // a caricature at eighty pixels.
+    inkLine(x, [[hx + w * 0.003, H1 * 0.092], [hx + w * 0.011, H1 * 0.124]], rnd, 1.1, 0.18);
+    inkLine(x, [[hx - w * 0.028, H1 * 0.134], [hx + w * 0.028, H1 * 0.134]], rnd, 1.2, 0.24);
+  } else if (side) {
+    inkLine(x, [[hx - headW, H1 * 0.092], [hx - headW * 1.45, H1 * 0.114],
+                [hx - headW * 0.9, H1 * 0.130]], rnd, 1.3, 0.14); // profile
+  }
+
+  /*
+   * The hair: grey, rolled at the sides, clubbed into a queue behind. He wore
+   * his own hair powdered rather than a wig, which is a small thing that the
+   * silhouette carries anyway — the rolls above the ears are the read.
+   */
+  const hair = '#C9C6BC';
+  // A skull, not a box: the crown curves and the brow line is where the hair
+  // stops, not where a hat sits.
+  const skull: [number, number][] = [
+    [hx - headW * 1.02, H1 * (yBrow + 0.004)],
+    [hx - headW * 0.92, H1 * (yHair + 0.012)],
+    [hx - headW * 0.42, H1 * yHair],
+    [hx + headW * 0.42, H1 * yHair],
+    [hx + headW * 0.92, H1 * (yHair + 0.012)],
+    [hx + headW * 1.02, H1 * (yBrow + 0.004)],
+  ];
+  solid(x, skull, hair, rnd, EARTH.SHADOW_SLATE, 0.14);
+  inkLine(x, [...skull], rnd, 1.2, 0.16);
+  // The rolls above the ears — the one detail that says his own hair, dressed,
+  // rather than a wig or a hat.
+  for (const s2 of side ? [1] : [-1, 1]) {
+    solid(x, [[hx + s2 * headW * 0.86, H1 * 0.070], [hx + s2 * headW * 1.42, H1 * 0.080],
+              [hx + s2 * headW * 1.36, H1 * 0.112], [hx + s2 * headW * 0.86, H1 * 0.106]],
+      hair, rnd, EARTH.SHADOW_SLATE, 0.22);
+    inkLine(x, [[hx + s2 * headW * 0.9, H1 * 0.074], [hx + s2 * headW * 1.42, H1 * 0.083]],
+      rnd, 1.1, 0.2);
+  }
+  // The queue, tied and hanging on the collar.
+  const qx = hx + (side ? headW * 1.0 : 0);
+  solid(x, [[qx - headW * 0.30, H1 * 0.118], [qx + headW * 0.30, H1 * 0.118],
+            [qx + headW * 0.22, H1 * 0.205], [qx - headW * 0.22, H1 * 0.205]],
+    hair, rnd, EARTH.SHADOW_SLATE, 0.26);
+  inkLine(x, [[qx - headW * 0.30, H1 * 0.146], [qx + headW * 0.30, H1 * 0.146]], rnd, 1.4, 0.06);
+
+  return c;
+}
+
+/** Standing pose plus one walk cycle, for each facing. */
+export function washingtonFrames(
+  facing: Facing,
+  steps = 8,
+  height = 320,
+  opts: { riband?: boolean } = {},
+): HTMLCanvasElement[] {
+  const out = [washington(facing, -1, { ...opts, height })];
+  for (let i = 0; i < steps; i++) out.push(washington(facing, i / steps, { ...opts, height }));
+  return out;
+}

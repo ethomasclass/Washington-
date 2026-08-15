@@ -14,6 +14,10 @@ export default defineConfig({
         main: 'index.html',
         // A comparison bench for picking a decision-UI direction. Not the game.
         variants: 'variants.html',
+        // Every facing against every phase of the walk cycle, large enough to
+        // judge. A gait cannot be assessed one frame at a time, and certainly
+        // not inside the game at eighty pixels while it is moving.
+        sprites: 'sprites.html',
       },
     },
   },

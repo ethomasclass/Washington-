@@ -14,11 +14,11 @@
 
 import * as THREE from 'three';
 import {
-  characterCutout, characterFrames, cloudShadows, CLOUD_BANDS, insect, motes,
-  PLATE_SETS, paperTexture, prop, PROP_H,
+  characterCutout, cloudShadows, CLOUD_BANDS, insect, motes,
+  PLATE_SETS, paperTexture, prop, PROP_H, washington, washingtonFrames,
 } from './art';
-import type { PropKind } from './art';
-import { MEANING, PAPER } from './palette';
+import type { Facing, PropKind } from './art';
+import { PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
 } from './ground';
@@ -182,8 +182,20 @@ export class DioramaRenderer {
     off: number;
     target: number;
   }[] = [];
-  /** Walk-cycle textures for the player: index 0 is the standing pose. */
-  private playerFrames: THREE.CanvasTexture[] = [];
+  /**
+   * Walk cycles, one set per facing, index 0 of each being the standing pose.
+   *
+   * Three sets rather than one because a man seen head-on does not walk like a
+   * man seen from the side: the stride that reads as a stride in profile
+   * foreshortens to almost nothing when he is coming toward you, and using the
+   * profile cycle for all four directions makes him look like he is sidling.
+   */
+  private playerFrames: Record<Facing, THREE.CanvasTexture[]> = {
+    front: [], back: [], side: [],
+  };
+  private facing: Facing = 'front';
+  /** +1 when he faces frame-right, -1 when left. Only used by the side cycle. */
+  private facingSign = 1;
   /** Cloud strip, scrolled rather than animated. */
   private clouds: THREE.Mesh | null = null;
   private cloudTex: THREE.CanvasTexture | null = null;
@@ -296,10 +308,10 @@ export class DioramaRenderer {
     for (const l of this.layers) drop(l.mesh);
     for (const n of this.npcs) drop(n.mesh);
     if (this.player) drop(this.player);
-    for (const t of this.playerFrames) t.dispose();
+    for (const set of Object.values(this.playerFrames)) for (const t of set) t.dispose();
     this.layers = [];
     this.npcs = [];
-    this.playerFrames = [];
+    this.playerFrames = { front: [], back: [], side: [] };
     this.gait = 0;
     this.bob = 0;
     this.breath = 0;
@@ -360,7 +372,7 @@ export class DioramaRenderer {
 
     this.buildBugs(plateSet);
     this.buildProps(props);
-    this.buildActors(npcPositions);
+    this.buildActors(npcPositions, plateSet);
   }
 
   /**
@@ -437,7 +449,7 @@ export class DioramaRenderer {
     }
   }
 
-  private buildActors(npcPositions: Actor[]): void {
+  private buildActors(npcPositions: Actor[], plateSet: string): void {
     const mk = (canvas: HTMLCanvasElement, z: number, tall = 1) => {
       const tex = textureFrom(canvas);
       const aspect = canvas.width / canvas.height;
@@ -456,10 +468,13 @@ export class DioramaRenderer {
     // the earth range, so the eye finds him in one pass without a marker.
     // Washington: the only Continental blue in the frame, and the tallest man
     // in it. He was six foot two in a room where that was remarkable.
-    const frames = characterFrames(MEANING.CONTINENTAL_BLUE, 101, 320, 8, { build: 1.02 });
-    this.playerFrames = frames.map(textureFrom);
-    this.player = mk(frames[0], -1.2, 1.09);
-    (this.player.material as THREE.MeshBasicMaterial).map = this.playerFrames[0];
+    // His rank marker is documented from 14 July 1775, so Act 1 does not have it.
+    const riband = plateSet !== 'vernon';
+    for (const f of ['front', 'back', 'side'] as Facing[]) {
+      this.playerFrames[f] = washingtonFrames(f, 8, 320, { riband }).map(textureFrom);
+    }
+    this.player = mk(washington('front', -1, { riband }), -1.2, 1.09);
+    (this.player.material as THREE.MeshBasicMaterial).map = this.playerFrames.front[0];
 
     npcPositions.forEach((a, i) => {
       const mesh = mk(
@@ -511,6 +526,26 @@ export class DioramaRenderer {
    * with the ground however fast or slow the figure moves, and stop dead when
    * it does. `dist` is in ground units.
    */
+  /**
+   * Which way he is facing, from which way he is going.
+   *
+   * Sideways wins ties by a margin, because a man walking mostly across the
+   * frame reads far better in profile than three-quarters-on, and because
+   * flipping between facings on every wobble of a diagonal looks like a
+   * stutter. The sign is held when he stops, so a figure that walked in facing
+   * left goes on facing left.
+   */
+  setFacing(dx: number, dz: number): void {
+    if (Math.abs(dx) < 1e-6 && Math.abs(dz) < 1e-6) return;
+    if (Math.abs(dx) > Math.abs(dz) * 0.75) {
+      this.facing = 'side';
+      this.facingSign = dx > 0 ? 1 : -1;
+    } else {
+      // z grows into the frame, so increasing z is walking away.
+      this.facing = dz > 0 ? 'back' : 'front';
+    }
+  }
+
   setGait(dist: number, dt: number): void {
     const STRIDE = 0.055; // ground units per half-step
     if (dist > 1e-5) {
@@ -521,11 +556,12 @@ export class DioramaRenderer {
       this.gait = 0;
       this.bob += (0 - this.bob) * Math.min(1, dt * 9);
     }
-    const n = this.playerFrames.length - 1;
+    const set = this.playerFrames[this.facing];
+    const n = set.length - 1;
     const idx = dist > 1e-5 ? 1 + (Math.floor(this.gait * n) % n) : 0;
     const mat = this.player.material as THREE.MeshBasicMaterial;
-    if (mat.map !== this.playerFrames[idx]) {
-      mat.map = this.playerFrames[idx];
+    if (mat.map !== set[idx]) {
+      mat.map = set[idx];
       mat.needsUpdate = true;
     }
   }
@@ -544,6 +580,10 @@ export class DioramaRenderer {
 
     this.place(this.player, pos);
     this.player.position.y += this.bob;
+    // The side cycle is drawn facing frame-left; mirror it to go the other way.
+    if (this.facing === 'side' && this.facingSign > 0) {
+      this.player.scale.x = -this.player.scale.x;
+    }
 
     /*
      * Standing idle.
@@ -616,7 +656,21 @@ export class DioramaRenderer {
     // sideways; walking into it pushes the near layers down and out, which is
     // what sells the ground as a plane rather than a line.
     const targetX = (pos.x - 0.5) * 2;
-    const targetY = (0.35 - pos.z) * 2;
+    /*
+     * The vertical sign, which was backwards.
+     *
+     * The camera holds the player, so it tilts down when he is near the front
+     * of the frame and up when he is at the back — and scenery moves against
+     * the camera, nearer layers moving most. Walking away should therefore
+     * settle the near layers downward, letting him climb clear of them.
+     *
+     * It did the opposite: the near ground rose with him, so he never gained on
+     * it. Walking back toward the house felt like descending a slope while the
+     * set rode up past him, which is exactly what the numbers were doing. The
+     * horizontal axis had the sign right all along, which is why walking left
+     * and right always felt fine and walking in and out never did.
+     */
+    const targetY = (pos.z - 0.35) * 2;
     this.breath += (targetX - this.breath) * 0.12;
     this.breathZ += (targetY - this.breathZ) * 0.10;
     const px = (PARALLAX_MAX_PX / 1600) * VIEW_W;

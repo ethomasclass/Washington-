@@ -15,6 +15,7 @@
 import { DioramaRenderer, type GroundPos } from './renderer';
 import { FIRST_SCENE, SCENES, type Decision, type NpcThread, type Scene } from './content';
 import { CSS, Overlay, type OptionView, type VoiceView } from './ui';
+import { SCENE_ORDER } from './scene-order';
 import {
   applyDelta,
   DROP_BELOW,
@@ -334,6 +335,38 @@ function interact(): void {
   autosave(state);
   refreshCode();
 
+  /*
+   * A look-and-name instrument. Re-opens itself after each bearing, so a player
+   * sweeping the glass stays in the glass rather than being dropped back onto
+   * the parapet between one position and the next.
+   */
+  if (it.survey) {
+    const openGlass = (): void => {
+      const rows = it.survey!.map((t) => ({
+        id: t.id,
+        bearing: t.bearing,
+        name: t.name,
+        done: state.knowledge.has(t.grants),
+      }));
+      overlay.showSurvey(
+        it.label,
+        rows,
+        (id) => {
+          const t = it.survey!.find((v) => v.id === id)!;
+          state.knowledge.add(t.grants);
+          autosave(state);
+          refreshCode();
+          overlay.showExamine(t.name, t.text, openGlass);
+        },
+        () => {
+          busy = false;
+        },
+      );
+    };
+    openGlass();
+    return;
+  }
+
   // The exit reports what is still owed rather than refusing to open. Nothing
   // in this game blocks the player; it only tells them what they are leaving.
   if (it.id === scene.exit) {
@@ -390,6 +423,10 @@ addEventListener('keydown', (e) => {
   if (!busy && (e.key === 'e' || e.key === 'E' || e.key === ' ')) {
     e.preventDefault();
     interact();
+  }
+  if (e.key === '`' || e.key === '~') {
+    e.preventDefault();
+    toggleDevBar();
   }
 });
 addEventListener('keyup', (e) => {
@@ -491,4 +528,58 @@ if (!resumed) {
   overlay.showOpening(scene.title, scene.subtitle, [...scene.opening, scene.purpose], () => {
     busy = false;
   });
+}
+
+
+/* ------------------------------------------------------------------ dev bar
+ *
+ * A scene picker, on the backtick key.
+ *
+ * Reaching Act 2 means settling two threads and walking to the chariot, which
+ * is right for a player and unbearable for anybody checking whether a tree
+ * looks correct. This jumps straight to any scene.
+ *
+ * It is deliberately not hidden behind a build flag. A teacher who finds it has
+ * found a way to show a class the camp without playing to it, which is useful
+ * rather than dangerous — there is nothing to cheat at in a game with no fail
+ * state. It stays out of the way until somebody presses the key, and it says
+ * plainly what it is.
+ */
+let devBar: HTMLDivElement | null = null;
+
+function toggleDevBar(): void {
+  if (devBar) {
+    devBar.remove();
+    devBar = null;
+    return;
+  }
+  devBar = document.createElement('div');
+  devBar.className = 'devbar';
+  const label = document.createElement('span');
+  label.textContent = 'dev · jump to scene';
+  devBar.append(label);
+
+  for (const id of SCENE_ORDER) {
+    const sc = SCENES[id];
+    const b = document.createElement('button');
+    b.textContent = `${id} — ${sc ? sc.title : 'not built'}`;
+    b.disabled = !sc;
+    if (id === scene.id) b.className = 'here';
+    b.onclick = () => {
+      if (!sc) return;
+      toggleDevBar();
+      pos.x = 0.5;
+      pos.z = 0.34;
+      seen.clear();
+      heardAmbient.clear();
+      enterScene(id);
+    };
+    devBar.append(b);
+  }
+
+  const note = document.createElement('span');
+  note.className = 'note';
+  note.textContent = '` to close · stats and flags are kept';
+  devBar.append(note);
+  document.body.append(devBar);
 }

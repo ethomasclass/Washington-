@@ -50,6 +50,26 @@ export interface Interactable {
    * player is told is a thing should have a thing.
    */
   prop?: PropKind;
+  /**
+   * A look-and-name instrument: a spyglass, and later a map table.
+   *
+   * Not a puzzle. The player points it at each position in turn and each one
+   * names itself and writes an entry. It is the one interaction in the game
+   * where knowledge is gathered by looking rather than by reading or being
+   * told, which is what scouting actually is — and because each target is its
+   * own flag, a player who names five of seven keeps those five.
+   */
+  survey?: SurveyTarget[];
+}
+
+export interface SurveyTarget {
+  id: string;
+  /** What the player sees in the list before naming it. */
+  bearing: string;
+  /** What it turns out to be. */
+  name: string;
+  text: string;
+  grants: string;
 }
 
 /**
@@ -236,7 +256,7 @@ export interface Scene {
    */
   extras?: Extra[];
   /** Which placeholder plate set the renderer should build. */
-  plates: 'vernon' | 'camp';
+  plates: 'vernon' | 'camp' | 'lines';
   /** Where the light comes from, in uv. Flat overcast sits high and central. */
   sun: [number, number];
 }

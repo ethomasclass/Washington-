@@ -111,10 +111,44 @@ console.log('passport codec');
   check('lowercase, spaced and unhyphenated codes still decode', ok);
 }
 
-// 7. The code stays short enough for a student to copy by hand.
+/*
+ * 7. The code stays short enough for a student to copy by hand.
+ *
+ * Measured on the payload, not the display. encode() groups the characters in
+ * fours with hyphens for legibility and decode() throws them away, so a student
+ * who copies the groups wrong still gets in — the hyphens are not part of what
+ * has to be right. The old check counted them and so was measuring the wrong
+ * thing by about a fifth.
+ *
+ * Thirty-two payload characters is roughly a Windows product key and a half.
+ * Past that a class period starts losing time to typing.
+ */
 {
-  const len = encode(initialState()).length;
-  check(`code is ${len} characters (target: under 32)`, len < 32);
+  const shown = encode(initialState());
+  const len = shown.replace(/-/g, '').length;
+  check(`code is ${len} payload characters, shown as ${shown.length} (target: under 32)`, len < 32);
+}
+
+/*
+ * 8. The passport has a ceiling, and this says how far off it is.
+ *
+ * Every flag is one bit and the registry is append-only, so the code grows with
+ * the content and never shrinks. At the rate the first three scenes set — about
+ * twenty flags each — the eight acts this game is specified for would need a
+ * code of a hundred characters, which no class is going to copy off a board.
+ *
+ * That is an architecture problem, not a tuning one, and the fix is in the
+ * design already: a class period only ever needs one act resident, so a code
+ * should carry the run rather than the browsing history. Most obs.* flags exist
+ * to fill a journal and gate a contradiction inside a single scene and have no
+ * business surviving the act. This check does not fail on that — it reports the
+ * headroom, so the decision gets made before a classroom is depending on it.
+ */
+{
+  const bits = 4 + 4 + 5 + 7 * 8 + FLAG_REGISTRY.length + 16;
+  const room = Math.floor((32 * 5 - bits) / 1);
+  console.log(`  note ${FLAG_REGISTRY.length} flags · ${bits} bits · ` +
+    `${room} bits of headroom before the code passes 32 characters`);
 }
 
 // ---------------------------------------------------------------- content linter
@@ -135,6 +169,7 @@ for (const scene of sceneList()) {
   const requires = new Set<string>();
   for (const it of scene.interactables) {
     if (it.grants) grants.add(it.grants);
+    for (const t of it.survey ?? []) grants.add(t.grants);
     if (it.contradicts) {
       grants.add(it.contradicts.grants);
       requires.add(it.contradicts.heard);

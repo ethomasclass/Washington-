@@ -58,8 +58,15 @@ export const CB01: Scene = {
     { decision: 'A2-D1', pending: 'Greene is waiting to hear what you mean to do about the powder' },
   ] as Business[],
 
-  exit: 'lane_up',
-  exitPrompt: 'Go up the lane to headquarters?',
+  /*
+   * Two ways out of this camp in the design: up the lane to the parlour, and
+   * out along the trench to the lines. The parlour is an interior and wants a
+   * plate system that does not exist yet, so the trench is the one that leads
+   * anywhere for now and the lane stays as a thing to look at.
+   */
+  exit: 'trench_out',
+  exitTo: 'CB-03',
+  exitPrompt: 'Out along the trench to the lines?',
   settled: 'The camp knows what it is going to know. The rest is paperwork.',
   allTasksFlag: 'obs.a2.orders_issued',
 
@@ -335,6 +342,16 @@ export const CB01: Scene = {
         'that is not one yet.',
       grants: 'obs.a2.cook_fire',
       prop: 'fire',
+    },
+    {
+      id: 'trench_out',
+      label: 'the trench to the lines',
+      x: 0.77,
+      z: 0.80,
+      examine:
+        'A covered way running north out of the camp toward the works above Charlestown, dug deep ' +
+        'enough to walk without being seen from the water. Everything you have ordered this ' +
+        'morning ends up at the far end of it.',
     },
   ] as Interactable[],
 

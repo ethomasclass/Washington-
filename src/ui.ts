@@ -23,6 +23,37 @@ import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { portraitPlate } from './art';
 
 export const CSS = `
+/* The spyglass list: bearing on the left, what it proved to be on the right. */
+.survey { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+.sopt {
+  display: flex; justify-content: space-between; gap: 16px; width: 100%;
+  font: inherit; text-align: left; cursor: pointer;
+  padding: 8px 12px; border: 1px solid #C3B79B; border-radius: 3px;
+  background: rgba(255, 253, 246, 0.6); color: #3B2E22;
+}
+.sopt:hover { background: #FFFDF6; border-color: #8A7550; }
+.sopt.seen { cursor: default; opacity: 0.72; border-style: dashed; }
+.sopt .bear { font-style: italic; }
+.sopt .named { font-variant: small-caps; letter-spacing: 0.04em; }
+
+/* The dev scene picker. Plain, out of the way, and obviously a tool. */
+.devbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 10px 14px; background: rgba(30, 24, 18, 0.92);
+  border-top: 1px solid #6B5B45;
+  font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; color: #D8CDB6;
+}
+.devbar span { opacity: 0.72; letter-spacing: 0.06em; text-transform: uppercase; }
+.devbar span.note { margin-left: auto; opacity: 0.5; text-transform: none; }
+.devbar button {
+  font: inherit; color: #EFE7D5; background: #4A3D2C;
+  border: 1px solid #6B5B45; border-radius: 3px; padding: 5px 10px; cursor: pointer;
+}
+.devbar button:hover:not(:disabled) { background: #5E4E38; }
+.devbar button.here { background: #7A6242; border-color: #A8916B; }
+.devbar button:disabled { opacity: 0.38; cursor: default; }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: ${PAPER.WARM}; }
   #app { position: relative; width: 100vw; height: 100vh; }
@@ -316,6 +347,45 @@ export class Overlay {
         .map((para, i) => `<div class="line"${i ? ' style="margin-top:12px"' : ''}>${para}</div>`)
         .join('') +
       `<div class="continue">press <b>Space</b> to continue</div></div>`;
+    this.waitForDismiss(onDone);
+  }
+
+  /**
+   * The spyglass panel.
+   *
+   * A list of bearings, each of which can be looked at once. Named ones stay
+   * listed with what they turned out to be, so the panel doubles as the record
+   * of what has been scouted — the player can see at a glance that two bearings
+   * are still unexamined without the game nagging about it.
+   */
+  showSurvey(
+    label: string,
+    targets: { id: string; bearing: string; name: string; done: boolean }[],
+    onPick: (id: string) => void,
+    onDone: () => void,
+  ): void {
+    const p = this.makePanel(true);
+    const left = targets.filter((t) => !t.done).length;
+    p.innerHTML =
+      `<div class="body"><div class="speaker">${label}</div>` +
+      `<div class="line">Sweep the glass across the water. ` +
+      (left ? `${left} bearing${left === 1 ? '' : 's'} not yet made out.` : 'All of it named.') +
+      `</div><div class="survey">` +
+      targets
+        .map(
+          (t, i) =>
+            `<button class="sopt${t.done ? ' seen' : ''}" data-i="${i}">` +
+            `<span class="bear">${t.bearing}</span>` +
+            `<span class="named">${t.done ? t.name : '—'}</span></button>`,
+        )
+        .join('') +
+      `</div><div class="continue">press <b>Space</b> to lower the glass</div></div>`;
+    for (const b of Array.from(p.querySelectorAll<HTMLButtonElement>('.sopt'))) {
+      b.onclick = () => {
+        const t = targets[Number(b.dataset.i)];
+        if (!t.done) onPick(t.id);
+      };
+    }
     this.waitForDismiss(onDone);
   }
 

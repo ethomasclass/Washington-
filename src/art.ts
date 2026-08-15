@@ -867,68 +867,99 @@ export function layerMidground(): HTMLCanvasElement {
    * lollipop at any size. Deciduous crowns at this distance are wider than they
    * are tall, the silhouette is ragged, and the sky shows through in places.
    */
+  /**
+   * A tree.
+   *
+   * Rebuilt opaque, which is the whole of the fix. The crown was thirty-odd
+   * transparent dabs at alpha 0.11 laid over each other — the last thing in the
+   * scene still made of washes when everything else had gone solid — so it read
+   * as a smudge of green fog with a wire frame inside it while the buildings
+   * and figures beside it had edges.
+   *
+   * The order is now: one opaque lumpy mass, shaded darker underneath where a
+   * crown is always in its own shade, a few light clumps on the sunward top,
+   * and a broken ink line round the silhouette. Broken matters — a continuous
+   * outline turns a tree into a balloon.
+   */
   const tree = (tx: number, base: number, th: number, spread: number) => {
     const forkY = base - th * 0.36; // low fork: most of the tree is crown
+    const cyc = forkY - th * 0.30; // centre of the crown
+    const ryc = th * 0.36;
+
+    // Trunk, opaque and tapering.
+    solid(x, [[tx - th * 0.030, base], [tx + th * 0.030, base],
+              [tx + th * 0.015, forkY - th * 0.08], [tx - th * 0.015, forkY - th * 0.08]],
+      '#6B563E', rnd, EARTH.BISTRE, 0.28);
+    inkLine(x, [[tx - th * 0.028, base], [tx - th * 0.014, forkY]], rnd, 1.7, 0.08);
+    inkLine(x, [[tx + th * 0.028, base], [tx + th * 0.014, forkY]], rnd, 1.7, 0.08);
+
+    // Boughs into the crown, drawn before the leaf so they are half-hidden by it.
     const tips: [number, number][] = [];
-
-    // Trunk, tapering, drawn as a narrow wedge rather than a line.
-    wash(x, [[tx - th * 0.026, base], [tx + th * 0.026, base],
-             [tx + th * 0.014, forkY], [tx - th * 0.014, forkY]],
-      EARTH.RAW_UMBER, 0.55, rnd, 3);
-    inkLine(x, [[tx - th * 0.024, base], [tx - th * 0.012, forkY]], rnd, 1.6, 0.1);
-    inkLine(x, [[tx + th * 0.024, base], [tx + th * 0.012, forkY]], rnd, 1.6, 0.1);
-
-    // Boughs fan out from the fork; each one ends where a clump of leaf sits.
     const boughs = 5;
     for (let i = 0; i < boughs; i++) {
       const t = (i + 0.5) / boughs;
-      const ang = -Math.PI / 2 + (t - 0.5) * 2.3 + (rnd() - 0.5) * 0.3;
-      const len = th * (0.34 + rnd() * 0.22);
+      const ang = -Math.PI / 2 + (t - 0.5) * 2.2 + (rnd() - 0.5) * 0.28;
+      const len = th * (0.30 + rnd() * 0.20);
       const mx = tx + Math.cos(ang) * len * 0.55;
       const my = forkY + Math.sin(ang) * len * 0.55;
       const ex = tx + Math.cos(ang) * len;
       const ey = forkY + Math.sin(ang) * len;
-      inkLine(x, [[tx, forkY], [mx, my], [ex, ey]], rnd, 2.0, 0.12);
+      inkLine(x, [[tx, forkY], [mx, my], [ex, ey]], rnd, 2.2, 0.06);
       tips.push([ex, ey]);
-      // A short secondary off each bough.
-      const sx2 = mx + Math.cos(ang + 0.7) * len * 0.3;
-      const sy2 = my + Math.sin(ang + 0.7) * len * 0.3;
-      inkLine(x, [[mx, my], [sx2, sy2]], rnd, 1.3, 0.3);
-      tips.push([sx2, sy2]);
     }
 
-    // Leaf: many small dabs clustered on the tips, thinning at the edges. Two
-    // passes — a broad soft mass, then a denser core where the boughs meet, so
-    // the crown has weight instead of reading as a wire frame with speckles.
-    for (const pass of [0, 1]) {
-      const alpha = pass ? 0.16 : 0.11;
-      const reach = pass ? 0.42 : 0.85;
-      for (const [ex, ey] of tips) {
-        const n = pass ? 10 : 18;
-        for (let k = 0; k < n; k++) {
-          const r = spread * (0.12 + rnd() * (pass ? 0.16 : 0.22));
-          const ox = ex + (rnd() - 0.5) * spread * reach;
-          const oy = ey + (rnd() - 0.5) * spread * reach * 0.68;
-          wash(x, [[ox - r, oy], [ox - r * 0.3, oy - r * 0.9], [ox + r * 0.6, oy - r * 0.75],
-                   [ox + r, oy + r * 0.15], [ox + r * 0.2, oy + r * 0.8], [ox - r * 0.6, oy + r * 0.6]],
-            EARTH.TERRE_VERTE, alpha, rnd, 3);
-        }
-      }
+    /*
+     * The crown as one closed shape.
+     *
+     * Sampled round an ellipse with the radius pushed in and out per step, so
+     * the boundary is ragged the way a canopy is rather than round the way a
+     * lollipop is. Sixteen steps is enough to read as foliage and few enough
+     * that each bump is a distinct clump of leaf.
+     */
+    const crown: [number, number][] = [];
+    for (let i = 0; i < 16; i++) {
+      const a2 = (i / 16) * Math.PI * 2;
+      const bump = 0.74 + rnd() * 0.46;
+      crown.push([tx + Math.cos(a2) * spread * 0.5 * bump,
+                  cyc + Math.sin(a2) * ryc * bump]);
     }
-    // A scatter of leaf edges caught in ink, so the mass has a drawn boundary.
-    const cyc = forkY - th * 0.5;
-    for (let k = 0; k < 26; k++) {
-      const ang = rnd() * Math.PI * 2;
-      const rr = spread * (0.55 + rnd() * 0.5);
-      const px2 = tx + Math.cos(ang) * rr;
-      const py2 = cyc + Math.sin(ang) * rr * 0.66;
-      inkLine(x, [[px2, py2], [px2 + (rnd() - 0.5) * 14, py2 + (rnd() - 0.5) * 10]], rnd, 0.9, 0.25);
+    solid(x, crown, '#6E7A56', rnd, EARTH.TERRE_VERTE, 0.30);
+
+    // Underside shade: a crown is always darker below and inside.
+    const under: [number, number][] = crown
+      .filter(([, py2]) => py2 > cyc - ryc * 0.15)
+      .map(([px2, py2]) => [px2 * 0.94 + tx * 0.06, py2] as [number, number]);
+    if (under.length > 2) {
+      under.push([tx, cyc - ryc * 0.1]);
+      wash(x, under, EARTH.BISTRE, 0.24, rnd, 3);
     }
 
-    // A darker core so the crown has weight where the boughs converge.
-    wash(x, [[tx - spread * 0.62, forkY - th * 0.20], [tx + spread * 0.56, forkY - th * 0.28],
-             [tx + spread * 0.40, forkY + th * 0.02], [tx - spread * 0.46, forkY + th * 0.04]],
-      EARTH.TERRE_VERTE, 0.20, rnd, 4);
+    // Sunward clumps on the upper left, opaque and lighter.
+    for (let k = 0; k < 7; k++) {
+      const a2 = -Math.PI * (0.55 + rnd() * 0.55);
+      const rr = spread * 0.5 * (0.30 + rnd() * 0.42);
+      const px2 = tx + Math.cos(a2) * rr;
+      const py2 = cyc + Math.sin(a2) * ryc * 0.82;
+      const r = spread * (0.09 + rnd() * 0.07);
+      solid(x, [[px2 - r, py2], [px2 - r * 0.4, py2 - r * 0.95], [px2 + r * 0.6, py2 - r * 0.8],
+                [px2 + r, py2 + r * 0.2], [px2 + r * 0.2, py2 + r * 0.85],
+                [px2 - r * 0.65, py2 + r * 0.6]], '#84906A', rnd, EARTH.TERRE_VERTE, 0.2);
+    }
+
+    // Broken outline. Every third segment dropped, so the eye closes the shape
+    // itself and the tree does not read as a cut-out.
+    for (let i = 0; i < crown.length; i++) {
+      if (i % 3 === 2) continue;
+      inkLine(x, [crown[i], crown[(i + 1) % crown.length]], rnd, 1.5, 0.14);
+    }
+    // A few leaf edges caught in ink just outside the mass, so it frays.
+    for (let k = 0; k < 14; k++) {
+      const a2 = rnd() * Math.PI * 2;
+      const rr = spread * 0.5 * (0.92 + rnd() * 0.22);
+      const px2 = tx + Math.cos(a2) * rr;
+      const py2 = cyc + Math.sin(a2) * ryc * (0.92 + rnd() * 0.22);
+      inkLine(x, [[px2, py2], [px2 + (rnd() - 0.5) * 12, py2 + (rnd() - 0.5) * 9]], rnd, 1.0, 0.24);
+    }
 
     shadow(tx, base, spread * 0.55);
   };
@@ -2668,6 +2699,7 @@ export function motes(seed = 149): HTMLCanvasElement {
 export const CLOUD_BANDS: Record<string, () => HTMLCanvasElement> = {
   vernon: () => cloudBand(91, EARTH.SHADOW_SLATE),
   camp: () => cloudBand(97, EARTH.WET_STONE),
+  lines: () => cloudBand(419, EARTH.SHADOW_SLATE),
 };
 
 /**
@@ -2691,10 +2723,233 @@ export const CLOUD_BANDS: Record<string, () => HTMLCanvasElement> = {
  */
 const nearestOn = (plateY: number) => zAtPlateY(plateY, H);
 
+
+/* ------------------------------------------------------------ the lines
+ *
+ * CB-03: the American works above Charlestown.
+ *
+ * The far bands are the camp's, unchanged — from these hills you are looking at
+ * the same Boston, the same burned Charlestown and the same fleet, which is
+ * exactly the point of the scene and a good reason not to draw them twice.
+ * What is new is the ground: a hill crown with an earthwork along it, the slope
+ * falling away to the water, and an abatis on the forward face.
+ */
+export function linesGround(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(311);
+  const hy = H * HORIZON;
+
+  // Turf, thin and much walked on, over subsoil the digging has turned up.
+  solid(x, [[0, hy + 6], [W, hy + 2], [W, H], [0, H]], '#B9B79C', rnd);
+  wash(x, [[0, hy + 6], [W, hy + 2], [W, H], [0, H]], EARTH.TERRE_VERTE, 0.16, rnd);
+  wash(x, [[0, hy + 150], [W, hy + 120], [W, H], [0, H]], EARTH.RAW_UMBER, 0.18, rnd);
+
+  // The forward slope, falling away to the left toward the water. Everything on
+  // that side is spoil and nothing grows on it.
+  const brow: [number, number][] = [];
+  for (let i = 0; i <= 22; i++) {
+    brow.push([(i / 22) * W, hy + 66 + Math.sin(i * 0.55) * 9 - (i / 22) * 26]);
+  }
+  solid(x, [...brow, [W, hy + 4], [0, hy + 8]], '#A79878', rnd, EARTH.RAW_UMBER, 0.26);
+  inkLine(x, brow, rnd, 1.6, 0.14);
+  for (let i = 0; i < 40; i++) {
+    const px = rnd() * W;
+    const py = hy + 20 + rnd() * 44;
+    inkLine(x, [[px, py], [px + 18 + rnd() * 30, py + 6 + rnd() * 8]], rnd, 0.8, 0.3);
+  }
+
+  // The trodden way along the crown, worn to bare earth by half a mile of feet.
+  {
+    const way: [number, number][] = [];
+    const edge = (side: number) => {
+      const out: [number, number][] = [];
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const z = -0.04 + t * 0.92;
+        out.push([0.46 + 0.10 * t + side * (0.20 - 0.11 * t), z]);
+      }
+      return out;
+    };
+    for (const [gx, z] of edge(-1)) { const a = platePx({ x: gx, z }, W, H); way.push([a.x, a.y]); }
+    for (const [gx, z] of edge(1).reverse()) { const a = platePx({ x: gx, z }, W, H); way.push([a.x, a.y]); }
+    solid(x, way, '#A2937E', rnd, EARTH.RAW_UMBER, 0.2);
+  }
+
+  groundLitter(x, rnd, hy + 90, H - 40, 60, 0.8);
+  return c;
+}
+
+/** The reverse slope: the graves, and the huts below them. */
+export function linesFarMidground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(317);
+  const hy = H * HORIZON;
+  const base = hy + 86;
+
+  // Distant camp on the low ground behind, seen as a mass.
+  for (let i = 0; i < 34; i++) {
+    const px = rnd() * W;
+    const bw = 22 + rnd() * 30;
+    const bh = 12 + rnd() * 18;
+    wash(x, [[px, base], [px + bw * 0.3, base - bh], [px + bw, base - bh * 0.5], [px + bw, base]],
+      PAPER.SMOKED, 0.34, rnd, 3);
+    inkLine(x, [[px, base], [px + bw * 0.3, base - bh], [px + bw, base - bh * 0.5]], rnd, 1.0, 0.24);
+  }
+  for (const sx of [W * 0.18, W * 0.44, W * 0.72, W * 0.9]) {
+    for (let k = 0; k < 5; k++) {
+      const t = k / 5;
+      wash(x, [[sx - 7 - t * 18, base - 96 * t], [sx + 7 + t * 17, base - 96 * t - 5],
+               [sx + 5 + t * 22, base - 96 * (t + 0.24)], [sx - 9 - t * 15, base - 96 * (t + 0.2)]],
+        EARTH.WET_STONE, 0.10, rnd, 3);
+    }
+  }
+  return haze(c, 0.22, PAPER.COOL);
+}
+
+/**
+ * The parapet itself, and the things stood along it.
+ *
+ * Gabions — wicker baskets filled with earth — with fascine bundles between
+ * them, which is the whole science of a field work: sticks, baskets and dirt.
+ * An embrasure cut through for a gun that is not there yet, because in November
+ * 1775 it was not.
+ */
+export function linesMidground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(331);
+  const hy = H * HORIZON;
+  const base = hy + 214;
+  const man = (b: number) => figureAtPlateY(b, H);
+
+  const shadow = (cx: number, b: number, r: number) =>
+    wash(x, [[cx - r, b], [cx + r, b - 3], [cx + r * 0.7, b + r * 0.22], [cx - r * 0.8, b + r * 0.24]],
+      EARTH.BISTRE, 0.20, rnd, 3);
+
+  // The bank: a long earth mass with a firing step cut behind it.
+  const crest: [number, number][] = [];
+  for (let i = 0; i <= 26; i++) {
+    crest.push([(i / 26) * W, base - man(base) * 1.02 + Math.sin(i * 0.7) * 7 + rnd() * 5]);
+  }
+  solid(x, [...crest, [W, base + 60], [0, base + 60]], '#9C8C6E', rnd, EARTH.RAW_UMBER, 0.28);
+  inkLine(x, crest, rnd, 2.2, 0.05);
+  // Turf laid on the outer face, in courses.
+  for (let r = 1; r < 5; r++) {
+    const off: [number, number][] = crest.map(([px, py]) => [px, py + r * 13]);
+    inkLine(x, off, rnd, 0.9, 0.4);
+  }
+
+  /*
+   * Gabions along the crest, sized in man-heights like everything else. A
+   * gabion stood about chest high on the man filling it — that is what made
+   * them useful, since a man could carry the empty basket and fill it in place
+   * under fire.
+   */
+  const gh = man(base) * 0.78;
+  for (let i = 0; i < 9; i++) {
+    const cx = W * 0.06 + i * W * 0.108 + (rnd() - 0.5) * 12;
+    const b = base - man(base) * 0.92 + (rnd() - 0.5) * 8;
+    const gw = gh * 0.62;
+    solid(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh], [cx + gw / 2 + 2, b],
+              [cx - gw / 2 - 2, b]], '#9A8258', rnd, EARTH.BISTRE, 0.24);
+    inkLine(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh], [cx + gw / 2 + 2, b],
+                [cx - gw / 2 - 2, b], [cx - gw / 2, b - gh]], rnd, 1.8, 0.06);
+    // The weave: uprights and three bands round.
+    for (let k = 1; k < 5; k++) {
+      inkLine(x, [[cx - gw / 2 + (gw * k) / 5, b - gh], [cx - gw / 2 + (gw * k) / 5, b]],
+        rnd, 1.0, 0.22);
+    }
+    for (const f of [0.22, 0.55, 0.86]) {
+      inkLine(x, [[cx - gw / 2 - 1, b - gh + gh * f], [cx + gw / 2 + 1, b - gh + gh * f]],
+        rnd, 1.2, 0.14);
+    }
+    // Fascine bundle wedged in the gap.
+    if (i < 8) {
+      const fx = cx + W * 0.054;
+      const fh = gh * 0.34;
+      solid(x, [[fx - gw * 0.44, b - fh], [fx + gw * 0.44, b - fh], [fx + gw * 0.44, b],
+                [fx - gw * 0.44, b]], '#7C6B4A', rnd, EARTH.BISTRE, 0.3);
+      for (let k = 0; k < 5; k++) {
+        inkLine(x, [[fx - gw * 0.44, b - fh + (fh * k) / 5], [fx + gw * 0.44, b - fh + (fh * k) / 5 + 2]],
+          rnd, 1.0, 0.2);
+      }
+      inkLine(x, [[fx - gw * 0.2, b - fh - 2], [fx - gw * 0.2, b + 2]], rnd, 1.4, 0.1);
+    }
+  }
+
+  // An embrasure: a gap cut through the bank, splayed outward, with no gun in
+  // it. Knox is somewhere on the road from Ticonderoga with the guns.
+  {
+    const ex = W * 0.60;
+    const eh = man(base) * 0.66;
+    const eb = base - man(base) * 0.92;
+    solid(x, [[ex - 34, eb - eh], [ex + 34, eb - eh], [ex + 52, eb], [ex - 52, eb]],
+      '#6E6146', rnd, INK.SETTLED, 0.22);
+    inkLine(x, [[ex - 34, eb - eh], [ex - 52, eb]], rnd, 1.8, 0.06);
+    inkLine(x, [[ex + 34, eb - eh], [ex + 52, eb]], rnd, 1.8, 0.06);
+  }
+
+  // The spyglass on its rest, stage right, which is what the scene is for.
+  {
+    const sx = W * 0.845;
+    const sb = base + 28;
+    const sh = man(sb) * 0.92;
+    for (const d of [-16, 0, 16]) {
+      inkLine(x, [[sx + d, sb], [sx - d * 0.15, sb - sh]], rnd, 2.4, 0.04);
+    }
+    inkLine(x, [[sx - 40, sb - sh - 6], [sx + 42, sb - sh + 4]], rnd, 3.4, 0.02);
+    solid(x, [[sx - 40, sb - sh - 10], [sx - 20, sb - sh - 9], [sx - 21, sb - sh - 1],
+              [sx - 41, sb - sh - 2]], '#4A4038', rnd);
+    shadow(sx, sb, 30);
+  }
+
+  groundLitter(x, rnd, base + 10, base + 120, 60, 0.9);
+  return c;
+}
+
+/** Near gabions and the firing step, cropping the bottom corners. */
+export function linesForeground(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(337);
+
+  // A gabion at the player's own scale at each corner, so he stands among them.
+  for (const [edge, dir] of [[-30, 1], [W + 30, -1]] as [number, number][]) {
+    const b = H * 1.04;
+    const gh = figureAtPlateY(H * 0.9, H) * 1.1;
+    const gw = gh * 0.66;
+    const cx = edge + dir * gw * 0.5;
+    solid(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh], [cx + gw / 2 + 4, b],
+              [cx - gw / 2 - 4, b]], '#8E7A52', rnd, EARTH.BISTRE, 0.3);
+    inkLine(x, [[cx - gw / 2, b - gh], [cx + gw / 2, b - gh]], rnd, 3.0, 0.03);
+    for (let k = 1; k < 7; k++) {
+      inkLine(x, [[cx - gw / 2 + (gw * k) / 7, b - gh], [cx - gw / 2 + (gw * k) / 7, b]],
+        rnd, 1.6, 0.18);
+    }
+    for (const f of [0.2, 0.5, 0.8]) {
+      inkLine(x, [[cx - gw / 2 - 3, b - gh + gh * f], [cx + gw / 2 + 3, b - gh + gh * f]],
+        rnd, 2.0, 0.1);
+    }
+  }
+
+  // Sharpened stakes of the abatis, cropping in along the very bottom.
+  for (let i = 0; i < 9; i++) {
+    const px = W * 0.12 + i * W * 0.094;
+    inkLine(x, [[px, H], [px + 54, H - 74 - (i % 3) * 16]], rnd, 3.4, 0.03);
+    inkLine(x, [[px + 40, H - 58], [px + 74, H - 50]], rnd, 2.0, 0.1);
+    inkLine(x, [[px + 26, H - 34], [px - 6, H - 26]], rnd, 2.0, 0.12);
+  }
+  for (let i = 0; i < 50; i++) {
+    const px = rnd() * W;
+    const h = 8 + rnd() * 18;
+    inkLine(x, [[px, H], [px + (rnd() - 0.5) * 8, H - h]], rnd, 1.0, 0.18);
+  }
+  return c;
+}
+
 export const PLATE_DEPTHS: Record<string, number[]> = {
   //          sky  hills  ground  farMid            midground             foreground
   vernon: [1, 1, 1, 1, nearestOn(H * HORIZON + 236), 0],
   camp: [1, 1, 1, 1, nearestOn(H * HORIZON + 251), 0],
+  lines: [1, 1, 1, 1, nearestOn(H * HORIZON + 214), 0],
 };
 
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
@@ -2705,6 +2960,12 @@ export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
   camp: () => [
     campSky(), campHills(), campGround(),
     campFarMidground(), campMidground(), campForeground(),
+  ],
+  // Same sky and same far shore as the camp: from these hills you are looking
+  // at the same Boston, which is the point of the scene.
+  lines: () => [
+    campSky(), campHills(), linesGround(),
+    linesFarMidground(), linesMidground(), linesForeground(),
   ],
 };
 

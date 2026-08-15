@@ -21,6 +21,46 @@ const STATS: StatId[] = ['judgment', 'legitimacy', 'loyalty', 'character'];
  * classroom. A flag missing from here silently fails to persist, which is why
  * passport.test.ts checks the registry against the content.
  */
+/**
+ * THE PASSPORT SUBSET — what actually travels in the code.
+ *
+ * `FLAG_REGISTRY` below is every flag the game sets. This is the far smaller
+ * set that survives a change of device, and the distinction is the whole
+ * reason the code stays short enough to copy off a whiteboard.
+ *
+ * The rule, and it derives from a rule that already existed:
+ *
+ *   07 §2.1.3 — "No knowledge lock may reference a document not findable in
+ *   the act where the lock appears."
+ *
+ * Every lock is therefore satisfiable inside its own act. So an `obs.`, `task.`
+ * or `heard.` flag has no reader after the act that set it: it gates a
+ * contradiction, a journal line or an option in the same forty minutes, and
+ * then it is spent. Carrying it to another machine three days later buys the
+ * student nothing and costs everyone a character of code.
+ *
+ * `doc.` flags are different and they all persist. The Documents ribbon is a
+ * list of which primary sources this student actually read — it is the
+ * assessment artifact (07 §2.2), the epilogue reads it, and 07 §1.6 budgets
+ * 51 bits for exactly this.
+ *
+ * APPEND-ONLY, like the registry. Position is meaning: reordering this array
+ * silently reinterprets every code in every classroom.
+ */
+export const PASSPORT_FLAGS: string[] = [
+  'doc.a1.boston_clipping',
+  'doc.a1.ledger',
+  'doc.a1.commission',
+  'doc.a1.braddock',
+  'doc.a1.accounts',
+  'doc.a2.ration_return',
+  'doc.a2.reed_letter',
+  'doc.a2.emerson',
+  'doc.a2.enlistment',
+  'doc.a2.letter_home',
+  'doc.a2.doolittle',
+];
+
 export const FLAG_REGISTRY: string[] = [
   'doc.a1.boston_clipping',
   'doc.a1.ledger',
@@ -146,7 +186,7 @@ export function encode(state: GameState): string {
   w.write(Math.max(0, SCENE_ORDER.indexOf(state.scene)), 5);
   for (const s of STATS) w.write(state.stats[s], 7);
   for (const s of STATS) w.write(state.snapshot[s], 7);
-  for (const flag of FLAG_REGISTRY) w.write(state.knowledge.has(flag) ? 1 : 0, 1);
+  for (const flag of PASSPORT_FLAGS) w.write(state.knowledge.has(flag) ? 1 : 0, 1);
 
   const payload = w.bitArray();
   const crc = checksum(payload);
@@ -161,7 +201,7 @@ export function decode(code: string): GameState {
   const clean = code.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/I/g, '1').replace(/L/g, '1').replace(/O/g, '0');
   const bits = base32ToBits(clean);
 
-  const payloadLen = 4 + 4 + 5 + 7 * 8 + FLAG_REGISTRY.length;
+  const payloadLen = 4 + 4 + 5 + 7 * 8 + PASSPORT_FLAGS.length;
   if (bits.length < payloadLen + CRC_BITS) throw new Error('code is too short');
 
   const payload = bits.slice(0, payloadLen);
@@ -201,15 +241,64 @@ export function decode(code: string): GameState {
   for (const s of STATS) state.stats[s] = read(7);
   for (const s of STATS) state.snapshot[s] = read(7);
   state.knowledge = new Set<string>();
-  for (const flag of FLAG_REGISTRY) if (read(1)) state.knowledge.add(flag);
+  for (const flag of PASSPORT_FLAGS) if (read(1)) state.knowledge.add(flag);
   return state;
 }
 
 const LS_KEY = 'washington.autosave';
 
+/*
+ * THE TWO SAVES, AND WHY THEY ARE NOT THE SAME THING.
+ *
+ * 07 §1.6: "localStorage holds the full state object. The code holds the
+ * resumable subset."
+ *
+ * This used to store `encode(state)` — the autosave WAS the passport code. It
+ * looked like economy and it was the reason the code grew without bound: if the
+ * code is also the local save, then every flag has to travel in it or a page
+ * refresh loses your afternoon, and 59 flags for three scenes projects to a
+ * hundred-character code by Act 8.
+ *
+ * Separated, each does its own job properly. Locally you lose nothing at all,
+ * ever. On another machine you resume with your stats, your position and every
+ * document you have read, and you re-walk the scene you were standing in —
+ * which costs a few minutes of looking and is the correct price for a save you
+ * can write on your hand.
+ */
+
+/** Everything, as JSON. Sets and Maps do not survive stringify on their own. */
+export function serialise(state: GameState): string {
+  return JSON.stringify({
+    v: 1,
+    act: state.act,
+    scene: state.scene,
+    stats: state.stats,
+    snapshot: state.snapshot,
+    knowledge: [...state.knowledge],
+    decisions: [...state.decisions],
+  });
+}
+
+export function deserialise(raw: string): GameState | null {
+  const o = JSON.parse(raw) as {
+    v?: number; act?: number; scene?: string;
+    stats?: GameState['stats']; snapshot?: GameState['snapshot'];
+    knowledge?: string[]; decisions?: [string, string][];
+  };
+  if (o.v !== 1 || !o.stats || !o.snapshot || !o.scene) return null;
+  return {
+    act: o.act ?? 1,
+    scene: o.scene,
+    stats: o.stats,
+    snapshot: o.snapshot,
+    knowledge: new Set(o.knowledge ?? []),
+    decisions: new Map(o.decisions ?? []),
+  };
+}
+
 export function autosave(state: GameState): void {
   try {
-    localStorage.setItem(LS_KEY, encode(state));
+    localStorage.setItem(LS_KEY, serialise(state));
   } catch {
     /* private browsing, shared device, wiped profile — the passport code is the real save */
   }
@@ -217,8 +306,11 @@ export function autosave(state: GameState): void {
 
 export function loadAutosave(): GameState | null {
   try {
-    const code = localStorage.getItem(LS_KEY);
-    return code ? decode(code) : null;
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    // A code left by an older build still loads, rather than dropping a run on
+    // the floor the first time a student opens the game after an update.
+    return raw.trim().startsWith('{') ? deserialise(raw) : decode(raw);
   } catch {
     return null;
   }

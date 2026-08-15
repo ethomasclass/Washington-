@@ -8,7 +8,7 @@
  * Run with:  npx tsx src/passport.test.ts
  */
 
-import { decode, encode, FLAG_REGISTRY } from './passport';
+import { decode, deserialise, encode, FLAG_REGISTRY, PASSPORT_FLAGS, serialise } from './passport';
 import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
 import { sceneList } from './content';
@@ -47,15 +47,14 @@ console.log('passport codec');
   applyDelta(a, 'legitimacy', -6);
   applyDelta(a, 'character', 5);
   a.knowledge.add('doc.a1.boston_clipping');
-  a.knowledge.add('obs.a1.scaffolding');
+  a.knowledge.add('obs.a1.scaffolding'); // act-scoped: deliberately does not travel
   a.act = 3;
 
   const b = decode(encode(a));
   check('played state round-trips stats', JSON.stringify(a.stats) === JSON.stringify(b.stats),
     `${JSON.stringify(a.stats)} vs ${JSON.stringify(b.stats)}`);
   check('played state round-trips act', a.act === b.act);
-  check('knowledge flags survive',
-    [...a.knowledge].every((f) => b.knowledge.has(f)) && a.knowledge.size === b.knowledge.size);
+  check('documents survive the trip', b.knowledge.has('doc.a1.boston_clipping'));
   check('unset flags stay unset', !b.knowledge.has('doc.a1.ledger'));
 }
 
@@ -73,13 +72,57 @@ console.log('passport codec');
 // 4. Every registered flag has its own bit.
 {
   let independent = true;
-  for (const flag of FLAG_REGISTRY) {
+  for (const flag of PASSPORT_FLAGS) {
     const a = initialState();
     a.knowledge.add(flag);
     const b = decode(encode(a));
     if (!b.knowledge.has(flag) || b.knowledge.size !== 1) independent = false;
   }
-  check('each flag round-trips independently', independent);
+  check(`each passport flag round-trips independently (${PASSPORT_FLAGS.length})`, independent);
+
+  /*
+   * The scoping rule, asserted rather than trusted.
+   *
+   * Every document must travel — the ribbon is the assessment artifact. Nothing
+   * else may, or the code starts growing with the content again, which is the
+   * failure this whole split exists to prevent.
+   */
+  const docs = FLAG_REGISTRY.filter((f) => f.startsWith('doc.'));
+  const missing = docs.filter((f) => !PASSPORT_FLAGS.includes(f));
+  check(`every document travels (${docs.length})`, missing.length === 0, missing.join(', '));
+
+  const strays = PASSPORT_FLAGS.filter((f) => !f.startsWith('doc.'));
+  check('nothing but documents travels', strays.length === 0, strays.join(', '));
+
+  const unregistered = PASSPORT_FLAGS.filter((f) => !FLAG_REGISTRY.includes(f));
+  check('every passport flag is a real flag', unregistered.length === 0, unregistered.join(', '));
+
+  /*
+   * An act-scoped flag is DROPPED by the code on purpose. This asserts the
+   * intended loss, so that if someone later makes a within-act observation
+   * gate something in a later act, this fails and they have to think about it.
+   */
+  {
+    const a = initialState();
+    a.knowledge.add('task.a1.weather');
+    a.knowledge.add('doc.a1.ledger');
+    const b = decode(encode(a));
+    check('act-scoped flags do not travel, documents do',
+      !b.knowledge.has('task.a1.weather') && b.knowledge.has('doc.a1.ledger'));
+  }
+
+  // The local save, which is a different thing and loses nothing.
+  {
+    const a = initialState();
+    a.knowledge.add('task.a1.weather');
+    a.knowledge.add('doc.a1.ledger');
+    a.decisions.set('A1-D1', 'accept_plain');
+    a.act = 2;
+    const b = deserialise(serialise(a))!;
+    check('the local save keeps everything the code drops',
+      b.knowledge.has('task.a1.weather') && b.decisions.get('A1-D1') === 'accept_plain' &&
+      b.act === 2 && b.knowledge.size === a.knowledge.size);
+  }
 }
 
 // 5. A typo is rejected rather than silently accepted.
@@ -135,25 +178,27 @@ console.log('passport codec');
 }
 
 /*
- * 8. The passport has a ceiling, and this says how far off it is.
+ * 8. The ceiling, and how much room is left under it.
  *
- * Every flag is one bit and the registry is append-only, so the code grows with
- * the content and never shrinks. At the rate the first three scenes set — about
- * twenty flags each — the eight acts this game is specified for would need a
- * code of a hundred characters, which no class is going to copy off a board.
+ * This used to report a problem: every flag was one bit, the registry is
+ * append-only, and three scenes had already spent 59 of them — which projected
+ * to a hundred-character code by Act 8 and a class that would never copy it.
  *
- * That is an architecture problem, not a tuning one, and the fix is in the
- * design already: a class period only ever needs one act resident, so a code
- * should carry the run rather than the browsing history. Most obs.* flags exist
- * to fill a journal and gate a contradiction inside a single scene and have no
- * business surviving the act. This check does not fail on that — it reports the
- * headroom, so the decision gets made before a classroom is depending on it.
+ * The fix was architectural, not arithmetic. Only documents travel now (see
+ * PASSPORT_FLAGS), because 07 §2.1.3 guarantees every lock is satisfiable
+ * inside its own act, so nothing else has a reader on the far side of a device
+ * change. The ceiling is therefore no longer set by how much content exists —
+ * it is set by 07 §1.6's budget of 51 documents for the whole game, and that
+ * number is fixed. The line below prints both today's size and the size at the
+ * full budget, so the headroom is a fact on every run rather than a hope.
  */
 {
-  const bits = 4 + 4 + 5 + 7 * 8 + FLAG_REGISTRY.length + 16;
-  const room = Math.floor((32 * 5 - bits) / 1);
-  console.log(`  note ${FLAG_REGISTRY.length} flags · ${bits} bits · ` +
-    `${room} bits of headroom before the code passes 32 characters`);
+  const bits = 4 + 4 + 5 + 7 * 8 + PASSPORT_FLAGS.length + 10;
+  const chars = Math.ceil(bits / 5);
+  // 07 §1.6 budgets 51 documents for the whole game. That is the real ceiling.
+  const atFull = Math.ceil((4 + 4 + 5 + 7 * 8 + 51 + 10) / 5);
+  console.log(`  note ${FLAG_REGISTRY.length} flags set, ${PASSPORT_FLAGS.length} of them travel · ` +
+    `${bits} bits · ${chars} chars now, ${atFull} at the full 51-document budget (cap 32)`);
 }
 
 // ---------------------------------------------------------------- content linter

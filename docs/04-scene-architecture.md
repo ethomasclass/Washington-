@@ -789,6 +789,52 @@ Act 7's single scripted camera move (§2.4) is the game's most expensive moment 
 
 ---
 
+## 7.6 The theatre map — the other object, and it is not this one
+
+**Built. `src/theatre.ts`, `Overlay.showTheatre`.** Everything in §7.1–§7.5 stands unchanged; this is a second thing, and the two must never be conflated.
+
+| | **The map table** (§7.1–7.5) | **The theatre map** |
+|---|---|---|
+| What it is | A table you stand at | A page you are shown |
+| Entered by | The lift, from inside a scene | An act opening, before you have control |
+| Camera | Orbits, 42°–66°, under the player | None. Flat. It is a piece of paper |
+| Scale | One problem — a river, a route, ten miles | The whole theatre, Montreal to the Chesapeake |
+| You can | Decide | Only read |
+| Count | 6 | 8, one per act |
+
+**Why it exists.** The war is bigger than the eight places Washington stands in and almost none of it is his — he is not at Saratoga, Charleston, Cowpens or Guilford. `08` §4 gives the player one *number* to hold across eight acts. This gives them one *picture*, and when the marks move between acts, without being touched, the player watches a war go somewhere they are not. It is how this game intends to tell the trajectory of the Revolution without making the Revolution the subject — and it is where the southern campaign will live, since Washington experienced that campaign as paper arriving late and so will the student.
+
+### The rule the whole thing serves
+
+> **The map shows what Washington believed, not what was true.**
+
+Every mark carries the date of the report that put it there and the date that report reached him, and it is drawn in the confidence those two dates earn: seen and certain draw solid, a fortnight old draws lighter, six weeks draws dashed, unconfirmed draws faint and broken. In Act 2's page — 3 July 1775, the morning he takes command — Boston is exact because it is a mile off and he has a glass, Charlestown is a fortnight old and second-hand, and **Ticonderoga, which is the thing Act 2 is eventually solved by, is the least legible mark on the sheet.** The answer is on the map on the first morning and nobody can read it.
+
+This is not a fog-of-war mechanic dressed as history. It is the history, and it happens to do a fog-of-war mechanic's job. It also gives the reading loop (`R2` — documents are the progression system) somewhere to pay off at full-screen size: **reading is not acting**, and this is the screen that says so.
+
+### Register and construction
+
+R2, and it is the one surface in the game that is not painterly — `09` governs every plate, and this is ink, ruled lines and a flat wash. `06` §2.8 is right that a survey plan has no atmosphere and no morale; nothing here is lit and the mood system must never touch it.
+
+Relief is **hachured**, not cel-shaded: strokes down the fall line, denser where the ground drops harder, no light source anywhere. The eighteenth century had already solved showing a third dimension on a flat page with no light in it, and it works identically in greyscale and for a colourblind student, which no lighting ramp does. The Berkshire wall between Ticonderoga and Cambridge is on the page from Act 2's first frame, and it is why that act is a logistics problem rather than a fetch quest.
+
+Everything is procedural canvas, in keeping with the `09` pivot — no `wash-map-v1` sheet is needed, and the hachures are computed from the ridge data rather than painted to match it. The projection is equirectangular with the east–west axis compressed by cos 42°, so distance on the page is honest. Marks are drawn in canvas; **labels are DOM**, so a screen reader can read them and a student can select them.
+
+Shapes and fill carry the meaning, never colour: **theirs draws solid, ours draws hollow**, which is what a manuscript plan did and which makes the British the solid thing on every page of this game without a word being spent on it.
+
+### Verify before classroom use
+
+- **V-TM.1** Hachuring is in period for the Rochambeau/Berthier corpus (1780–82); the formal *steeper is darker* rule is Lehmann, 1799, just after. We follow the formal rule because it is legible. Small anachronism, stated rather than quietly enjoyed.
+- **V-TM.2** Every mark's two dates. The reported-on dates are of the documented order and the received dates are estimated from known post times. **None is checked against a specific letter, and the entire staleness reading depends on them.** First thing to source.
+- **V-TM.3** The coastline is a hand-drawn approximation at about seventy points. Right to roughly ten miles.
+- **V-TM.4** Act 1's *ships from England* mark — that London papers reaching Virginia over the winter of 1774–75 named three major-generals — is of the documented order (Howe, Burgoyne and Clinton sailed in April 1775) but the specific claim about what colonial readers knew, and when, is not sourced.
+
+### Known limits
+
+Delaware Bay reads as a narrow loop rather than as a bay, because at this scale it is fifteen pixels wide and the shading routine offsets along one normal per run. The Chesapeake is a sliver in the corner. Both are cosmetic and both are on the page rather than hidden.
+
+---
+
 # 8. ACCESSIBILITY
 
 Not a polish pass. These are IEP/504 requirements that determine whether a district can adopt the product at all, and several of them are load-bearing on decisions already made above.

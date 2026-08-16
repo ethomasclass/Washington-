@@ -13,6 +13,7 @@ import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
 import { decisionList, ledgerFor, sceneList } from './content';
 import { reckon, RECKONED_ACTS } from './ledger';
+import { at, BASE, confidenceOf, labelOffset, SHEET_ASPECT, THEATRES } from './theatre';
 import { figureHalfW, frameX } from './ground';
 import { walkFar } from './art';
 import { councilFor, lockOn, rejoinderFor } from './council';
@@ -631,6 +632,100 @@ console.log('\nthe ledger · 08 §3');
   const standalone = causes.filter((c) => /^[A-Z]/.test(c) || c.endsWith('.'));
   check('every cause is a fragment that follows a number',
     standalone.length === 0, standalone.join(' / '));
+}
+
+/*
+ * THE THEATRE MAP.
+ *
+ * The page an act opens on, and the one screen in the game whose entire payload
+ * is a *relationship between two dates*. That makes it unusually easy to break
+ * silently: a wrong received date does not throw, does not look wrong, and
+ * quietly teaches a student that Washington knew something he did not.
+ */
+console.log('\nthe theatre map');
+{
+  const acts = Object.keys(THEATRES).map(Number);
+  check(`every act with built scenes opens on a map (${acts.join(', ')})`,
+    sceneList().every((s) => THEATRES[s.act] !== undefined),
+    sceneList().filter((s) => !THEATRES[s.act]).map((s) => s.id).join(', '));
+
+  for (const act of acts) {
+    const tm = THEATRES[act];
+    // 04 §7.3 sets 4–9 annotations for a map table. A page carries the same
+    // load: below four there is nothing to read, above nine it is an atlas.
+    check(`act ${act}: ${tm.tokens.length} marks, which is a page and not a list`,
+      tm.tokens.length >= 3 && tm.tokens.length <= 9);
+
+    for (const t of tm.tokens) {
+      const where = `act ${act} · ${t.label}`;
+      // The projection is fixed and the sheet is not scrollable, so anything
+      // outside it is simply not on the page.
+      const [x, y] = at(t.lon, t.lat);
+      check(`${where} is on the sheet`, x > 0.01 && x < 0.99 && y > 0.01 && y < 0.99,
+        `${x.toFixed(2)}, ${y.toFixed(2)}`);
+
+      // The whole reading. A report cannot arrive before it is written, and a
+      // report cannot arrive after the day the sheet is drawn.
+      if (t.received) {
+        check(`${where}: reached him after it happened`,
+          Date.parse(t.received) >= Date.parse(t.dated),
+          `${t.dated} → ${t.received}`);
+        check(`${where}: reached him before the sheet was drawn`,
+          Date.parse(t.received) <= Date.parse(tm.asOf),
+          `${t.received} > ${tm.asOf}`);
+      }
+      check(`${where}: he knows it, saw it, or it is openly a rumour`,
+        Boolean(t.received || t.seen || t.known) || /nobody|said to be|do not/i.test(t.note),
+        t.note.slice(0, 50));
+
+      // The label sits beside the mark, in the margin of a page. It is not the
+      // note, and the moment it starts explaining, the map has become a wiki.
+      check(`${where}: the label is a label`, t.label.split(/\s+/).length <= 5);
+    }
+
+    /*
+     * The point of the register, asserted. A sheet on which everything is
+     * certain has no reason to draw confidence at all; a sheet on which nothing
+     * is has stopped being a map and become a mood. Every act's page must show
+     * the player both — something he is looking at, and something he is only
+     * being told.
+     */
+    const conf = tm.tokens.map((t) => confidenceOf(t, tm.asOf));
+    check(`act ${act} has something he can see and something he cannot`,
+      conf.some((k) => k === 'seen' || k === 'certain') &&
+      conf.some((k) => k === 'old' || k === 'stale'),
+      conf.join(', '));
+
+    // The map is the world's register, not the interface's, so its prose is not
+    // word-counted (08 §8.1) — but it must never reach for the vocabulary.
+    const chrome = tm.tokens
+      .filter((t) => /\b(enemy unit|objective|intel|fog of war|strength: )\b/i.test(t.note));
+    check(`act ${act} names things the way he would`, chrome.length === 0,
+      chrome.map((t) => t.label).join(', '));
+  }
+
+  // Labels that land on top of each other are the failure mode this page has,
+  // because four of Act 2's six marks are inside twelve miles of one another.
+  for (const act of acts) {
+    const tm = THEATRES[act];
+    const placed = tm.tokens.map((t) => {
+      const [x, y] = at(t.lon, t.lat);
+      const [dx, dy] = labelOffset(t);
+      // Sheet fractions to base units, which is what the offsets are in.
+      return { t, x: x * BASE + dx, y: (y * BASE) / SHEET_ASPECT + dy };
+    });
+    const clashes: string[] = [];
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        const dx = Math.abs(placed[i].x - placed[j].x);
+        const dy = Math.abs(placed[i].y - placed[j].y);
+        // Roughly a label's height, and half the width of a short one.
+        if (dx < 58 && dy < 17) clashes.push(`${placed[i].t.label} / ${placed[j].t.label}`);
+      }
+    }
+    check(`act ${act}'s labels do not print through each other`, clashes.length === 0,
+      clashes.join('; '));
+  }
 }
 
 console.log('\ntransitions · 02 §8.6');

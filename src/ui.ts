@@ -23,6 +23,10 @@ import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { grainTile, portraitPlate } from './art';
 import { cellStyle, portraitFor } from './portraits';
 import type { LedgerLine, Reckoning } from './ledger';
+import {
+  at, BASE, confidenceOf, labelOffset, longDate, provenanceOf, SHEET_ASPECT, theatreSheet,
+  type Theatre,
+} from './theatre';
 
 /**
  * Lay the paper.
@@ -101,6 +105,89 @@ export const CSS = `
 .sopt.seen { cursor: default; opacity: 0.72; border-style: dashed; }
 .sopt .bear { font-style: italic; }
 .sopt .named { font-variant: small-caps; letter-spacing: 0.04em; }
+
+/*
+ * THE THEATRE MAP — the page that opens an act.
+ *
+ * A sheet of paper on a board, and the CSS's whole job is to make it read as an
+ * object with a size rather than as a screen. It fills the frame because it is
+ * the only thing on the frame: the act has not started, the player has control
+ * of nothing, and for these few seconds they are looking at a map the way the
+ * man looked at maps.
+ *
+ * The markers are drawn in canvas and the LABELS ARE DOM, which is not a
+ * shortcut — a label the browser sets is one a screen reader can read and a
+ * student can select, and 02 §6's rule that type is never textured means the
+ * two layers were always going to be separate anyway.
+ */
+.theatre {
+  position: absolute; inset: 0; z-index: 70; pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px;
+  background: #2A2118;
+}
+/* The board the sheet lies on. Linen over wood, and it is what stops the map
+   floating in a void — a plan is a thing somebody has put down somewhere. */
+.theatre .board {
+  position: relative; padding: 16px;
+  background-color: #4A3D2C;
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px),
+                    repeating-linear-gradient(0deg, rgba(0,0,0,.08) 0 1px, transparent 1px 3px);
+  border: 1px solid #23180F;
+}
+.theatre .sheet { position: relative; display: block; }
+.theatre .sheet canvas { display: block; width: 100%; height: 100%; }
+/* Marker labels. Absolutely placed against the sheet in fractions, so they
+   follow the map at any size and never need a second projection. */
+.theatre .tmark {
+  position: absolute; transform: translate(-50%, -50%);
+  font: italic 13px/1.25 Georgia, "Times New Roman", serif;
+  color: ${INK.FLOOR}; white-space: nowrap; pointer-events: none;
+  /* The border is always there and usually invisible, so picking a mark does
+     not shift the label by a pixel. */
+  padding: 1px 4px; border: 1px solid transparent;
+}
+/* Faint captions for stale marks, matching the ink of the marker they name — a
+   position nobody has confirmed does not get a confident label over it. */
+.theatre .tmark.old { opacity: 0.68; }
+.theatre .tmark.stale { opacity: 0.48; font-style: italic; }
+/* The focused mark: the label gets its line, and nothing else changes. */
+.theatre .tmark.on { opacity: 1; background: ${PAPER.BRIGHT}; border-color: ${INK.SETTLED}; }
+/*
+ * The ring round the focused mark is INK, not chrome — a second canvas laid
+ * over the sheet, cleared and redrawn as the focus moves.
+ *
+ * It began as a div with border-radius: 50%, which the chrome linter caught and
+ * was right to. Not because a circle is wrong here — a plan circles the thing
+ * it is annotating — but because a circle drawn by the CSS box model is a web
+ * element pretending, and this one has to be a pen going round a position on a
+ * map. Two lines of canvas, and it sits in the same ink as everything it is
+ * pointing at.
+ */
+.theatre .ringlayer { position: absolute; inset: 0; pointer-events: none; }
+/* The caption strip. Fixed minimum height so cycling marks never reflows the
+   page — a map that jumps when you read it is a map you stop reading. */
+.theatre .caption {
+  width: 100%; max-width: 900px; min-height: 96px;
+  color: #E4DAC4; font-size: 16px; line-height: 1.5;
+}
+.theatre .caption .head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px solid #6B5B45;
+}
+.theatre .caption .who { font-variant: small-caps; letter-spacing: .09em; font-size: 17px; }
+.theatre .caption .when { font-style: italic; opacity: 0.72; font-size: 14px; }
+.theatre .caption .standing { font-style: italic; opacity: 0.9; }
+/* The provenance line — where this came from and how old it is. It is the whole
+   point of the screen, so it is set apart and never abbreviated. */
+.theatre .caption .from {
+  margin-top: 8px; font-size: 13px; letter-spacing: .03em; color: #B8A98C;
+}
+.theatre .keys {
+  font: 12px/1 ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .08em; color: #B8A98C; opacity: 0.8;
+}
+.theatre .keys b { color: #EFE7D5; font-weight: 600; }
 
 /* The dev scene picker. Plain, out of the way, and obviously a tool. */
 .devtab {
@@ -640,6 +727,149 @@ export class Overlay {
     this.root.appendChild(j);
     this.panel = j;
     this.waitForDismiss(onDone);
+  }
+
+  /**
+   * The theatre map. An act opens on it, and it opens on nothing else.
+   *
+   * The player can move a focus between the marks and read what he knows about
+   * each, and that is the entire interaction. They cannot move a token, cannot
+   * order anything, cannot dismiss a single fact on the page. `04` §7 keeps
+   * DECIDING for the map table; what this does is the other half of the job the
+   * documents already do everywhere else in the game — **reading is not
+   * acting**, and this is the screen that says so at the largest possible size.
+   *
+   * Two things are load-bearing and easy to lose in a later pass:
+   *
+   * The sheet is sized to `SHEET_ASPECT` and never stretched. A map with the
+   * wrong proportions is a map that lies about distance, and distance is the
+   * only thing this page is about.
+   *
+   * The labels are placed in fractions of the sheet, from the same projection
+   * that drew the canvas. There is no second coordinate system to drift out of
+   * step with the first — which is the bug this design exists to not have.
+   */
+  showTheatre(theatre: Theatre, onDone: () => void): void {
+    this.clearPanel();
+
+    const el = document.createElement('div');
+    el.className = 'theatre';
+
+    // Fit the sheet inside the frame at its true proportions, leaving room for
+    // the caption strip and the key line under it.
+    // The caption strip is fixed at 96px and the key line and gaps take another
+    // ~90; leaving less than that pushed the provenance line under the keys,
+    // which put the one thing this screen exists to say behind a control hint.
+    const availW = Math.min(innerWidth - 96, 1180);
+    const availH = innerHeight - 280;
+    let sw = availW;
+    let sh = sw / SHEET_ASPECT;
+    if (sh > availH) {
+      sh = availH;
+      sw = sh * SHEET_ASPECT;
+    }
+
+    const board = document.createElement('div');
+    board.className = 'board';
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet';
+    sheet.style.width = `${Math.round(sw)}px`;
+    sheet.style.height = `${Math.round(sh)}px`;
+    // Drawn at 1.6× and shown down, which is the cheapest anti-aliasing there
+    // is and it matters here: this page is nothing but hairlines.
+    sheet.appendChild(theatreSheet(theatre, Math.round(sw * 1.6), Math.round(sh * 1.6)));
+
+    const ring = document.createElement('canvas');
+    ring.className = 'ringlayer';
+    ring.width = Math.round(sw);
+    ring.height = Math.round(sh);
+    ring.style.width = `${Math.round(sw)}px`;
+    ring.style.height = `${Math.round(sh)}px`;
+    const rc = ring.getContext('2d')!;
+    sheet.appendChild(ring);
+
+    const marks = theatre.tokens.map((t) => {
+      const [fx, fy] = at(t.lon, t.lat);
+      const conf = confidenceOf(t, theatre.asOf);
+      const m = document.createElement('div');
+      m.className = `tmark ${conf}`;
+      m.textContent = t.label;
+      // Off the marker by the offset the sheet drew the leader line to, scaled
+      // out of base units — one set of numbers for the ink and the type both,
+      // so a label can never drift off the end of its own leader.
+      const [dx, dy] = labelOffset(t);
+      const s = sw / BASE;
+      m.style.left = `calc(${(fx * 100).toFixed(3)}% + ${(dx * s).toFixed(1)}px)`;
+      m.style.top = `calc(${(fy * 100).toFixed(3)}% + ${(dy * s).toFixed(1)}px)`;
+      sheet.appendChild(m);
+      return m;
+    });
+
+    board.appendChild(sheet);
+
+    const caption = document.createElement('div');
+    caption.className = 'caption';
+    const keys = document.createElement('div');
+    keys.className = 'keys';
+    keys.innerHTML =
+      '<b>← →</b> read the marks · <b>Space</b> to go on';
+
+    el.append(board, caption, keys);
+    this.root.appendChild(el);
+    this.panel = el;
+
+    // -1 is the sheet itself: the act's standing, before any mark is chosen.
+    let focus = -1;
+    const draw = (): void => {
+      marks.forEach((m, i) => m.classList.toggle('on', i === focus));
+      rc.clearRect(0, 0, ring.width, ring.height);
+      if (focus < 0) {
+        caption.innerHTML =
+          '<div class="head">' +
+          `<span class="who">${theatre.title}</span>` +
+          `<span class="when">as it stood, ${longDate(theatre.asOf)}</span></div>` +
+          `<div class="standing">${theatre.standing}</div>`;
+        return;
+      }
+      const t = theatre.tokens[focus];
+      const [fx, fy] = at(t.lon, t.lat);
+      // Drawn twice at slightly different radii, the way a hand goes round
+      // twice when it wants a thing found again later.
+      rc.strokeStyle = INK.SETTLED;
+      rc.lineWidth = 1;
+      for (const [r, a] of [[22, 0.85], [25.5, 0.4]] as [number, number][]) {
+        rc.globalAlpha = a;
+        rc.beginPath();
+        rc.arc(fx * ring.width, fy * ring.height, r, 0, Math.PI * 2);
+        rc.stroke();
+      }
+      rc.globalAlpha = 1;
+      caption.innerHTML =
+        '<div class="head">' +
+        `<span class="who">${t.label}</span>` +
+        `<span class="when">${focus + 1} of ${theatre.tokens.length}</span></div>` +
+        `<div class="note">${t.note}</div>` +
+        `<div class="from">${provenanceOf(t, theatre.asOf)}</div>`;
+    };
+    draw();
+
+    this.detach();
+    this.keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'Tab') {
+        e.preventDefault();
+        focus = focus + 1 >= theatre.tokens.length ? -1 : focus + 1;
+        draw();
+      } else if (e.key === 'ArrowLeft' || e.key === 'a') {
+        e.preventDefault();
+        focus = focus - 1 < -1 ? theatre.tokens.length - 1 : focus - 1;
+        draw();
+      } else if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        this.clearPanel();
+        onDone();
+      }
+    };
+    addEventListener('keydown', this.keyHandler);
   }
 
   /**

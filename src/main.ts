@@ -16,6 +16,7 @@ import { DioramaRenderer, type GroundPos } from './renderer';
 import { setPlateLight } from './art';
 import { FIRST_SCENE, SCENES, ledgerFor, type Decision, type NpcThread, type Scene } from './content';
 import { reckon } from './ledger';
+import { THEATRES } from './theatre';
 import { CSS, mountSheet, Overlay, type OptionView } from './ui';
 import { SCENE_ORDER } from './scene-order';
 import type { VoiceId } from './palette';
@@ -677,13 +678,21 @@ function loadScene(id: string): void {
   refreshIntent();
 
   busy = true;
+  openAct(scene.act, () => arrive(scene));
+}
+
+/**
+ * The arrival card. Where, when, what has happened, what he is here to do.
+ */
+function arrive(sc: Scene): void {
+  busy = true;
   overlay.showOpening(
     {
-      where: scene.where,
-      when: scene.when,
-      situation: scene.situation,
-      objectives: scene.objectives,
-      opening: scene.opening,
+      where: sc.where,
+      when: sc.when,
+      situation: sc.situation,
+      objectives: sc.objectives,
+      opening: sc.opening,
     },
     () => {
       busy = false;
@@ -691,26 +700,45 @@ function loadScene(id: string): void {
   );
 }
 
+/**
+ * The theatre map, once per act, before anything else.
+ *
+ * The ORDER is the argument and it is worth stating: the war, then the errand.
+ * A student sees four hundred miles of coast with six marks on it, most of them
+ * nothing to do with them and one of them eight weeks old, and only then are
+ * they told which hill they are standing on this morning. Reverse those two and
+ * the map becomes a decoration on a briefing; in this order the briefing is a
+ * detail of the map.
+ *
+ * Once per act, tracked here rather than in `state`, because it is a thing this
+ * session has shown and not a thing the player has done — it has no business in
+ * the passport, and a student resuming mid-act should not sit through it twice.
+ */
+let theatreAct = -1;
+
+function openAct(act: number, then: () => void): void {
+  const sheet = THEATRES[act];
+  if (theatreAct === act || !sheet) {
+    then();
+    return;
+  }
+  theatreAct = act;
+  overlay.showTheatre(sheet, then);
+}
+
 refreshCode();
 refreshIntent();
 requestAnimationFrame(frame);
 
-// The arrival card runs once per fresh start. A student resuming on a new
-// Chromebook next period should not sit through the scene-setting again.
-if (!resumed) {
+// The map and the arrival card run once per fresh start. A student resuming on
+// a new Chromebook next period should not sit through the scene-setting again —
+// and marking the act as shown is what stops the map arriving one scene late,
+// the first time they cross a threshold inside the act they resumed into.
+if (resumed) {
+  theatreAct = state.act;
+} else {
   busy = true;
-  overlay.showOpening(
-    {
-      where: scene.where,
-      when: scene.when,
-      situation: scene.situation,
-      objectives: scene.objectives,
-      opening: scene.opening,
-    },
-    () => {
-      busy = false;
-    },
-  );
+  openAct(scene.act, () => arrive(scene));
 }
 
 

@@ -1,0 +1,244 @@
+READY-figures-spritesheet-v1.txt — the walking figures.
+Asset ids: gl_xx_fg_wash_front_v01 / _side_ / _back_ , gl_xx_fg_npc_sheet1_v01
+
+Assembled in the fixed order of 03b §0.2:
+  [SUBJECT] [char-style-block-oil-v1] [FRAMING-FIGURE] [negative-oil-v1]
+
+The negative list goes in EVERY call (09 §6). No exceptions, no abbreviating.
+
+=============================================================== WHAT THE ENGINE WANTS
+
+These numbers are not preferences. They are read straight out of the code, and
+art that misses them cannot be dropped in without being re-cut.
+
+FACINGS — THREE, NOT FOUR OR EIGHT.
+  front, side, back.
+  The engine mirrors the side cycle on the x axis to walk the other way
+  (renderer.ts setFacing/setPlayerPos: `this.player.scale.x = -scale.x`), so a
+  right-facing set is not merely unnecessary, it is WRONG to supply — two
+  different drawings of the same man walking opposite ways will read as a
+  costume change every time he turns round.
+  Draw the side cycle FACING FRAME-LEFT. That is the direction the engine
+  assumes and mirrors from.
+
+FRAMES — NINE PER FACING.
+  Cell 1 is the idle stand. Cells 2-9 are one complete walk cycle, eight evenly
+  spaced phases, cell 9 leading back into cell 2 without a jump.
+  (art.ts washingtonFrames: `[washington(facing, -1), ...8 phases]`.)
+  The gait is advanced by DISTANCE WALKED, not by time, so the cycle has to be
+  even: an eight-frame cycle with two lazy frames in it will visibly limp.
+
+PROPORTION — 0.46 WIDE TO 1 TALL.
+  ground.ts FIGURE_ASPECT = 0.46. The cell is that ratio, and the figure is
+  drawn to fill it. A figure drawn squarer than this gets squeezed.
+
+SILHOUETTE — READ AT EIGHTY PIXELS.
+  In play a man is about eighty pixels tall and moving. The hat, the coat flare
+  and the stance carry the whole character; a face costs nothing and returns
+  nothing. STATE.md's standing note applies: everything opaque, no translucency
+  anywhere in a figure.
+
+BACKGROUND — MUST COME OUT.
+  Figures are billboarded cutouts composited over the painted plates
+  (`transparent: true` textures), so the background has to be removable
+  cleanly. Generate on a FLAT, EVEN, UNIFORM field of dirty grey-green
+  (#6E6A57 or near) with no scenery, no vignette, no cast shadow on the ground,
+  and no gradient — then key it out in post.
+
+  THE ONE REAL TENSION WITH 09. The medium spec wants at least one major edge
+  lost into the ground. A cutout cannot lose its outer edge — key it out and a
+  lost edge becomes a hole in the man. So the rule is amended for figures only,
+  and only here: LOSE EDGES INSIDE THE FIGURE — the shadow side of the coat
+  into the breeches, the hat brim into the hair — and keep the OUTER SILHOUETTE
+  closed and readable the whole way round. Nothing else in 09 is relaxed.
+
+SHEET — 3 x 3, ONE FACING PER SHEET.
+  Following the production guide's prop-sheet precedent: one 1536 x 1536
+  generation, nine cells, read left to right and top to bottom. Nine cells is
+  exactly idle-plus-eight, so a facing is one generation and the three facings
+  share light, palette, ink weight and paper because each sheet is internally
+  consistent.
+
+  Cell order:      1 2 3        1 = idle
+                   4 5 6        2..9 = walk phases in order
+                   7 8 9
+
+  In every cell: the figure is centred left to right, the FEET SIT ON A COMMON
+  BASELINE at the same height in every cell, the head has the same clearance
+  above it in every cell, and the figure is the same height in every cell. The
+  man must not grow, shrink or drift up and down the cell between frames — that
+  is the single most common way a generated sheet becomes unusable.
+  No grid lines, no numbers, no labels, no captions drawn on the sheet.
+
+=============================================================== ORDER OF WORK
+
+Generating nine consistent frames of the same man in one shot is the hard part,
+and no model does it reliably from text alone. Do it in this order:
+
+  1. THE LOCK. One image, one figure, full length, standing: Washington front
+     on. This is the character reference and nothing else is generated until it
+     is right. Judge it against the acceptance list at the foot of this file.
+  2. THE OTHER TWO STANDS. Side and back, generated WITH THE LOCK AS AN IMAGE
+     REFERENCE, not from the text alone.
+  3. THE CYCLES. One 3x3 sheet per facing, each generated with its own stand as
+     the image reference, and with the instruction that the costume, build,
+     palette and light are identical in all nine cells and only the legs, arms
+     and coat-skirt move.
+  4. THE NPC SHEET. Nine different people, one sheet, standing only.
+
+If a model will not hold the character across nine cells, fall back to three
+cells per generation (contact, passing, contact) and interpolate the rest in
+post — the cycle is symmetrical, so five drawn phases give eight usable frames.
+
+=============================================================== SHEET A — WASHINGTON, THE LOCK
+
+SUBJECT:
+A single full-length figure of George Washington in June 1775, aged
+forty-three, standing at ease and facing the viewer square on. He is
+extraordinarily tall for the period and built long — six foot two, wide in the
+shoulder, narrow in the hip, with big hands and large feet, and he stands
+absolutely straight without stiffness, a man who has been the tallest person in
+every room of his life and is used to it. He wears the buff-and-blue uniform he
+chose himself: a dark blue broadcloth coat cut away at the front with buff
+facings, buff lapels turned back, deep buff cuffs, and plain gilt buttons; a
+buff waistcoat; buff breeches; white stockings; black leather shoes with plain
+buckles. A plain white linen stock at the throat and a small white ruffle at the
+breast. His own hair, unpowdered, dressed back from the forehead and clubbed at
+the nape with a black ribbon. A plain small-sword hangs at his left hip. His
+expression is closed, watchful and entirely without warmth.
+He wears a plain black cocked hat, worn square, with no plume, no lace and no
+cockade.
+
+  HAT NOTE — decide before generating, then keep it. STATE.md's rough-edge list
+  says he is bareheaded in the current reference and that a hat is a much
+  stronger silhouette at eighty pixels, which is the size that matters. This
+  prompt therefore hats him. If the hat is dropped, drop it in ALL nine cells of
+  ALL three facings and in the Act 2 riband variant too.
+
+  ACT 2 VARIANT — the same figure with a broad LIGHT BLUE silk riband worn
+  across the breast from the right shoulder to the left hip, over the coat. He
+  adopted it at Cambridge to be identifiable as commander-in-chief. Generate it
+  as a separate pass from the same lock so the two states are the same man.
+
+[char-style-block-oil-v1 — verbatim]
+
+FRAMING-FIGURE:
+The whole figure, head to feet, with the feet on the lower edge of the picture
+and clear space above the head. Straight-on eye level, no upward camera, no
+low heroic angle, no perspective distortion. The figure is centred and fills
+the height of the frame. Nothing else in the picture: no ground plane, no
+horizon, no cast shadow, no props, no scenery. A flat even field of dirty
+grey-green behind, worked with the same brush, edge to edge, with no vignette
+and no gradient. The outer silhouette of the figure stays closed and readable
+all the way round; edges are lost only inside the figure.
+
+[negative-oil-v1 — verbatim, plus these, which matter for figures]
+  ADDITIONAL NEGATIVE: contrapposto, heroic stance, hand outstretched,
+  pointing, sword drawn, on horseback, cape, cloak, epaulettes on both
+  shoulders, sash over the wrong shoulder, dark blue riband, gold braid,
+  grinning, teeth, wooden teeth, cropped feet, cropped hat, cast shadow,
+  ground shadow, drop shadow, floor, horizon line, vignette, gradient
+  background, multiple figures, duplicate limbs, extra arms, extra legs
+
+=============================================================== SHEET B — A WALK CYCLE
+
+Run three times, once per facing, each with its own stand as image reference.
+
+SUBJECT:
+A sheet of nine studies of the same single figure in a three by three grid, at
+identical scale, under identical light, in identical dress, with clear space
+around each and no overlap. The man is [ THE LOCK DESCRIPTION, IN FULL ].
+
+Cell 1: standing at ease, weight even, arms at his sides.
+Cells 2 to 9: one complete walking cycle in eight even phases —
+  2 left heel strikes, weight forward, right arm forward
+  3 weight rolls onto the left foot, right leg swinging through
+  4 passing position, legs together, body at its highest
+  5 right leg reaching forward, left heel lifting
+  6 right heel strikes, weight forward, left arm forward
+  7 weight rolls onto the right foot, left leg swinging through
+  8 passing position again, the opposite leg leading
+  9 left leg reaching forward, carrying back into cell 2 without a jump
+The coat skirt swings behind the leading leg and settles at the passing
+positions. The body rises at the passing positions and drops at each heel
+strike. Nothing else changes between cells: same costume, same colours, same
+light, same build, same height, same hat.
+
+FACING — use exactly one of these lines:
+  FRONT: the figure faces the viewer square on and walks toward the viewer.
+  SIDE:  the figure is in true profile FACING FRAME-LEFT and walks to frame
+         left. The far arm and far leg are visible and are painted a value
+         darker than the near ones.
+  BACK:  the figure is seen from directly behind and walks away from the
+         viewer. The face is not visible at all.
+
+[char-style-block-oil-v1] [FRAMING-FIGURE, with: nine cells, each figure's feet
+on a common baseline, identical height in every cell] [negative-oil-v1 + the
+figure additions]
+
+=============================================================== SHEET C — THE NPCs
+
+One 1536 x 1536 sheet, three by three, nine different people, standing only —
+the engine varies pose procedurally and only needs their stands.
+
+SUBJECT:
+A sheet of nine full-length figure studies in a three by three grid, nine
+different men of the American camp before Boston in 1775, at identical scale,
+under identical light, each standing plainly with clear space around it and no
+overlap. No two are alike in build, height, age, colouring or dress. None of
+them is in a uniform: this is an army that has not been issued anything.
+
+  1 a New England farmer of fifty in a homespun drab coat and a round felt hat,
+    heavy through the shoulders, worn boots
+  2 a boy of seventeen, thin, in a coat plainly cut down from his father's, no
+    hat, hair loose
+  3 a Virginia rifleman in a fringed linen hunting shirt to mid-thigh, a
+    leather belt, leggings, a round hat, lean and long-limbed
+  4 a Rhode Island private in the nearest thing to uniform on the sheet, a
+    brown coat with facings that nearly match his neighbour's, a cocked hat
+  5 a sergeant of forty, thickset, in a good russet coat, a cocked hat worn
+    square, a halberd grounded at his side
+  6 a labourer stripped to shirt and waistcoat with the sleeves rolled, no
+    coat, no hat, forearms burned to the elbow
+  7 an officer of the Massachusetts line in a blue coat with red facings, a
+    cocked hat, a small-sword, thirty and pleased with himself
+  8 a wagoner in a long drab overcoat and a broad round hat, older, stooped
+  9 a free Black soldier of the Massachusetts line — men served in these
+    regiments from Lexington onward — a plain brown coat, a round hat, a
+    musket grounded, thirty, upright and unremarkable in exactly the way the
+    other eight are unremarkable
+
+[char-style-block-oil-v1] [FRAMING-FIGURE, nine cells, common baseline]
+[negative-oil-v1 + the figure additions]
+
+  Cell 9 is not decoration and is not a modern insertion. Free Black men served
+  in the New England regiments from the first day. Drawn plainly, at the same
+  scale and with the same lack of ceremony as the other eight, it teaches by
+  being unremarkable — which is the register the whole project works in.
+
+=============================================================== DROPPING IT IN
+
+1. Key out the grey-green field. Keep the outer silhouette closed; check at
+   100% that no limb has been eaten.
+2. Cut on the cell grid. Trim every cell to the SAME box — do not crop each
+   figure to its own bounds, or the man will jitter as the cycle plays.
+3. Save as public/figures/<asset id>.webp
+4. The engine currently draws these procedurally in art.ts (washington(),
+   characterCutout()). Consuming a sheet needs a loader that slices the grid and
+   hands the renderer nine textures per facing, exactly as washingtonFrames()
+   returns today — same shape, different source. That is a small piece of
+   engine work and is not yet written.
+
+============================================== ACCEPTANCE (09 §7, plus figures)
+
+1. Is there a lost edge INSIDE the figure — and is the outer silhouette closed?
+2. Does the mid-toned ground show through in the thin passages?
+3. Three or four saturated accents. Count them. Not zero, not everywhere.
+4. Are the shadows coloured and transparent rather than neutral black?
+5. Could this be a nineteenth-century history painting? If yes, reject.
+6. Is it true? Buff and blue, no epaulettes on both shoulders in 1775, no
+   powdered wig, own hair clubbed, no beard, feet not cropped.
+7. Squint until it is eighty pixels tall. Is it still a person, and still THAT
+   person? If it is a smudge, the silhouette has failed and the drawing does
+   not matter.
+8. Flip cell 9 to cell 2. Does the cycle close without a jump?

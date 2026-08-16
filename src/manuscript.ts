@@ -27,7 +27,7 @@
  * and the darkest value in the picture is the ink of the line.
  */
 
-import { HORIZON, OVERSCAN, VIEW_H } from './ground';
+import { figureAtPlateY, HORIZON, OVERSCAN, VIEW_H } from './ground';
 
 type Ctx = CanvasRenderingContext2D;
 type Pt = [number, number];
@@ -697,10 +697,18 @@ function campSkyPlate(W: number, H: number): HTMLCanvasElement {
     shape(x, [[bx, hz - bh], [bx + bw, hz - bh], [bx + bw, hz], [bx, hz]], C.stone, rnd, 1.3);
     shape(x, [[bx - 2, hz - bh], [bx + bw / 2, hz - bh - 8], [bx + bw + 2, hz - bh]], C.roof, rnd, 1.2);
   }
+  /*
+   * The steeples, standing ON the shoreline rather than above it.
+   *
+   * They were drawn from hz-48 up to hz-20 — a base twenty pixels clear of the
+   * line every house in the town stands on — so the whole skyline hovered. In a
+   * flat style there is no ground plane to catch the error: if a thing does not
+   * touch the line it is standing on, it simply floats.
+   */
   for (const sx of [0.45, 0.61, 0.77]) {
     const px = W * sx;
-    shape(x, [[px - 5, hz - 20], [px + 5, hz - 20], [px + 3, hz - 48], [px - 3, hz - 48]], C.stone, rnd, 1.3);
-    shape(x, [[px - 4, hz - 48], [px, hz - 70], [px + 4, hz - 48]], C.roofShade, rnd, 1.2);
+    shape(x, [[px - 5, hz], [px + 5, hz], [px + 3, hz - 46], [px - 3, hz - 46]], C.stone, rnd, 1.3);
+    shape(x, [[px - 4, hz - 46], [px, hz - 70], [px + 4, hz - 46]], C.roofShade, rnd, 1.2);
   }
 
   // The water, with chop ticks.
@@ -716,7 +724,22 @@ function campSkyPlate(W: number, H: number): HTMLCanvasElement {
   return c;
 }
 
-/** L2 — the ground the player walks, and everything standing on it. */
+/**
+ * L2 — the ground the player walks, and everything standing on it.
+ *
+ * EVERYTHING HERE IS SIZED IN MAN-HEIGHTS, via `figureAtPlateY`, and none of it
+ * is sized by eye. `STATE.md` warns about this in as many words — *"a wedge
+ * tent's ridge is about a man's height. Sizing by eye produced a camp of tents a
+ * third of a man tall that read as kennels"* — and the first version of this
+ * scene reproduced the documented bug exactly: tents at 0.22 to 0.37 of a man,
+ * a two-storey house at 1.1, barrels at a fifth of the men standing beside them.
+ *
+ * The reason it is so easy to get wrong is that a drawn scene has no
+ * perspective cues of its own to argue with you. A painted plate with aerial
+ * haze and a receding ground at least *looks* wrong when the scale slips. Flat
+ * colour inside a contour looks perfectly fine at any size, right up until a
+ * figure walks past it.
+ */
 function campGroundPlate(W: number, H: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = W;
@@ -724,6 +747,8 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
   const x = c.getContext('2d')!;
   const rnd = mulberry(50881);
   const hz = plateHorizon(H);
+  /** How tall a standing man is, in plate pixels, at this row. The unit. */
+  const man = (y: number): number => figureAtPlateY(y, H);
 
   const rolls: Pt[][] = [];
   const rollAt = (y: number, amp: number, colour: string) => {
@@ -737,16 +762,15 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
   rollAt(hz + 300, 26, C.grassDark);
   rolls.forEach((r, i) => grassLay(x, r, rnd, 150 + i * 75, 0.55 - i * 0.1, 12 + i * 7));
 
-  // The track: narrow and wandering. A straight one reads as a road in
-  // perspective, and the street has to stay clear because it is where the
-  // player walks.
+  // The track: narrow, wandering, and left clear because it is where the player
+  // walks. A straight one reads as a road in perspective.
   const trackL: Pt[] = [];
   const trackR: Pt[] = [];
   for (let i = 0; i <= 10; i++) {
     const t = i / 10;
     const y = H - t * (H - hz - 46);
     const mid = W * (0.47 + Math.sin(t * 2.4) * 0.07 - t * 0.02);
-    const half = (1 - t) * W * 0.055 + W * 0.008;
+    const half = (1 - t) * W * 0.05 + W * 0.008;
     trackL.push([mid - half, y]);
     trackR.push([mid + half, y]);
   }
@@ -759,12 +783,41 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     }
   });
 
-  house(x, W * 0.055, hz + 92, W * 0.17, H * 0.145, rnd);
+  /*
+   * The Vassall house: two full storeys and a roof, so about two and a half
+   * men to the eaves. It was 1.1 — the height of a man and a hat — which is a
+   * shed.
+   */
+  {
+    const baseY = hz + 132;
+    const h = man(baseY) * 2.4;
+    house(x, W * 0.075, baseY - h, h * 1.75, h, rnd);
+  }
 
+  /*
+   * Greene's tents. A wedge tent's ridge is a man's height, and a man can stand
+   * up in the middle of it — which is the whole reason a regiment with tents
+   * looks like an army and a regiment in brush piles does not.
+   */
+  for (let row = 0; row < 3; row++) {
+    const base = hz + 130 + row * row * 78 + row * 96;
+    if (base > H + 60) continue;
+    const m = man(base);
+    const w = m * 0.72; // ridge = w * 1.35 ≈ one man
+    for (let i = 0; i < 3; i++) {
+      const px = W * 0.70 + i * w * 3.4 + row * w * 0.9 - row * W * 0.02;
+      if (px - w * 1.6 > W) continue;
+      tent(x, px, base, w, rnd);
+    }
+  }
+
+  // Brush shelters near left: a man crawls into one, so a little under his
+  // height, and they are lumpy where the tents are regular.
   for (let i = 0; i < 3; i++) {
-    const bx = W * 0.05 + i * W * 0.082;
-    const by = hz + 320 + i * 46;
-    const s = 44 + i * 13;
+    const by = hz + 240 + i * 72;
+    const m = man(by);
+    const s = m * 1.05;
+    const bx = W * 0.015 + i * W * 0.085;
     const hut: Pt[] = [[bx, by], [bx + s * 0.28, by - s * 0.7], [bx + s * 0.9, by - s * 0.6], [bx + s * 1.2, by]];
     shape(x, hut, C.timberShade, rnd, 2);
     inside(x, hut, () => {
@@ -772,40 +825,66 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     });
   }
 
-  for (let row = 0; row < 3; row++) {
-    const base = hz + 150 + row * row * 52 + row * 60;
-    const w = 22 + row * 10;
-    for (let i = 0; i < 4 - Math.floor(row / 2); i++) {
-      tent(x, W * (0.66 + i * 0.085) + row * 16, base, w, rnd);
-    }
+  // The colours at the tent lines: a pole about two men tall.
+  {
+    const fy = hz + 150;
+    const m = man(fy);
+    const fx = W * 0.63;
+    pen(x, [[fx, fy], [fx, fy - m * 2]], rnd, 2.6);
+    shape(x, [[fx, fy - m * 2], [fx + m * 0.9, fy - m * 1.85],
+              [fx + m * 0.9, fy - m * 1.3], [fx, fy - m * 1.4]], C.flag, rnd, 1.8);
   }
 
-  const fx = W * 0.635;
-  const fy = hz + 120;
-  pen(x, [[fx, fy + 70], [fx, fy - 32]], rnd, 2.3);
-  shape(x, [[fx, fy - 32], [fx + 44, fy - 26], [fx + 44, fy - 2], [fx, fy - 6]], C.flag, rnd, 1.8);
+  // Camp business by the track, all of it man-relative.
+  {
+    const fy = hz + 232;
+    fire(x, W * 0.655, fy, man(fy) * 0.5, rnd);
+    barrel(x, W * 0.70, hz + 250, man(hz + 250) * 0.55, rnd);
+    barrel(x, W * 0.725, hz + 276, man(hz + 276) * 0.55, rnd);
+  }
 
-  fire(x, W * 0.585, hz + 300, 36, rnd);
-  barrel(x, W * 0.55, hz + 330, 36, rnd);
+  /*
+   * Trees. A mature tree beside a two-storey house is four or five times a
+   * man; at two, which is what these were, they read as saplings and they made
+   * the house look enormous by comparison, which was the one thing keeping the
+   * scale error hidden.
+   */
+  for (const [tx, ty, k] of [[W * 0.30, hz + 150, 4.6], [W * 0.40, hz + 128, 3.6], [W * 0.955, hz + 230, 5.2]] as const) {
+    tree(x, tx, ty, man(ty) * k, rnd);
+  }
 
-  tree(x, W * 0.30, hz + 190, 210, rnd);
-  tree(x, W * 0.395, hz + 168, 150, rnd);
-  tree(x, W * 0.945, hz + 250, 240, rnd);
-
+  // Shrubs, waist to shoulder high.
   for (let i = 0; i < 22; i++) {
     const t = rnd();
     const by = hz + 90 + t * (H - hz - 260);
     const bx = rnd() * W;
     if (bx > W * 0.36 && bx < W * 0.6 && by > hz + 200) continue;
-    bush(x, bx, by, 12 + t * 26, rnd, rnd() < 0.4 ? C.leafShade : C.leaf);
+    bush(x, bx, by, man(by) * (0.2 + rnd() * 0.22), rnd, rnd() < 0.4 ? C.leafShade : C.leaf);
   }
 
-  for (let i = 0; i < 5; i++) beast(x, W * (0.06 + rnd() * 0.22), hz + 70 + rnd() * 40, 7 + rnd() * 4, rnd);
-  for (let i = 0; i < 4; i++) {
-    const px = W * (0.62 + rnd() * 0.3);
-    const py = hz + 96 + rnd() * 40;
-    shape(x, [[px - 4, py], [px - 3, py - 13], [px + 3, py - 13], [px + 4, py]], C.timberShade, rnd, 1.2);
-    shape(x, [[px - 3, py - 13], [px + 3, py - 13], [px + 2, py - 19], [px - 2, py - 19]], C.canvasShade, rnd, 1.1);
+  // Sheep on the far roll — about a third of a man at the shoulder.
+  for (let i = 0; i < 5; i++) {
+    const by = hz + 70 + rnd() * 40;
+    beast(x, W * (0.06 + rnd() * 0.22), by, man(by) * 0.3, rnd);
+  }
+
+  /*
+   * Distant men at the tent lines, painted into the plate.
+   *
+   * Permitted because at this depth they are one form and not a hundred
+   * figures — 03a's rule — and they are the only thing that states the scale of
+   * the tents beyond argument. They are drawn at exactly one man-height, which
+   * is what makes the tents behind them read as tents.
+   */
+  for (let i = 0; i < 5; i++) {
+    const px = W * (0.60 + rnd() * 0.34);
+    const py = hz + 120 + rnd() * 70;
+    const m = man(py);
+    shape(x, [[px - m * 0.15, py], [px - m * 0.13, py - m * 0.62],
+              [px + m * 0.13, py - m * 0.62], [px + m * 0.15, py]], C.timberShade, rnd, 1.3);
+    shape(x, [[px - m * 0.11, py - m * 0.62], [px + m * 0.11, py - m * 0.62],
+              [px + m * 0.08, py - m * 0.86], [px - m * 0.08, py - m * 0.86]], C.canvasShade, rnd, 1.2);
+    pen(x, [[px - m * 0.16, py - m * 0.86], [px + m * 0.16, py - m * 0.86]], rnd, 1.4);
   }
   return c;
 }

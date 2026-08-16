@@ -20,6 +20,7 @@
  * the Mount Vernon thread.
  */
 
+import { at } from '../types';
 import type { Ambient, Business, Interactable, NpcThread, Scene, Task } from '../types';
 
 const GREENE = { portraitSeed: 606, coat: '#4B5645' };
@@ -114,10 +115,40 @@ export const CB01: Scene = {
   settled: 'The camp knows what it is going to know. The rest is paperwork.',
   allTasksFlag: 'obs.a2.orders_issued',
 
+  /*
+   * THE CAMP, STAGED.
+   *
+   * Slip-stage (02 §5.3): one recession running from the near left to the far
+   * right — the camp street — with the mess fire at the near end of it, the
+   * quartermaster's trestle where the street opens out, the arms and Greene
+   * beyond that, and the lane to headquarters at the top. Two stations sit off
+   * the street: the brush shelters on the left, which is where nine thousand
+   * men actually live, and the water, which is what the whole siege is about.
+   *
+   * The focal station is the trestle (§5.4), standing on the left third. It is
+   * the right one because the scene's argument is administrative — the army is
+   * counted and ordered into existence at that table, or it is not — and
+   * because Washington's first errand walks him to it.
+   *
+   * Reading the walk: he lands in the street between the fire and the trestle,
+   * and every station is inside three seconds of him. Nothing here requires a
+   * march to reach, which is R9's eight-second rule with a great deal of room
+   * to spare.
+   */
+  stations: [
+    { id: 'mess', label: 'a mess fire at the near end of the street', x: 0.15, z: 0.20, surface: 'fire' },
+    { id: 'trestle', label: "the quartermaster's trestle", x: 0.36, z: 0.36, surface: 'table', focal: true },
+    { id: 'shelters', label: 'the brush shelters', x: 0.17, z: 0.64, surface: 'stack' },
+    { id: 'landing', label: 'the ground falling away to the water', x: 0.45, z: 0.72, surface: 'open' },
+    { id: 'arms', label: 'the arms stacked by the guard', x: 0.62, z: 0.24, surface: 'stack' },
+    { id: 'rhodeisland', label: 'the Rhode Island tent line', x: 0.72, z: 0.72, surface: 'stack' },
+    { id: 'hq', label: 'the head of the lane to headquarters', x: 0.84, z: 0.44, surface: 'table' },
+  ],
+
   ambient: [
     {
       id: 'amb2.tents',
-      x: 0.865, z: 0.58, r: 0.11, minLoudness: 0.34,
+      ...at('rhodeisland'), r: 0.11, minLoudness: 0.34,
       variants: {
         restraint: 'One regiment in ordered rows, and nine thousand men in brush piles. Start there.',
         duty: 'Those rows are a colonel who read his orders. Find out his name before you find out anyone else\u2019s.',
@@ -126,7 +157,7 @@ export const CB01: Scene = {
     },
     {
       id: 'amb2.shelters',
-      x: 0.22, z: 0.60, r: 0.11, minLoudness: 0.30,
+      ...at('shelters'), r: 0.11, minLoudness: 0.30,
       variants: {
         temper: 'They elected their officers. Their officers shave them for sixpence and call it discipline.',
         duty: 'An officer his men can vote out is not an officer. Say so in orders, once, and mean it.',
@@ -135,7 +166,7 @@ export const CB01: Scene = {
     },
     {
       id: 'amb2.boston',
-      x: 0.50, z: 0.78, r: 0.11, minLoudness: 0.32,
+      ...at('landing'), r: 0.11, minLoudness: 0.32,
       variants: {
         ambition: 'Howe has six thousand regulars in that town and no notion of what you do not have.',
         restraint: 'He is fed by sea and you cannot reach the sea. Nothing you do to that town matters until that changes.',
@@ -144,7 +175,7 @@ export const CB01: Scene = {
     },
     {
       id: 'amb2.kettle',
-      x: 0.36, z: 0.20, r: 0.10, minLoudness: 0.32,
+      ...at('mess'), r: 0.10, minLoudness: 0.32,
       variants: {
         duty: 'Eight men to a kettle, and the kettle is theirs, not yours. Nothing here belongs to the army.',
         restraint: 'Men who own their own kettle will carry it home in December, and the mess with it.',
@@ -153,7 +184,7 @@ export const CB01: Scene = {
     },
     {
       id: 'amb2.necessary',
-      x: 0.66, z: 0.17, r: 0.10, minLoudness: 0.30,
+      ...at('trestle'), r: 0.10, minLoudness: 0.30,
       variants: {
         vanity: 'You are a general officer of the united colonies, legislating where men may relieve themselves.',
         duty: 'It goes in general orders because everything goes in general orders. That is what the book is.',
@@ -166,7 +197,7 @@ export const CB01: Scene = {
     {
       id: 't2.orders',
       label: 'issue the general orders',
-      x: 0.13, z: 0.17,
+      ...at('trestle'),
       done:
         'Against profane cursing and swearing, which is a vice hitherto little known in an ' +
         'American army. Against firing a musket merely to learn whether it still fires. And on ' +
@@ -178,7 +209,7 @@ export const CB01: Scene = {
     {
       id: 't2.rounds',
       label: 'walk the shelter lines',
-      x: 0.225, z: 0.15,
+      ...at('shelters'),
       done:
         'Boards, sailcloth, board and sailcloth mixed, stone and turf, birch, brush. Emerson ' +
         'was right: every shelter is a portrait of the regiment that built it, and none of ' +
@@ -190,7 +221,7 @@ export const CB01: Scene = {
     {
       id: 't2.return',
       label: 'sign the weekly return',
-      x: 0.46, z: 0.13,
+      ...at('trestle'),
       done:
         'You sign it because it must be signed. You do not believe the number, and the man ' +
         'who wrote it does not believe it either.',
@@ -203,7 +234,7 @@ export const CB01: Scene = {
     {
       id: 't2.powder',
       label: 'work out the powder',
-      x: 0.79, z: 0.13,
+      ...at('arms'),
       done:
         'Nine thousand pounds. Call it a pound to a man for eight rounds and a little over. ' +
         'One general action spends it and there is no second action. The number was always ' +
@@ -217,7 +248,7 @@ export const CB01: Scene = {
     {
       id: 't2.reed',
       label: 'write to Joseph Reed',
-      x: 0.925, z: 0.14,
+      ...at('hq'),
       done:
         'You write what you would not say aloud in this camp, and you write it to a man in ' +
         'Philadelphia who is not in it. Then you seal it, and it is out of your hands, and it ' +
@@ -232,7 +263,7 @@ export const CB01: Scene = {
     {
       id: 'ration_return',
       label: 'the ration return',
-      x: 0.09, z: 0.31,
+      ...at('trestle'),
       examine:
         'What the commissary actually issued this week, counted in mouths fed. It is four ' +
         'thousand short of the strength the army returns claim. Neither paper is marked true.',
@@ -242,7 +273,7 @@ export const CB01: Scene = {
     {
       id: 'reed_letter',
       label: 'your letter to Joseph Reed',
-      x: 0.175, z: 0.45,
+      ...at('hq'),
       examine:
         'Unfinished, in your own hand. You have written that the men are an exceeding dirty and ' +
         'nasty people, and you have not crossed it out.',
@@ -260,7 +291,7 @@ export const CB01: Scene = {
     {
       id: 'emerson',
       label: "Emerson's letter",
-      x: 0.245, z: 0.68,
+      ...at('shelters'),
       examine:
         'The Cambridge minister writing to a friend. He lists the shelters by material and calls ' +
         'the camp a curiosity. He means it kindly. It is still the most exact description of ' +
@@ -271,7 +302,7 @@ export const CB01: Scene = {
     {
       id: 'enlistment_paper',
       label: 'a printed enlistment paper',
-      x: 0.33, z: 0.36,
+      ...at('trestle'),
       examine:
         'Signed by a man from Braintree. The term runs to the thirty-first of December. So does ' +
         'every other paper in this camp. On the first of January you will have no army at all ' +
@@ -282,7 +313,7 @@ export const CB01: Scene = {
     {
       id: 'kettle',
       label: 'a cooking kettle',
-      x: 0.36, z: 0.20,
+      ...at('mess'),
       examine:
         'One kettle among eight men, and it belongs to whichever of them brought it from home. ' +
         'When his term is up it walks out of camp with him.',
@@ -291,7 +322,7 @@ export const CB01: Scene = {
     {
       id: 'powder_horn',
       label: 'a powder horn',
-      x: 0.425, z: 0.55,
+      ...at('arms'),
       examine:
         'Scrimshawed, and half full. A militia habit — a man carries his own powder and knows ' +
         'exactly what he has. The army cannot say the same.',
@@ -301,7 +332,7 @@ export const CB01: Scene = {
     {
       id: 'musket',
       label: 'a musket with no bayonet',
-      x: 0.53, z: 0.28,
+      ...at('arms'),
       examine:
         'A fowling piece off a farm wall. It will kill a man at fifty yards and it will not hold ' +
         'a line against regulars who come on at the run with eighteen inches of steel.',
@@ -310,7 +341,7 @@ export const CB01: Scene = {
     {
       id: 'hunting_shirt',
       label: 'a hunting shirt on a line',
-      x: 0.49, z: 0.63,
+      ...at('mess'),
       examine:
         'Fringed linen, the Virginia riflemen. They shoot better than anyone in this camp at ' +
         'three hundred yards and they will not dig, and both facts are about to be your problem.',
@@ -319,7 +350,7 @@ export const CB01: Scene = {
     {
       id: 'necessary',
       label: 'the necessary',
-      x: 0.66, z: 0.17,
+      ...at('shelters'),
       examine:
         'A trench, sited badly, uphill of the water. Half the sickness in this camp comes out of ' +
         'that decision, and nobody who made it thought of it as a decision.',
@@ -328,7 +359,7 @@ export const CB01: Scene = {
     {
       id: 'canteen',
       label: 'a canteen made from a cheesebox',
-      x: 0.665, z: 0.34,
+      ...at('mess'),
       examine:
         'Two cheesebox lids and a strap. It leaks. The man who made it is proud of it and shows ' +
         'you how the seam is set.',
@@ -337,7 +368,7 @@ export const CB01: Scene = {
     {
       id: 'greene_tents',
       label: "Greene's tent line",
-      x: 0.865, z: 0.58,
+      ...at('rhodeisland'),
       examine:
         'Rhode Island. Ordered rows, straight streets, tents that match. One regiment out of ' +
         'thirty-eight that looks like it was raised on purpose.',
@@ -346,7 +377,7 @@ export const CB01: Scene = {
     {
       id: 'brush_shelter',
       label: 'a brush shelter',
-      x: 0.875, z: 0.25,
+      ...at('shelters'),
       examine:
         'Cut boughs over a frame, with a coat for a door. Two men live here. It will not survive ' +
         'October, and October is coming whatever the Congress decides.',
@@ -354,7 +385,7 @@ export const CB01: Scene = {
     {
       id: 'boston_view',
       label: 'Boston across the water',
-      x: 0.50, z: 0.78,
+      ...at('landing'),
       examine:
         'Grey roofs and a church spire, and somewhere under them six thousand regulars who have ' +
         'been fed, paid and drilled since before you owned a uniform.',
@@ -363,7 +394,7 @@ export const CB01: Scene = {
     {
       id: 'lane_up',
       label: 'the lane to headquarters',
-      x: 0.94, z: 0.70,
+      ...at('hq'),
       examine:
         'Up past the Vassall house, where the returns are, and the dispatches, and the map ' +
         'table with the whole war laid flat on it.',
@@ -371,8 +402,7 @@ export const CB01: Scene = {
     {
       id: 'marquee',
       label: "the Rhode Island marquee",
-      x: 0.90,
-      z: 0.40,
+      ...at('rhodeisland'),
       examine:
         'Greene bought proper canvas out of his own colony\'s money before he marched. His men sleep ' +
         'dry, in rows, and know where to stand. Nobody ordered him to do it, which is the part you ' +
@@ -382,8 +412,7 @@ export const CB01: Scene = {
     {
       id: 'headquarters',
       label: 'the Vassall house',
-      x: 0.10,
-      z: 0.74,
+      ...at('hq'),
       examine:
         'A Loyalist merchant\'s mansion, pale yellow, still furnished. He left in a hurry and you ' +
         'sleep in his bedchamber. Your men are under brush a quarter mile down the slope, and you ' +
@@ -393,8 +422,7 @@ export const CB01: Scene = {
     {
       id: 'cook_fire',
       label: 'a cook fire',
-      x: 0.255,
-      z: 0.52,
+      ...at('mess'),
       examine:
         'Eight men to a kettle and no two of them from the same town. They are boiling salt beef ' +
         'and arguing about whose turn it was to fetch the wood, which is the sound of an army ' +
@@ -405,8 +433,7 @@ export const CB01: Scene = {
     {
       id: 'trench_out',
       label: 'the trench to the lines',
-      x: 0.77,
-      z: 0.80,
+      ...at('landing'),
       examine:
         'A covered way running north out of the camp toward the works above Charlestown, dug deep ' +
         'enough to walk without being seen from the water. Everything you have ordered this ' +
@@ -425,12 +452,11 @@ export const CB01: Scene = {
    * palette is built around.
    */
   extras: [
-    { x: 0.060, z: 0.20, coat: '#7E7059', hat: 'round', seed: 911, build: 0.96, tall: 0.97 },
-    { x: 0.060, z: 0.38, coat: '#6E6350', hat: 'none', seed: 922, build: 1.04, tall: 1.01 },
-    { x: 0.220, z: 0.64, coat: '#8A7F66', hat: 'round', seed: 933, build: 0.92, tall: 0.95 },
-    { x: 0.860, z: 0.23, coat: '#6A6152', hat: 'tricorne', seed: 944, build: 1.0, tall: 0.99 },
-    { x: 0.920, z: 0.16, coat: '#7C7159', hat: 'none', seed: 955, build: 0.98, tall: 1.02 },
-    { x: 0.900, z: 0.53, coat: '#847A61', hat: 'round', seed: 966, build: 1.06, tall: 0.96 },
+    { ...at('mess'), coat: '#7E7059', hat: 'round', seed: 911, build: 0.96, tall: 0.97 },
+    { ...at('mess'), coat: '#6E6350', hat: 'none', seed: 922, build: 1.04, tall: 1.01 },
+    { ...at('shelters'), coat: '#8A7F66', hat: 'round', seed: 933, build: 0.92, tall: 0.95 },
+    { ...at('shelters'), coat: '#6A6152', hat: 'tricorne', seed: 944, build: 1.0, tall: 0.99 },
+    { ...at('rhodeisland'), coat: '#7C7159', hat: 'none', seed: 955, build: 0.98, tall: 1.02 },
   ],
 
   npcs: [
@@ -439,7 +465,7 @@ export const CB01: Scene = {
       look: { coat: '#6A5F4A', hat: 'tricorne', build: 1.06, tall: 1.01 },
       name: 'General Greene',
       hearFlag: 'heard.a2.greene',
-      x: 0.735, z: 0.46,
+      ...at('arms'),
       lines: [
         {
           speaker: 'Nathanael Greene',
@@ -543,7 +569,7 @@ export const CB01: Scene = {
       id: 'bragg',
       look: { coat: '#B8AE93', hat: 'none', build: 1.02, tall: 1.04 },
       name: 'Sergeant Bragg',
-      x: 0.60, z: 0.68,
+      ...at('trestle'),
       lines: [
         {
           speaker: 'Sergeant Absalom Bragg',
@@ -566,7 +592,7 @@ export const CB01: Scene = {
       id: 'whitcomb',
       look: { coat: '#7C6B52', hat: 'round', build: 0.88, tall: 0.92 },
       name: 'Private Whitcomb',
-      x: 0.42, z: 0.33,
+      ...at('mess'),
       lines: [
         {
           speaker: 'Private Ezekiel Whitcomb',
@@ -587,7 +613,7 @@ export const CB01: Scene = {
       id: 'lee2',
       look: { coat: '#5F5B4C', hat: 'round', build: 0.95, tall: 0.99 },
       name: 'William Lee',
-      x: 0.135, z: 0.55,
+      ...at('hq'),
       lines: [
         {
           speaker: 'William Lee',

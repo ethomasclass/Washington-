@@ -93,6 +93,38 @@ older decision-UI bench.
 
 ---
 
+## The second idea: scenes are STAGED, not scattered
+
+**17 Aug 2026.** Nothing in a scene carries a hand-picked coordinate any more.
+An author declares four to seven **stations** — a mess fire, a quartermaster's
+trestle, the brush shelters, the head of the lane — and every interactable,
+task, person and extra names the one it belongs to (`...at('trestle')`).
+`content.ts` `stage()` computes the positions from that, and `separate()`
+relaxes the figures until none of them overlaps in the frame.
+
+This was a fix to a layout that nobody had chosen. The old rule was pure
+repulsion — no two things within arm's reach — which passes for every even
+scatter and fails for every real arrangement, and the interaction model backed
+it up by only ever addressing the single nearest thing. So the only legal
+layout in the game was one object every few feet across the whole floor, which
+is exactly what all four scenes were, and why they read as items strewn about.
+
+Three things changed together, and none of them works without the other two:
+
+- **`Station` in `types.ts`**, with a `surface` (`table`, `stack`, `fire`,
+  `wall`, `open`) that decides what furniture gets drawn under the group and
+  whether its things are lifted onto a tabletop. A table and a wall are *lines*,
+  so their members lay out along a row rather than on a ring.
+- **`inReach()` in `main.ts`** returns every target within reach, nearest first,
+  and **Tab** steps through them. Clusters are only usable because of this.
+- **The linter** now checks the staging and the composition rules from
+  `02-art-direction.md` §5.4–5.5 that had been written down and never enforced:
+  one focal station standing on a third, the exit at the depth of the walk band,
+  no more than nine figures, and R9's eight-second walk.
+
+Practical: **do not type an `x` or a `z` into a scene file.** If something is in
+the wrong place, move its station or move it to another one.
+
 ## The one idea the code is built on
 
 Everything that has to agree about space goes through **`src/ground.ts`**. The
@@ -114,7 +146,8 @@ Practical consequences worth knowing before touching art:
   the lawn.
 - **A plate has no depth sorting.** Order of calls is the only thing deciding
   what covers what: ground furniture before buildings, far shelters before near
-  ones.
+  ones. The same is true of props: station furniture is emitted before the
+  things standing on it, in `propsFor()`.
 - **The perspective is exact.** Scale is proportional to height below the
   horizon, which is why the walkable band stops 30% of the way up (`FAR_LIFT`)
   instead of running to the horizon.

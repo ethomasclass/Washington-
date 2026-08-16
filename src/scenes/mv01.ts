@@ -13,6 +13,7 @@
  * approved. Everything factual in it is documented; the framing is not.
  */
 
+import { at } from '../types';
 import type { Ambient, Business, Interactable, NpcThread, Scene, Task } from '../types';
 
 const MARTHA = { portraitSeed: 202, coat: '#6B4F35' };
@@ -162,7 +163,7 @@ export const MV01: Scene = {
   ambient: [
     {
       id: 'amb.braddock',
-      x: 0.71, z: 0.19, r: 0.10, minLoudness: 0.30,
+      ...at('packing'), r: 0.10, minLoudness: 0.30,
       variants: {
         temper: 'Twenty years you asked them for a royal commission. Twenty years they gave you nothing.',
         ambition: 'Braddock died in your arms and you were twenty-three. Nobody else here has been shot at.',
@@ -171,7 +172,7 @@ export const MV01: Scene = {
     },
     {
       id: 'amb.survey',
-      x: 0.133, z: 0.30, r: 0.10, minLoudness: 0.34,
+      ...at('chest'), r: 0.10, minLoudness: 0.34,
       variants: {
         ambition: 'You surveyed that country at seventeen. Nobody in Philadelphia has seen a mile of it.',
         duty: 'You were paid to draw those lines and you drew them true. That is the whole of your record.',
@@ -180,7 +181,7 @@ export const MV01: Scene = {
     },
     {
       id: 'amb.house',
-      x: 0.553, z: 0.79, r: 0.11, minLoudness: 0.36,
+      ...at('packing'), r: 0.11, minLoudness: 0.36,
       variants: {
         restraint: 'Sixteen years and it is not finished. You are not a man who leaves things half-built.',
         vanity: 'It is the north end that shows from the river. Of course it is the north end that is open.',
@@ -189,7 +190,7 @@ export const MV01: Scene = {
     },
     {
       id: 'amb.river',
-      x: 0.30, z: 0.78, r: 0.11, minLoudness: 0.32,
+      ...at('lawn'), r: 0.11, minLoudness: 0.32,
       variants: {
         duty: 'The herring will come up in April whether you are here to count them or not.',
         restraint: 'Everything here runs on a season. An army does not, and you have not learned that yet.',
@@ -197,7 +198,7 @@ export const MV01: Scene = {
     },
     {
       id: 'amb.chariot',
-      x: 0.80, z: 0.45, r: 0.10, minLoudness: 0.30,
+      ...at('drive'), r: 0.10, minLoudness: 0.30,
       variants: {
         vanity: 'They will watch you arrive. Whatever you are wearing will be the first thing said of you.',
         ambition: 'Two days to Philadelphia. The vote will not wait for a man who sets out on Thursday.',
@@ -206,7 +207,7 @@ export const MV01: Scene = {
     },
     {
       id: 'amb.mill',
-      x: 0.92, z: 0.31, r: 0.10, minLoudness: 0.38,
+      ...at('paddock'), r: 0.10, minLoudness: 0.38,
       variants: {
         duty: 'Every acre of this runs because you stand over it. That will be true of an army too.',
         restraint: 'You can be absent from a mill for a season. Ask what an army does in a season alone.',
@@ -220,11 +221,38 @@ export const MV01: Scene = {
    */
   allTasksFlag: 'obs.a1.house_in_order',
 
+  /*
+   * MOUNT VERNON, STAGED.
+   *
+   * Slip-stage across the west front. The near rank is the working morning —
+   * the piazza where the post is read and answered, the survey chest being
+   * packed, the paddock where Nelson is looked over. The far rank is the place
+   * itself: the trunk standing open by the scaffolding, the lawn falling to the
+   * river, and the chariot waiting on the drive.
+   *
+   * Focal: the packing, on the left third. Everything in this scene is about a
+   * man leaving a house he has spent fifteen years building, and the open trunk
+   * with the old Braddock sash in it is the one object that says so without a
+   * word of dialogue.
+   *
+   * The chariot stands alone on its station, which is the point — it is the
+   * only thing on the drive, and a scene where the way out is unmistakable is a
+   * scene where nobody hunts for the exit.
+   */
+  stations: [
+    { id: 'piazza', label: 'the writing table on the piazza', x: 0.22, z: 0.24, surface: 'table' },
+    { id: 'chest', label: "the surveyor's chest, half packed", x: 0.46, z: 0.24, surface: 'stack' },
+    { id: 'paddock', label: 'the paddock rail', x: 0.72, z: 0.24, surface: 'open' },
+    { id: 'packing', label: 'the trunk by the scaffolding', x: 0.29, z: 0.64, surface: 'stack', focal: true },
+    { id: 'lawn', label: 'the lawn falling to the river', x: 0.55, z: 0.64, surface: 'open' },
+    { id: 'drive', label: 'the chariot on the drive', x: 0.81, z: 0.64, surface: 'stack' },
+  ],
+
   tasks: [
     {
       id: 'task.instruments',
       label: 'put up the instruments',
-      x: 0.10, z: 0.16,
+      ...at('chest'),
       done:
         'Chain, compass and the Ohio field books go back in the chest, and the chest goes under ' +
         'the stair. You will not be laying out any ground this year.',
@@ -235,7 +263,7 @@ export const MV01: Scene = {
     {
       id: 'task.weather',
       label: 'make the weather entry',
-      x: 0.21, z: 0.14,
+      ...at('chest'),
       done:
         'Fair. Wind southerly. Mercury at sixty-four at sunrise. You have written this line ' +
         'nearly every morning for sixteen years, and it takes you longer today than it should.',
@@ -246,7 +274,7 @@ export const MV01: Scene = {
     {
       id: 'task.letter',
       label: 'write to Burwell Bassett',
-      x: 0.37, z: 0.14,
+      ...at('piazza'),
       done:
         'To your brother-in-law, because he will not repeat it. You write that you are going to ' +
         'Philadelphia, and that you do not know what you will be when you come back. Then you ' +
@@ -258,7 +286,7 @@ export const MV01: Scene = {
     {
       id: 'task.orders',
       label: 'leave standing orders',
-      x: 0.555, z: 0.13,
+      ...at('piazza'),
       done:
         'Wheat in the middle field, the fishery to run as it did last year, and nothing sold ' +
         'below its worth. Lund writes it all down. Neither of you says how long the orders are ' +
@@ -272,7 +300,7 @@ export const MV01: Scene = {
     {
       id: 'task.nelson',
       label: 'look over Nelson',
-      x: 0.84, z: 0.16,
+      ...at('paddock'),
       done:
         'Sound, shod, and already fed. Somebody was up before dawn seeing to that, and it was ' +
         'not you. You run a hand down his foreleg and find nothing wrong, which you knew before ' +
@@ -287,8 +315,7 @@ export const MV01: Scene = {
     {
       id: 'scaffolding',
       label: 'the scaffolding',
-      x: 0.553,
-      z: 0.79,
+      ...at('packing'),
       examine:
         'The north wing stands open to the weather. Sixteen years you have been building this ' +
         'house and it is still not finished.',
@@ -297,8 +324,7 @@ export const MV01: Scene = {
     {
       id: 'newspaper',
       label: 'a Boston newspaper',
-      x: 0.29,
-      z: 0.2,
+      ...at('piazza'),
       examine:
         'Three weeks old by the time it reached the Potomac. Concord and Lexington — a column of ' +
         'regulars harried nineteen miles back to Charlestown by farmers who would not stand and ' +
@@ -309,8 +335,7 @@ export const MV01: Scene = {
     {
       id: 'ledger',
       label: 'the farm ledger',
-      x: 0.395,
-      z: 0.27,
+      ...at('piazza'),
       examine:
         'Wheat, herring, flour to the West Indies, in your own hand. Every entry assumes you will ' +
         'be here in the autumn to make the next one.',
@@ -328,8 +353,7 @@ export const MV01: Scene = {
     {
       id: 'commission',
       label: 'the Fairfax commission',
-      x: 0.343,
-      z: 0.5,
+      ...at('piazza'),
       examine:
         'Command of the Fairfax Independent Company. You did not ask for it either. Four counties ' +
         'have now named you to something, and none of them waited for an answer.',
@@ -339,8 +363,7 @@ export const MV01: Scene = {
     {
       id: 'uniform',
       label: 'the new uniform',
-      x: 0.448,
-      z: 0.58,
+      ...at('packing'),
       examine:
         'Blue faced with buff, cut to your own specification, hanging where it can be seen. You ' +
         'have not said why you had it made. Neither has anyone asked.',
@@ -350,8 +373,7 @@ export const MV01: Scene = {
     {
       id: 'surveyors_chest',
       label: "the surveyor's chest",
-      x: 0.133,
-      z: 0.3,
+      ...at('chest'),
       examine:
         'Chain, compass, and the Ohio field books from when you were seventeen. You know that ' +
         'country better than any man in Virginia. Ground is a thing you can read.',
@@ -361,8 +383,7 @@ export const MV01: Scene = {
     {
       id: 'braddock',
       label: "Braddock's sash",
-      x: 0.71,
-      z: 0.19,
+      ...at('packing'),
       examine:
         'Crimson silk, given to you as he was dying on the Monongahela road. Two horses shot ' +
         'under you that day, four balls through your coat, and nine hundred men lost in three hours.',
@@ -372,8 +393,7 @@ export const MV01: Scene = {
     {
       id: 'lund_letter',
       label: "Lund's accounts",
-      x: 0.605,
-      z: 0.24,
+      ...at('packing'),
       examine:
         'What the estate owes and what it is owed. The joiners are unpaid. Whoever runs this ' +
         'place next will be running it on credit.',
@@ -391,8 +411,7 @@ export const MV01: Scene = {
     {
       id: 'bowling_green',
       label: 'the bowling green',
-      x: 0.08,
-      z: 0.72,
+      ...at('lawn'),
       examine:
         'You laid it out yourself, and the serpentine walks either side of it, and you moved grown ' +
         'trees to stand where you wanted them. Nothing on this side of the house grew where it ' +
@@ -401,8 +420,7 @@ export const MV01: Scene = {
     {
       id: 'river_view',
       label: 'the river beyond',
-      x: 0.30,
-      z: 0.78,
+      ...at('lawn'),
       examine:
         'The Potomac shows over the roofline, near two miles across, with Maryland a low green ' +
         'line above it. The herring come up in April in numbers that beggar description. You will ' +
@@ -412,15 +430,13 @@ export const MV01: Scene = {
     {
       id: 'paddock',
       label: 'the paddock rail',
-      x: 0.868,
-      z: 0.69,
+      ...at('paddock'),
       examine: 'Nelson is in the near paddock and out of temper. He will be saddled before the week is out.',
     },
     {
       id: 'mill',
       label: 'the mill road',
-      x: 0.92,
-      z: 0.31,
+      ...at('paddock'),
       examine:
         'The road runs three miles to the gristmill. Everything you have built here is a machine ' +
         'for turning this ground into money, and it only runs if someone is standing over it.',
@@ -428,8 +444,7 @@ export const MV01: Scene = {
     {
       id: 'greenhouse',
       label: 'the garden wall',
-      x: 0.185,
-      z: 0.63,
+      ...at('lawn'),
       examine:
         'Seedlings under glass, half of them experiments. You wrote to England for the seed and ' +
         'the war may well arrive before the answer does.',
@@ -439,8 +454,7 @@ export const MV01: Scene = {
       label: 'the chariot',
       // Under the painted chariot at 0.815 of the frame, a little nearer than
       // the art sits so a player walking the front of the yard meets it.
-      x: 0.80,
-      z: 0.45,
+      ...at('drive'),
       examine:
         'Packed for Philadelphia. Whatever the Congress decides, you are going — the only question ' +
         'is what you are when you come back.',
@@ -453,8 +467,7 @@ export const MV01: Scene = {
       look: MARTHA_LOOK,
       name: 'Martha',
       hearFlag: 'heard.a1.martha',
-      x: 0.238,
-      z: 0.38,
+      ...at('piazza'),
       lines: [
         {
           speaker: 'Martha',
@@ -542,8 +555,7 @@ export const MV01: Scene = {
       look: { coat: '#6E5B45', hat: 'round', build: 1.10, tall: 0.97 },
       name: 'Lund',
       hearFlag: 'heard.a1.lund',
-      x: 0.658,
-      z: 0.46,
+      ...at('packing'),
       lines: [
         {
           speaker: 'Lund Washington',
@@ -569,8 +581,7 @@ export const MV01: Scene = {
       // Standing just forward of the chariot he has finished loading. The x has
       // to be near the bound: depth compresses the frame toward the centre, so
       // an actor at 0.70 lands nowhere near the painted chariot at 0.815.
-      x: 0.93,
-      z: 0.44,
+      ...at('paddock'),
       lines: [
         {
           speaker: 'William Lee',
@@ -590,8 +601,7 @@ export const MV01: Scene = {
       id: 'messenger',
       look: { coat: '#8A7B5E', hat: 'tricorne', build: 0.94, tall: 1.00 },
       name: 'the messenger',
-      x: 0.5,
-      z: 0.34,
+      ...at('drive'),
 
       /*
        * THE FIRST CHOICE IN THE GAME, AND IT DOES NOTHING.

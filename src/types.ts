@@ -10,6 +10,18 @@ import type { StatId } from './state';
 import type { VoiceId } from './palette';
 
 /**
+ * Put a thing at a station.
+ *
+ * `...at('mess')` in place of `x: 0.36, z: 0.20`. The zeroes are placeholders
+ * that the layout pass in `content.ts` overwrites before anything reads them;
+ * they exist only so the position stays a required field, which keeps every
+ * consumer of a scene free of `undefined` checks for a value that is always
+ * there by the time they see it.
+ */
+export const at = (station: string): { at: string; x: number; z: number } =>
+  ({ at: station, x: 0, z: 0 });
+
+/**
  * A document that contradicts something a person said.
  *
  * The binding rule from reference-game-analysis.md: every scene must contain at
@@ -31,10 +43,74 @@ export interface Contradiction {
 
 import type { PropKind } from './art';
 
+/**
+ * A STATION — a place in the scene where business is done.
+ *
+ * The problem this exists to solve: every object in a scene used to carry its
+ * own hand-picked (x, z), and the only rule governing them was that no two
+ * could be within arm's reach of each other. A repulsion rule with no
+ * attraction rule produces exactly one layout — an even scatter over the whole
+ * floor — and that is what every scene in the game looked like. It reads as
+ * items strewn about at random, because that is literally what it is, and it
+ * makes a place feel like a checklist laid on grass rather than somewhere
+ * people work.
+ *
+ * Real places cluster. A camp has a cook fire with its kettle and its men, a
+ * quartermaster's trestle with the returns on it, a stack of gabions by the
+ * work, a marquee with the general's business at its mouth. Four or five such
+ * places, with ground between them, is a scene a player can hold in their head
+ * — and it answers "where does Washington need to go to do this?" with a place
+ * instead of a coordinate.
+ *
+ * So: the author declares the stations, and every interactable and task names
+ * the one it belongs to. The member's position is then COMPUTED around the
+ * station (see `content.ts` `stage()`), never authored, which is what makes the
+ * clustering true by construction instead of true until somebody edits a number.
+ *
+ * Composition (`02-art-direction.md` §5.3–5.4) governs where the stations
+ * themselves go: exteriors are slip-stage, so the stations run along one
+ * recession from near-left to far-right, and exactly one of them is focal and
+ * stands on a third of the frame.
+ */
+export interface Station {
+  id: string;
+  /** Named in the world's own language. The author reads this, not the player. */
+  label: string;
+  /** Across the frame, 0..1. Members are placed around this. */
+  x: number;
+  /** Into the frame: 0 at the near edge, 1 at the horizon. */
+  z: number;
+  /**
+   * What holds the things here, which decides what gets drawn under them.
+   *
+   * `table` a trestle or desk — papers lie ON it, and are lifted to its top.
+   * `stack` crates, casks, gabions — things lean against and lie across it.
+   * `fire`  a cook fire, with the camp's business gathered round it.
+   * `wall`  a parapet, a window, a chimney breast — things hang on it.
+   * `open`  bare ground or open water, for a station that is a PROSPECT: a
+   *         view looked at from a distance, which must not grow furniture.
+   */
+  surface: 'table' | 'stack' | 'fire' | 'wall' | 'open';
+  /**
+   * The one place in the frame where the eye is meant to land (§5.4).
+   *
+   * Exactly one station per scene, and it stands on a third — never at centre.
+   * The linter checks both.
+   */
+  focal?: boolean;
+}
+
 export interface Interactable {
   id: string;
   label: string;
-  /** Across the frame, 0..1. */
+  /**
+   * Which station this belongs to. Everything belongs to one.
+   *
+   * Authored with the `at()` helper, which also supplies the placeholder
+   * coordinates that the layout pass overwrites.
+   */
+  at?: string;
+  /** Across the frame, 0..1. Computed from `at` — do not author it by hand. */
   x: number;
   /** Into the frame: 0 at the near edge, 1 at the horizon. */
   z: number;
@@ -107,6 +183,8 @@ export interface Ambient {
    * classroom, and the interior said nothing about who anyone had become.
    */
   variants: Partial<Record<VoiceId, string>>;
+  /** The station this thought belongs to, so it follows its subject. */
+  at?: string;
   x: number;
   z: number;
   /** Ground radius that triggers it. */
@@ -132,6 +210,8 @@ export interface Task {
   id: string;
   /** Phrased as an action — this is a thing done, not a thing read. */
   label: string;
+  /** The station this is done at. See `Station`. */
+  at?: string;
   x: number;
   z: number;
   /** What happens when he does it. */
@@ -250,6 +330,14 @@ export interface NpcThread {
   hearFlag?: string;
   /** Shown on the interaction prompt. "speak" tells the player nothing. */
   name: string;
+  /**
+   * The station this person is standing at, if any.
+   *
+   * People are placed OUTSIDE the ring of things, facing in — a man stands at
+   * his table, not on it. A thread with no station stands where they are put,
+   * which is right for anyone crossing the scene rather than working in it.
+   */
+  at?: string;
   x: number;
   z: number;
   /**
@@ -294,6 +382,8 @@ export interface Business {
 
 /** A composed view: one plate, one ground plane, one act's worth of business. */
 export interface Extra {
+  /** The station they have gathered at, if any. */
+  at?: string;
   x: number;
   z: number;
   coat: string;
@@ -399,6 +489,13 @@ export interface Scene {
   exitPrompt: string;
   settled: string;
   allTasksFlag: string;
+  /**
+   * The places in this scene where business is done. See `Station`.
+   *
+   * Optional only so a scene can be sketched before it is staged; every scene
+   * that ships has them, and the linter says so.
+   */
+  stations?: Station[];
   ambient: Ambient[];
   tasks: Task[];
   interactables: Interactable[];

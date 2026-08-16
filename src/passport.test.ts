@@ -390,20 +390,82 @@ for (const scene of sceneList()) {
   check(`density floor (${scene.interactables.length} interactables, floor 12)`,
     scene.interactables.length >= 12);
 
-  // Nothing may be shadowed by a neighbour, in the metric the game targets with.
-  const pts = [
-    ...scene.interactables.map((i) => ({ id: i.id, x: i.x, z: i.z })),
-    ...scene.npcs.map((n) => ({ id: n.id, x: n.x, z: n.z })),
-    ...scene.tasks.map((t) => ({ id: t.id, x: t.x, z: t.z })),
+  /*
+   * THE STAGING (02 §5.3–5.5, and `types.ts` `Station`).
+   *
+   * The old rule here was a repulsion rule and nothing else: no two things
+   * within arm's reach. It passes for every possible even scatter and fails for
+   * every real arrangement, which is precisely backwards — a camp has a cook
+   * fire with four things round it and forty feet of empty ground beyond, and
+   * that layout was ILLEGAL under the old check while "one object every eight
+   * inches across the whole floor" was legal. Every scene in the game looked
+   * the way it did because this is what was being asked for.
+   *
+   * So the rules now come in pairs: things cluster at stations, and stations
+   * stand apart from each other.
+   */
+  const stations = scene.stations ?? [];
+  check(`the scene is staged (${stations.length} stations, 4..7)`,
+    stations.length >= 4 && stations.length <= 7);
+
+  const stationIds = new Set(stations.map((s) => s.id));
+  const placed = [
+    ...scene.interactables.map((i) => ({ id: i.id, at: i.at, x: i.x, z: i.z })),
+    ...scene.tasks.map((t) => ({ id: t.id, at: t.at, x: t.x, z: t.z })),
   ];
-  let worst = { a: '', b: '', d: 1 };
-  for (let i = 0; i < pts.length; i++) {
-    for (let j = i + 1; j < pts.length; j++) {
-      const d = Math.hypot(pts[i].x - pts[j].x, (pts[i].z - pts[j].z) * 0.75);
-      if (d < worst.d) worst = { a: pts[i].id, b: pts[j].id, d };
+  const homeless = placed.filter((o) => !o.at || !stationIds.has(o.at));
+  check('everything belongs to a station', homeless.length === 0,
+    homeless.map((o) => `${o.id}@${o.at ?? '-'}`).join(', '));
+
+  const overfull = stations
+    .map((s) => ({ s, n: placed.filter((o) => o.at === s.id).length }))
+    .filter((r) => r.n < 1 || r.n > 6);
+  check('no station is empty or overloaded (1..6 things)', overfull.length === 0,
+    overfull.map((r) => `${r.s.id}:${r.n}`).join(', '));
+
+  /*
+   * Stations stand apart, and the distance is what makes a cluster read as a
+   * cluster: two stations closer than this and their rings interleave, which is
+   * the scatter again wearing a hat.
+   */
+  let near = { a: '', b: '', d: 1 };
+  for (let i = 0; i < stations.length; i++) {
+    for (let j = i + 1; j < stations.length; j++) {
+      const d = Math.hypot(stations[i].x - stations[j].x, (stations[i].z - stations[j].z) * 0.75);
+      if (d < near.d) near = { a: stations[i].id, b: stations[j].id, d };
     }
   }
-  check(`nothing shadowed (closest pair ${worst.d.toFixed(3)})`, worst.d >= REACH,
+  if (stations.length > 1) {
+    check(`stations stand clear of each other (closest ${near.d.toFixed(3)}, floor 0.240)`,
+      near.d >= 0.24, `${near.a} / ${near.b}`);
+  }
+
+  /*
+   * Shadowing, station-aware.
+   *
+   * Two things at DIFFERENT stations must still be a reach apart, or the player
+   * walking between them can only ever address one. Two things at the SAME
+   * station are meant to be close — that is what a table is — and are only
+   * required not to be drawn on top of each other. The engine picks up
+   * everything within reach and lets the player step through it, which is what
+   * makes the tighter figure legal.
+   */
+  const pts = [
+    ...scene.interactables.map((i) => ({ id: i.id, at: i.at, x: i.x, z: i.z })),
+    ...scene.npcs.map((n) => ({ id: n.id, at: n.at, x: n.x, z: n.z })),
+    ...scene.tasks.map((t) => ({ id: t.id, at: t.at, x: t.x, z: t.z })),
+  ];
+  const CLOSE = 0.032;
+  let worst = { a: '', b: '', d: 1, same: false };
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const same = Boolean(pts[i].at) && pts[i].at === pts[j].at;
+      const d = Math.hypot(pts[i].x - pts[j].x, (pts[i].z - pts[j].z) * 0.75) / (same ? CLOSE : REACH);
+      if (d < worst.d) worst = { a: pts[i].id, b: pts[j].id, d, same };
+    }
+  }
+  check(`nothing shadowed (tightest pair at ${worst.d.toFixed(2)}× its floor, ` +
+    `${worst.same ? 'same station' : 'across stations'})`, worst.d >= 1,
     `${worst.a} / ${worst.b}`);
 
   /*
@@ -519,6 +581,69 @@ for (const scene of sceneList()) {
     // whether it does is a question for eyes, not for arithmetic.
     console.log(`  note ${scene.id}: midground nearest content at z ${plateFar.toFixed(3)}, ` +
       `band runs to ${band.toFixed(2)} — check by eye that nothing back there is hidden`);
+  }
+
+  /*
+   * COMPOSITION (02 §5.4–5.5).
+   *
+   * Three rules from the art direction that were written down, agreed, and then
+   * never enforced by anything, which meant every one of them was quietly
+   * broken. They are cheap to check and expensive to notice by eye six scenes
+   * later.
+   */
+  {
+    const focal = stations.filter((s) => s.focal);
+    check(`exactly one focal station (${focal.length})`, focal.length === 1,
+      focal.map((s) => s.id).join(', '));
+    /*
+     * "Placed on a third — never at centre." The focal point is the whole
+     * attention system; putting it in the middle of the frame throws away the
+     * only staging tool the composition has and costs nothing to get right.
+     */
+    for (const f of focal) {
+      const third = Math.min(Math.abs(f.x - 1 / 3), Math.abs(f.x - 2 / 3));
+      check(`the focal station stands on a third (${f.id} at x ${f.x.toFixed(2)}, ` +
+        `${third.toFixed(3)} off)`, third <= 0.05, f.id);
+    }
+
+    /*
+     * "Every exit sits at the vertical centre of the walk-plane band, so the
+     * affordance is learned once in Act 1 and never taught again." A player who
+     * learns that the way out is at the depth they are already walking at does
+     * not hunt the edges of four more scenes for it.
+     */
+    const exitObj = scene.interactables.find((i) => i.id === scene.exit);
+    if (exitObj) {
+      const mid = (BOUND.z0 + band) / 2;
+      const slack = (band - BOUND.z0) * 0.3;
+      check(`the exit sits at the depth of the walk band (z ${exitObj.z.toFixed(2)} ` +
+        `against ${mid.toFixed(2)} ± ${slack.toFixed(2)})`,
+        Math.abs(exitObj.z - mid) <= slack, scene.exit);
+    }
+
+    /*
+     * R9: no more than eight seconds of walking from where the player lands to
+     * the farthest thing in the scene. Measured with the engine's own walk
+     * speeds, and against stations rather than objects, because a station is
+     * where he is actually going.
+     */
+    const WALK = { x: 0.30, z: 0.22 };
+    const START = { x: 0.5, z: 0.34 };
+    let longest = { id: '', t: 0 };
+    for (const s of stations) {
+      const t = Math.abs(s.x - START.x) / WALK.x + Math.abs(s.z - START.z) / WALK.z;
+      if (t > longest.t) longest = { id: s.id, t };
+    }
+    check(`nothing is more than eight seconds' walk away (${longest.t.toFixed(1)}s)`,
+      longest.t <= 8, longest.id);
+
+    /*
+     * "Maximum 9 background figures on screen." Past that the plate reads as a
+     * crowd painting and R22's proper-naming discipline stops working, because
+     * nobody names twenty people.
+     */
+    const figures = scene.npcs.length + (scene.extras?.length ?? 0);
+    check(`no more than nine figures besides Washington (${figures})`, figures <= 9);
   }
 
   check('the exit exists in the scene', scene.interactables.some((i) => i.id === scene.exit),

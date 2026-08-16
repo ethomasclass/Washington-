@@ -171,6 +171,15 @@ const IDLE_SHIFTS = true;
 export interface PropPlacement extends GroundPos {
   kind: PropKind;
   seed: number;
+  /**
+   * How far off the ground this stands, in man-heights.
+   *
+   * Paper does not lie on grass, and it does not lie on the floor of a parlour
+   * either. Anything belonging to a station with a surface — a trestle, a
+   * chimney breast — is lifted onto it, which is the difference between a scene
+   * where things have been put down and a scene where things have been dropped.
+   */
+  lift?: number;
 }
 
 /** A figure on the ground plane, with the build that distinguishes them. */
@@ -240,7 +249,7 @@ export class DioramaRenderer {
    * curve the man walking toward it does, so nobody has to choose a number and
    * nothing can drift out of agreement.
    */
-  private props: { mesh: THREE.Mesh; pos: GroundPos; flicker: boolean; t: number }[] = [];
+  private props: { mesh: THREE.Mesh; pos: GroundPos; flicker: boolean; t: number; lift: number }[] = [];
   private gait = 0;
   private bob = 0;
 
@@ -526,7 +535,10 @@ export class DioramaRenderer {
       );
       mesh.position.z = -1.3;
       this.scene.add(mesh);
-      this.props.push({ mesh, pos: { x: p.x, z: p.z }, flicker: p.kind === 'fire', t: p.seed % 7 });
+      this.props.push({
+        mesh, pos: { x: p.x, z: p.z }, flicker: p.kind === 'fire', t: p.seed % 7,
+        lift: p.lift ?? 0,
+      });
     }
   }
 
@@ -810,10 +822,13 @@ export class DioramaRenderer {
         pr.t += dt;
         const f = 1 + Math.sin(pr.t * 7.3) * 0.05 + Math.sin(pr.t * 17.1) * 0.03;
         pr.mesh.scale.set(scale * (2 - f), scale * f, 1);
-        pr.mesh.position.y = y + gpy + (FIGURE_H * PROP_H.fire * scale * f) / 2;
+        pr.mesh.position.y = y + gpy + (FIGURE_H * PROP_H.fire * scale * f) / 2 +
+          pr.lift * FIGURE_H * scale;
       } else {
         pr.mesh.scale.setScalar(scale);
-        pr.mesh.position.y = y + gpy + (pr.mesh.geometry as THREE.PlaneGeometry).parameters.height * scale / 2;
+        pr.mesh.position.y = y + gpy +
+          ((pr.mesh.geometry as THREE.PlaneGeometry).parameters.height / 2 +
+            pr.lift * FIGURE_H) * scale;
       }
     }
 

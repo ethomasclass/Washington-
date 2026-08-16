@@ -12,8 +12,8 @@
  * What is deliberately fake: all art, and everything past scene MV-01.
  */
 
-import { DioramaRenderer, type GroundPos } from './renderer';
-import { setPlateLight } from './art';
+import { DioramaRenderer, type GroundPos, type PropPlacement } from './renderer';
+import { setPlateLight, type PropKind } from './art';
 import { FIRST_SCENE, SCENES, ledgerFor, type Decision, type NpcThread, type Scene } from './content';
 import { reckon } from './ledger';
 import { THEATRES } from './theatre';
@@ -77,15 +77,59 @@ const actorsFor = (sc: Scene) => [
  * rather than an object leaves it off. The seed is derived from the id so a
  * given kettle looks the same every time the scene loads.
  */
-const propsFor = (sc: Scene) =>
-  [...sc.interactables, ...sc.tasks]
-    .filter((o): o is typeof o & { prop: NonNullable<typeof o.prop> } => Boolean(o.prop))
-    .map((o) => ({
+const seedOf = (id: string): number =>
+  [...id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 9973, 7);
+
+/**
+ * What a station puts on the ground under its things.
+ *
+ * A cluster of objects with nothing holding them is still a cluster of objects
+ * lying on grass — tidier than a scatter and no more believable. The furniture
+ * is what turns four documents into a quartermaster's trestle, and it is the
+ * difference between a place and a pile.
+ *
+ * A fire needs nothing: the scenes that have one author the fire itself as a
+ * findable object, and two fires at one station is a fire with a fire on it.
+ * A wall is painted into the plate, and open ground is open ground.
+ */
+const FURNITURE: Partial<Record<string, PropKind>> = { table: 'table', stack: 'barrel' };
+
+/**
+ * How far a surface holds its things off the ground, in man-heights.
+ *
+ * Only a table. A wall station was lifted too at first, on the reasoning that
+ * things hang on walls — but a `wall` station stands where the business is, not
+ * where the masonry is, and the parlour's chimney breast sits well out into the
+ * room. Lifting its papers half a man off the floor hung them in mid-air with
+ * nothing behind them. A wall is painted into the plate and cannot hold
+ * anything the engine puts down.
+ */
+const LIFT: Partial<Record<string, number>> = { table: 0.42 };
+
+const propsFor = (sc: Scene): PropPlacement[] => {
+  const surfaceOf = new Map((sc.stations ?? []).map((s) => [s.id, s.surface]));
+  const out: PropPlacement[] = [];
+
+  // Furniture first, so the things standing on it are drawn over it. A plate
+  // has no depth buffer and neither does this: order of insertion is the only
+  // thing deciding what covers what.
+  for (const s of sc.stations ?? []) {
+    const kind = FURNITURE[s.surface];
+    if (kind) out.push({ x: s.x, z: s.z, kind, seed: seedOf(s.id) });
+  }
+
+  for (const o of [...sc.interactables, ...sc.tasks]) {
+    if (!o.prop) continue;
+    out.push({
       x: o.x,
       z: o.z,
       kind: o.prop,
-      seed: [...o.id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 9973, 7),
-    }));
+      seed: seedOf(o.id),
+      lift: (o.at && LIFT[surfaceOf.get(o.at) ?? '']) || 0,
+    });
+  }
+  return out;
+};
 
 /*
  * Point the key light before the plates are painted, not after: the lighting
@@ -157,32 +201,71 @@ interface Target {
   pos: GroundPos;
 }
 
-function nearest(): Target | null {
-  let best: Target | null = null;
-  let bestD = REACH;
+/**
+ * Everything the player could address from where they are standing, nearest
+ * first.
+ *
+ * This used to return one thing — the closest — and that was the hidden rule
+ * that made every scene in the game look the way it did. If only the nearest
+ * object is reachable then no two objects may ever be close together, and if no
+ * two objects may be close together then the only legal layout is an even
+ * scatter across the whole floor. The art direction asked for clusters and the
+ * interaction model forbade them, and the interaction model won for a year.
+ *
+ * So it returns the set. A cook fire with a kettle, a canteen and a shirt on a
+ * line is now a place a player walks up to once and reads through, which is
+ * both what the composition wants and what walking up to a cook fire is like.
+ */
+function inReach(): Target[] {
+  const found: { t: Target; d: number }[] = [];
+  const add = (t: Target, d: number): void => {
+    if (d < REACH) found.push({ t, d });
+  };
   for (const it of scene.interactables) {
-    const d = groundDist(pos, it);
-    if (d < bestD) {
-      bestD = d;
-      best = { kind: 'thing', id: it.id, label: it.label, pos: { x: it.x, z: it.z } };
-    }
+    add({ kind: 'thing', id: it.id, label: it.label, pos: { x: it.x, z: it.z } },
+      groundDist(pos, it));
   }
   for (const t of scene.tasks) {
     if (state.knowledge.has(t.grants)) continue; // done; nothing left to do here
-    const d = groundDist(pos, t);
-    if (d < bestD) {
-      bestD = d;
-      best = { kind: 'task', id: t.id, label: t.label, pos: { x: t.x, z: t.z } };
-    }
+    add({ kind: 'task', id: t.id, label: t.label, pos: { x: t.x, z: t.z } }, groundDist(pos, t));
   }
   for (const n of scene.npcs) {
-    const d = groundDist(pos, n);
-    if (d < bestD) {
-      bestD = d;
-      best = { kind: 'npc', id: n.id, label: `speak to ${n.name}`, pos: { x: n.x, z: n.z } };
-    }
+    add({ kind: 'npc', id: n.id, label: `speak to ${n.name}`, pos: { x: n.x, z: n.z } },
+      groundDist(pos, n));
   }
-  return best;
+  found.sort((a, b) => a.d - b.d);
+  return found.map((f) => f.t);
+}
+
+/**
+ * Which of them is under the cursor, so to speak.
+ *
+ * Sticky by id rather than by index: the player picks the powder horn out of a
+ * group of three, takes half a step while reading the prompt, and the selection
+ * stays on the powder horn instead of jumping to whatever is now marginally
+ * closer. It falls back to the nearest thing the moment the chosen one goes out
+ * of reach, which is what walking away is supposed to mean.
+ */
+let picked: string | null = null;
+
+function selected(): Target | null {
+  const list = inReach();
+  if (list.length === 0) {
+    picked = null;
+    return null;
+  }
+  const held = list.find((t) => t.id === picked);
+  if (held) return held;
+  picked = list[0].id;
+  return list[0];
+}
+
+/** Step to the next thing within reach. Wraps. */
+function cycle(): void {
+  const list = inReach();
+  if (list.length < 2) return;
+  const i = list.findIndex((t) => t.id === picked);
+  picked = list[(i + 1) % list.length].id;
 }
 
 const refreshCode = (): void => overlay.setCode(encode(state));
@@ -390,7 +473,7 @@ function runThread(n: NpcThread): void {
 
 function interact(): void {
   if (busy) return;
-  const near = nearest();
+  const near = selected();
   if (!near) return;
 
   if (near.kind === 'npc') {
@@ -541,6 +624,10 @@ addEventListener('keydown', (e) => {
     e.preventDefault();
     interact();
   }
+  if (!busy && e.key === 'Tab') {
+    e.preventDefault();
+    cycle();
+  }
   // Backtick is the convention, F2 is the one that exists on every keyboard.
   if (e.key === '`' || e.key === '~' || e.key === 'F2') {
     e.preventDefault();
@@ -585,10 +672,17 @@ function frame(now: number): void {
   renderer.setPlayerPos(pos, dt);
   renderer.setMood(moodScalar(state.snapshot));
 
-  const near = busy ? null : nearest();
+  const near = busy ? null : selected();
   if (near) {
     const p = renderer.screenPos(near.pos);
-    overlay.showPrompt(near.label, p.x, p.y - 14);
+    /*
+     * Where more than one thing is in reach, the prompt says so and says how to
+     * get at the rest. A player who is not told cannot know, and a cluster the
+     * player cannot read all of is worse than the scatter it replaced.
+     */
+    const n = inReach().length;
+    const i = inReach().findIndex((t) => t.id === near.id);
+    overlay.showPrompt(n > 1 ? `${near.label}  ·  Tab ${i + 1}/${n}` : near.label, p.x, p.y - 14);
   } else {
     overlay.hidePrompt();
   }

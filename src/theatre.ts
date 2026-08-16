@@ -382,6 +382,16 @@ export type TokenKind =
   | 'seat';
 
 export interface Token {
+  /**
+   * Stable across acts, and this is what makes the sequence a sequence.
+   *
+   * Two marks with the same id on two consecutive pages are THE SAME THING at
+   * two moments, so the sheet can show where it was, tween it to where it is,
+   * and leave a ghost behind. Two marks with different ids are two things. It
+   * is the only piece of bookkeeping in this module and everything the map does
+   * to tell a story depends on it being got right.
+   */
+  id: string;
   lon: number;
   lat: number;
   kind: TokenKind;
@@ -484,6 +494,52 @@ export interface Track {
   labelAt?: number;
 }
 
+/**
+ * A SCAR: something that happened here, and will have happened here for the
+ * rest of the war.
+ *
+ * The third ink layer, and the only one that never comes off. Marks move and
+ * tracks belong to the act that saw them; a scar is placed once, on the page
+ * where it stops being news, and is on every page after it.
+ *
+ * WHY IT IS WORTH A LAYER. Act 1's sheet has five marks on four hundred miles
+ * of coast. Act 8's is covered, and the covering is eight years — no caption
+ * has to say so and none should. And the second thing it says is harder and
+ * better: **most of them are not his.** Saratoga is Gates's, Cowpens is
+ * Morgan's, King's Mountain is nobody's. A student looking at the last page can
+ * see, without being told, that the man they have been playing was present for
+ * perhaps a third of his own war.
+ *
+ * One list for the whole game, filtered by date. Accumulation is then automatic
+ * and there is no per-act bookkeeping to get out of step.
+ */
+export interface Scar {
+  lon: number;
+  lat: number;
+  /** Four words. It sits under a glyph the size of a fingernail. */
+  label: string;
+  /** ISO. It appears on every page drawn after this. */
+  on: string;
+  /** Was he there. Used by the linter, and by nothing on screen. */
+  his?: boolean;
+}
+
+/**
+ * Every action, in order.
+ *
+ * A scar is suppressed on any page that already carries a TOKEN at the same
+ * spot — a thing that is still news does not need marking as history in the
+ * same breath. Which means Lexington is a mark to be read in Act 1 and a scar
+ * on the page from Act 2 onward, with no authoring to say so.
+ *
+ * FIGURES AND DATES UNVERIFIED, like everything else on this sheet.
+ */
+export const SCARS: Scar[] = [
+  { lon: -71.23, lat: 42.45, on: '1775-04-19', label: 'Lexington & Concord' },
+  { lon: -73.39, lat: 43.84, on: '1775-05-10', label: 'Ticonderoga taken' },
+  { lon: -71.06, lat: 42.38, on: '1775-06-17', label: 'Charlestown' },
+];
+
 export interface Theatre {
   act: number;
   /** ISO. The day the sheet is drawn as of. */
@@ -559,6 +615,7 @@ export const THEATRES: Record<number, Theatre> = {
     ],
     tokens: [
       {
+        id: 'kings-army',
         lon: -71.06, lat: 42.36, kind: 'foot', side: 'theirs',
         label: 'the King’s troops in Boston',
         note:
@@ -568,6 +625,7 @@ export const THEATRES: Record<number, Theatre> = {
         dated: '1775-04-20', received: '1775-04-28',
       },
       {
+        id: 'lexington',
         lon: -71.23, lat: 42.45, kind: 'work', side: 'neither',
         label: 'the nineteenth of April',
         note:
@@ -578,6 +636,7 @@ export const THEATRES: Record<number, Theatre> = {
         labelAt: 'above',
       },
       {
+        id: 'congress',
         lon: -75.16, lat: 39.95, kind: 'seat', side: 'neither',
         label: 'the Congress',
         note:
@@ -599,6 +658,7 @@ export const THEATRES: Record<number, Theatre> = {
        * anything about, and which will still be there — larger — in Act 3.
        */
       {
+        id: 'fleet',
         lon: -68.5, lat: 41.5, kind: 'ship', side: 'theirs',
         label: 'ships from England',
         note:
@@ -610,6 +670,7 @@ export const THEATRES: Record<number, Theatre> = {
         labelAt: 'below',
       },
       {
+        id: 'home',
         lon: -77.09, lat: 38.71, kind: 'seat', side: 'ours',
         label: 'Mount Vernon',
         note:
@@ -666,6 +727,7 @@ export const THEATRES: Record<number, Theatre> = {
     ],
     tokens: [
       {
+        id: 'kings-army',
         lon: -71.06, lat: 42.36, kind: 'foot', side: 'theirs',
         label: 'the King’s army',
         note:
@@ -676,16 +738,20 @@ export const THEATRES: Record<number, Theatre> = {
         labelDx: 112, labelDy: 16,
       },
       {
+        id: 'fleet',
         lon: -70.85, lat: 42.33, kind: 'ship', side: 'theirs',
         label: 'the fleet',
         note:
-          'Nobody has told you how many and nobody needs to. They can put ' +
-          'soldiers on any part of this coast inside a week and there is not one ' +
-          'thing on your side of the water that can stop them doing it.',
+          'They came in on the twenty-fifth of May with three major-generals ' +
+          'aboard, and nobody on this side saw them cross. Nobody has told you ' +
+          'how many and nobody needs to: they can put soldiers on any part of ' +
+          'this coast inside a week, and there is not one thing on your side of ' +
+          'the water that can stop them doing it.',
         dated: '1775-07-03', received: '1775-07-03', seen: true,
         labelDx: 54, labelDy: 46,
       },
       {
+        id: 'main-army',
         lon: -71.11, lat: 42.375, kind: 'foot', side: 'ours',
         label: 'your army',
         note:
@@ -696,6 +762,7 @@ export const THEATRES: Record<number, Theatre> = {
         labelDx: -104, labelDy: -10,
       },
       {
+        id: 'charlestown',
         lon: -71.06, lat: 42.38, kind: 'work', side: 'theirs',
         label: 'the ground at Charlestown',
         note:
@@ -707,6 +774,7 @@ export const THEATRES: Record<number, Theatre> = {
         labelDx: 8, labelDy: -40,
       },
       {
+        id: 'ticonderoga',
         lon: -73.39, lat: 43.84, kind: 'work', side: 'ours',
         label: 'Ticonderoga',
         note:
@@ -717,6 +785,7 @@ export const THEATRES: Record<number, Theatre> = {
         dated: '1775-05-10', received: '1775-05-18',
       },
       {
+        id: 'congress',
         lon: -75.16, lat: 39.95, kind: 'seat', side: 'ours',
         label: 'the Congress',
         note:
@@ -1254,25 +1323,30 @@ function cartouche(c: CanvasRenderingContext2D, title: string, sub: string): voi
 }
 
 /** The markers themselves. Shapes and fill, never colour. */
-function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): void {
-  const [x, y] = bu(t.lon, t.lat);
-  const solid = t.side === 'theirs';
+function drawToken(
+  c: CanvasRenderingContext2D, t: Token, conf: Confidence,
+  opts: { at?: Pt; alpha?: number; ghost?: boolean } = {},
+): void {
+  const [x, y] = opts.at ?? bu(t.lon, t.lat);
+  // A ghost is never filled, whoever it belongs to. It is where a thing WAS,
+  // and a solid ghost reads as a second army rather than as a memory.
+  const solid = t.side === 'theirs' && !opts.ghost;
 
   c.save();
-  c.globalAlpha = ALPHA[conf];
+  c.globalAlpha = (opts.alpha ?? 1) * (opts.ghost ? 0.5 : ALPHA[conf]);
   c.strokeStyle = INK.FLOOR;
   c.fillStyle = INK.FLOOR;
-  c.lineWidth = conf === 'stale' || conf === 'old' ? 1.8 : 2.4;
+  c.lineWidth = opts.ghost ? 1.1 : conf === 'stale' || conf === 'old' ? 1.8 : 2.4;
   // Anything he has not had confirmed is drawn broken. A dashed outline is what
   // a careful hand did with a position it did not trust, and it needs no key.
-  c.setLineDash(conf === 'stale' ? [3, 3] : conf === 'old' ? [6, 4] : []);
+  c.setLineDash(opts.ghost ? [2, 3] : conf === 'stale' ? [3, 3] : conf === 'old' ? [6, 4] : []);
 
   if (t.kind === 'foot') {
     c.beginPath();
     c.rect(x - 12, y - 6, 24, 12);
     c.stroke();
     if (solid) {
-      c.globalAlpha = ALPHA[conf] * 0.85;
+      c.globalAlpha *= 0.85;
       c.fill();
     }
   } else if (t.kind === 'work') {
@@ -1290,7 +1364,7 @@ function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): voi
     c.closePath();
     c.stroke();
     if (solid) {
-      c.globalAlpha = ALPHA[conf] * 0.8;
+      c.globalAlpha *= 0.8;
       c.fill();
     }
   } else if (t.kind === 'ship') {
@@ -1332,9 +1406,9 @@ function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): voi
  * coast, and a route label that cannot be read is a route label that has made
  * the map worse.
  */
-function drawTrack(c: CanvasRenderingContext2D, tr: Track): void {
+function drawTrack(c: CanvasRenderingContext2D, tr: Track, alpha = 1): void {
   const scr = geo(tr.path);
-  const a = ALPHA[tr.conf];
+  const a = ALPHA[tr.conf] * alpha;
 
   c.save();
   c.globalAlpha = a * 0.85;
@@ -1391,12 +1465,74 @@ function drawTrack(c: CanvasRenderingContext2D, tr: Track): void {
 }
 
 /**
+ * A scar: crossed sabres, the way a plan of this date marked an action.
+ *
+ * Small, and lighter than a mark. It is not something to be read — it is
+ * something the page has on it, and the page has more of them every act. The
+ * label is set only while the thing is within a year of the page's date; older
+ * actions keep the glyph and lose the caption, which is both what a crowded
+ * sheet needs and true about how a war is remembered while it is still running.
+ */
+function drawScar(
+  c: CanvasRenderingContext2D, sc: Scar, named: boolean, alpha: number,
+): void {
+  const [x, y] = bu(sc.lon, sc.lat);
+  c.save();
+  c.translate(x, y);
+  c.globalAlpha = alpha * 0.8;
+  c.strokeStyle = INK.SETTLED;
+  c.lineWidth = 1.7;
+  c.lineCap = 'round';
+  for (const a of [Math.PI / 4, -Math.PI / 4]) {
+    c.save();
+    c.rotate(a);
+    c.beginPath();
+    c.moveTo(-9, 0);
+    c.lineTo(9, 0);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(-5.5, -3.5);
+    c.lineTo(-5.5, 3.5);
+    c.stroke();
+    c.restore();
+  }
+  if (named) {
+    c.globalAlpha = alpha * 0.8;
+    c.font = 'italic 12px Georgia, "Times New Roman", serif';
+    c.textAlign = 'center';
+    c.lineJoin = 'round';
+    c.strokeStyle = SHEET;
+    c.lineWidth = 4;
+    c.strokeText(sc.label, 0, 21);
+    c.fillStyle = INK.SETTLED;
+    c.fillText(sc.label, 0, 21);
+  }
+  c.restore();
+}
+
+/** The scars a given page carries, minus any a live mark already stands on. */
+export function scarsFor(tm: Theatre): { scar: Scar; named: boolean }[] {
+  const asOf = Date.parse(`${tm.asOf}T00:00:00Z`);
+  return SCARS.filter((sc) => {
+    if (Date.parse(`${sc.on}T00:00:00Z`) > asOf) return false;
+    // A thing that is still news does not also need marking as history.
+    return !tm.tokens.some(
+      (t) => Math.abs(t.lon - sc.lon) < 0.08 && Math.abs(t.lat - sc.lat) < 0.06);
+  }).map((sc) => ({
+    scar: sc,
+    named: asOf - Date.parse(`${sc.on}T00:00:00Z`) < 365 * DAY,
+  }));
+}
+
+/**
  * The leader from a marker to its label. Only drawn where the label has been
  * pushed off the mark, and it stops short at both ends so it never touches
  * either. Without it the four marks around Boston have four captions floating
  * in the sea with nothing to say which belongs to which.
  */
-function leader(c: CanvasRenderingContext2D, t: Token, conf: Confidence): void {
+function leader(
+  c: CanvasRenderingContext2D, t: Token, conf: Confidence, alpha = 1,
+): void {
   const [dx, dy] = labelOffset(t);
   if (Math.hypot(dx, dy) < 30) return;
   const [x, y] = bu(t.lon, t.lat);
@@ -1404,7 +1540,7 @@ function leader(c: CanvasRenderingContext2D, t: Token, conf: Confidence): void {
   const ux = dx / len;
   const uy = dy / len;
   c.save();
-  c.globalAlpha = ALPHA[conf] * 0.6;
+  c.globalAlpha = ALPHA[conf] * 0.6 * alpha;
   c.strokeStyle = INK.SETTLED;
   c.lineWidth = 1.2;
   c.beginPath();
@@ -1423,6 +1559,7 @@ function leader(c: CanvasRenderingContext2D, t: Token, conf: Confidence): void {
  * the browser sets is one a screen reader can read and a student can select.
  */
 export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvasElement {
+  void theatre;
   const cv = document.createElement('canvas');
   cv.width = w;
   cv.height = h;
@@ -1574,14 +1711,6 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
   compass(c, MAP_W * 0.925, MAP_H * 0.115, MAP_H * 0.062);
   scaleBar(c, MAP_W * 0.60, MAP_H * 0.855);
 
-  for (const tr of theatre.tracks ?? []) drawTrack(c, tr);
-
-  for (const t of theatre.tokens) {
-    const conf = confidenceOf(t, theatre.asOf);
-    leader(c, t, conf);
-    drawToken(c, t, conf);
-  }
-
   c.restore();  // out of map space
 
   // A little wear along the torn edge, so the paper looks handled rather than
@@ -1598,6 +1727,111 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
 
   curl(c, 'tl');
   curl(c, 'br');
+
+  return cv;
+}
+
+
+/* -------------------------------------------------------------- the marks
+ *
+ * Split off the base sheet so it can be redrawn on its own, thirty times a
+ * second, over a piece of paper that never changes.
+ *
+ * That split is what makes the arrival possible, and the arrival is the whole
+ * point of having eight of these pages. The geography, the border, the grid and
+ * the cartouche are printed once; the marks, the roads and the scars are what
+ * somebody has been adding to the sheet, and they are the only thing that moves.
+ * It is also just true to the object: this is a printed map that has been
+ * written on.
+ */
+
+/** Smoothstep. Nothing in this game starts or stops at full speed. */
+const ease = (t: number): number => t * t * (3 - 2 * t);
+
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/**
+ * Draw everything that has been added to the sheet, at a moment `t` in the
+ * arrival: 0 is the war as the player last saw it, 1 is the war as it is.
+ *
+ * WHAT THE ANIMATION SAYS, and it is worth stating because it is the reason the
+ * refactor above was worth doing: the page opens on the map you closed the last
+ * act with, and then it changes in front of you, and you did nothing to cause
+ * any of it. Marks that moved slide. Ghosts of where they were fade in behind
+ * them. New scars ink themselves. Then it stops, and you are looking at a war
+ * that went somewhere while you were busy elsewhere.
+ *
+ * `prev` absent — a fresh start, or the first act — means there is nothing to
+ * arrive FROM, and the page simply is what it is.
+ */
+export function theatreMarks(
+  tm: Theatre, prev: Theatre | undefined, w: number, h: number, t = 1,
+): HTMLCanvasElement {
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const c = cv.getContext('2d')!;
+  c.scale(w / CANVAS_W, w / CANVAS_W);
+  c.translate(BLEED + MARGIN, BLEED + MARGIN);
+  c.beginPath();
+  c.rect(0, 0, MAP_W, MAP_H);
+  c.clip();
+  c.lineJoin = 'round';
+  c.lineCap = 'round';
+
+  const e = ease(Math.min(1, Math.max(0, t)));
+  const was = new Map((prev?.tokens ?? []).map((x) => [x.id, x]));
+  const now = new Map(tm.tokens.map((x) => [x.id, x]));
+  const oldScars = new Set((prev ? scarsFor(prev) : []).map((x) => x.scar.label));
+
+  // Scars first, under everything. They are the oldest thing on the page.
+  for (const { scar, named } of scarsFor(tm)) {
+    drawScar(c, scar, named, oldScars.has(scar.label) ? 1 : e);
+  }
+
+  // Roads. Nothing was travelled before the act it belongs to, so they all
+  // arrive with it.
+  for (const tr of tm.tracks ?? []) drawTrack(c, tr, e);
+
+  /*
+   * Ghosts: where a thing was when the player last looked.
+   *
+   * Only for marks that actually moved, and only one act back — two would be
+   * archaeology. The fleet is the case this exists for: in May it is a rumour
+   * in open water, in July it is anchored in Boston roads, and the ghost is the
+   * only thing on the page connecting the two. There is deliberately no road
+   * between them. Nobody watched it cross.
+   */
+  for (const [id, t2] of now) {
+    const old = was.get(id);
+    if (!old) continue;
+    if (Math.abs(old.lon - t2.lon) < 0.05 && Math.abs(old.lat - t2.lat) < 0.05) continue;
+    drawToken(c, old, confidenceOf(old, prev!.asOf), { alpha: e, ghost: true });
+  }
+
+  // Marks that have left the page altogether, fading out where they stood.
+  for (const [id, old] of was) {
+    if (now.has(id)) continue;
+    const conf = confidenceOf(old, prev!.asOf);
+    drawToken(c, old, conf, { alpha: 1 - e });
+  }
+
+  for (const t2 of tm.tokens) {
+    const conf = confidenceOf(t2, tm.asOf);
+    const old = was.get(t2.id);
+    if (old) {
+      // It was here last act. Slide it, and keep it at full weight the whole
+      // way — a mark that fades in and out is a mark that stopped existing.
+      const [ax, ay] = bu(old.lon, old.lat);
+      const [bx, by] = bu(t2.lon, t2.lat);
+      const at2: Pt = [lerp(ax, bx, e), lerp(ay, by, e)];
+      leader(c, t2, conf, e);
+      drawToken(c, t2, conf, { at: at2 });
+    } else {
+      leader(c, t2, conf, e);
+      drawToken(c, t2, conf, { alpha: e });
+    }
+  }
 
   return cv;
 }

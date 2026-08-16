@@ -842,6 +842,24 @@ British movement *overland* can carry a track where it was reported — Lafayett
 
 **Built:** Act 1 carries the express from Watertown, 19–28 April — the Lexington news travelling the whole length of the sheet in nine days. The first thing the map ever does is show a student how long information took to cross it, which means every later lesson about staleness is downstream of one dashed line and none of it needs explaining. Act 2 carries Washington's own road up from Philadelphia, 23 June to 2 July, and it is the only line on that page, because a siege is what happens when nothing moves.
 
+### Ghosts, scars, and the arrival
+
+Three more layers, and between them they are how the sequence tells the war.
+
+**Ghosts.** Where a mark was when the player last looked, drawn as a faint hollow outline. Only for marks that moved, and **one act back only** — two is archaeology. Every mark carries a stable `id`, and two marks sharing an id on consecutive pages are the same thing at two moments; that one piece of bookkeeping is what everything else here is built on, and the linter checks it.
+
+The case it exists for is already live. In Act 1 the fleet is a rumour in open water east of Cape Cod. In Act 2 it is anchored in Boston roads. The ghost is the only thing on the page connecting the two, and there is deliberately **no road between them** — nobody watched it cross.
+
+**Scars.** Crossed sabres, placed once, on every page after. One list for the whole game filtered by date, so accumulation is automatic. A scar is suppressed on any page that already carries a live mark at the same spot, which means Lexington is a mark to be *read* in Act 1 and a scar to be *seen* from Act 2 on, with no authoring to say so. Labels are set only while the action is within a year of the page's date; older ones keep the glyph and lose the caption — what a crowded sheet needs, and true about how a war is remembered while it is still running.
+
+The layer says two things. Act 1's page has five marks on four hundred miles; Act 8's will be covered, and the covering is eight years. And **most of them are not his** — Saratoga is Gates's, Cowpens is Morgan's, King's Mountain is nobody's. The linter asserts that fewer than half of all scars are ones he was present for, which passes trivially at three and is there so it cannot stop being true by accident at thirty. The moment more than half the war is something Washington personally did, this game has started flattering him.
+
+**The arrival.** The page opens on the war as the player last saw it and then changes in front of them: marks that moved slide, ghosts fade in behind, new scars ink themselves. 380ms hold, 1150ms run. They did nothing to cause any of it, which is the point — the war moved while they were busy somewhere else.
+
+That required splitting the drawing in two. `theatreSheet` prints the paper, the geography, the border and the cartouche once; `theatreMarks` draws the scars, roads, ghosts and marks onto a transparent layer over it and can be redrawn every frame. The split is also just true to the object: this is a printed map that has been written on.
+
+**Related:** the world stops rendering while the map is up. A WebGL diorama running at full rate behind a fully opaque panel is pure heat, and it was starving the arrival — measured at under four frames a second headless with the diorama running, and about 3.5× that without it.
+
 ### The lettered grid — the change that matters most for a fifteen-year-old
 
 The sheet was ruled at whole degrees with the figures in the margin, which is what surveyors did and which is **useless in a classroom**. Nobody says *"the fleet is at forty-two degrees twenty minutes north."*
@@ -877,11 +895,9 @@ Shapes and fill carry the meaning, never colour: **theirs draws solid, ours draw
 
 In rough order of payoff:
 
-1. **Ghosts** — last act's position for anything that moved, as a faint open outline, one act back only. Movement visible on a single page instead of requiring memory.
-2. **Scars** — battles don't move, they accumulate. A small mark placed once and never removed. Act 1's page has five marks; Act 8's is covered, and **most of what covers it is not his** — Saratoga is Gates's, Cowpens is Morgan's, King's Mountain is nobody's. The accumulation is the length of the war and no caption has to say so.
-3. **The arrival** — the page opens showing the war as the player last left it, then the marks that changed redraw over about a second and a half. `§7.4`'s staggered token ink-on, reused. One beat per act, no narration, and the player did nothing to earn it, which is right: the war moved while they were busy elsewhere.
-4. **The southern inset** — from Act 5. Small, at the edge, everything in it dashed; the form of the panel says *this is somewhere else and you do not know what is happening there* before a word is read. Then Cornwallis's track walks out of the box and onto the main map, which is what happened and is the hinge of the war.
-5. **The sequence, at the end** — let the player page through all eight sheets in order. No new art. That is the assessment artifact `08` has been asking for.
+1. **The southern inset** — from Act 5. Small, at the edge, everything in it dashed; the form of the panel says *this is somewhere else and you do not know what is happening there* before a word is read. Then Cornwallis's track walks out of the box and onto the main map, which is what happened and is the hinge of the war.
+2. **The sequence, at the end** — let the player page through all eight sheets in order. No new art. That is the assessment artifact `08` has been asking for.
+3. **More scars.** There are three, because by July 1775 there had been three actions. That is honest and it is also why the layer looks thin today: it only starts paying at Act 4 and it is unanswerable by Act 8.
 
 ### Known limits
 

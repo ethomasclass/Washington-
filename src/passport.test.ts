@@ -13,7 +13,9 @@ import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
 import { decisionList, ledgerFor, sceneList } from './content';
 import { reckon, RECKONED_ACTS } from './ledger';
-import { at, confidenceOf, gridRef, labelOffset, MAP_H, MAP_W, THEATRES } from './theatre';
+import {
+  at, confidenceOf, gridRef, labelOffset, MAP_H, MAP_W, SCARS, scarsFor, THEATRES,
+} from './theatre';
 import { figureHalfW, frameX } from './ground';
 import { walkFar } from './art';
 import { councilFor, lockOn, rejoinderFor } from './council';
@@ -656,6 +658,10 @@ console.log('\nthe theatre map');
     check(`act ${act}: ${tm.tokens.length} marks, which is a page and not a list`,
       tm.tokens.length >= 3 && tm.tokens.length <= 9);
 
+    const ids = tm.tokens.map((t) => t.id);
+    check(`act ${act}'s marks have distinct ids`, new Set(ids).size === ids.length,
+      ids.join(', '));
+
     for (const t of tm.tokens) {
       const where = `act ${act} · ${t.label}`;
       // The projection is fixed and the sheet is not scrollable, so anything
@@ -730,6 +736,74 @@ console.log('\nthe theatre map');
     }
     check(`act ${act}'s labels do not print through each other`, clashes.length === 0,
       clashes.join('; '));
+  }
+
+  /*
+   * IDENTITY ACROSS ACTS.
+   *
+   * A mark that keeps its id from one page to the next is the same thing at two
+   * moments, and that is what the ghost and the slide are drawn from. A mark
+   * that quietly changes id between acts becomes two unrelated things, the
+   * movement stops being shown, and nothing anywhere reports it — which is why
+   * this is a test and not a convention.
+   */
+  {
+    const seq = acts.sort((p, q) => p - q);
+    for (let i = 1; i < seq.length; i++) {
+      const prev = THEATRES[seq[i - 1]];
+      const tm = THEATRES[seq[i]];
+      const carried = tm.tokens.filter((t) => prev.tokens.some((p) => p.id === t.id));
+      check(`act ${seq[i - 1]} → ${seq[i]}: ${carried.length} marks carry over`,
+        carried.length > 0, 'nothing on this page was on the last one');
+      const moved = carried.filter((t) => {
+        const p = prev.tokens.find((x) => x.id === t.id)!;
+        return Math.abs(p.lon - t.lon) >= 0.05 || Math.abs(p.lat - t.lat) >= 0.05;
+      });
+      // Not a failure — a note. An act where nothing moved is a real thing (a
+      // siege is exactly that), and the writers should be able to read it off.
+      console.log(`  note act ${seq[i]}: ${moved.length} of ${carried.length} ` +
+        `carried marks moved${moved.length ? ` — ${moved.map((t) => t.label).join(', ')}` : ''}`);
+    }
+  }
+
+  /*
+   * SCARS. They only ever accumulate, and most of them are never his.
+   */
+  {
+    const dated = SCARS.every((sc) => !Number.isNaN(Date.parse(sc.on)));
+    check(`every scar has a date (${SCARS.length})`, dated);
+
+    /*
+     * Accumulation is guaranteed by the date filter, so checking the DRAWN
+     * count for monotonicity would be both a tautology and wrong — a scar is
+     * suppressed on any page where a live mark already stands on it, so the
+     * drawn count legitimately falls. Lexington is a mark in Act 1 and a scar
+     * in Act 2: zero, then one.
+     *
+     * The invariant with teeth is underneath it. The pages have to run forward
+     * in time, or the whole layer accumulates in the wrong order and nothing
+     * anywhere says so.
+     */
+    const seq = acts.sort((p, q) => p - q);
+    for (let i = 1; i < seq.length; i++) {
+      check(`act ${seq[i]} is drawn after act ${seq[i - 1]}`,
+        Date.parse(THEATRES[seq[i]].asOf) > Date.parse(THEATRES[seq[i - 1]].asOf),
+        `${THEATRES[seq[i - 1]].asOf} → ${THEATRES[seq[i]].asOf}`);
+    }
+    for (const act of seq) {
+      const n = scarsFor(THEATRES[act]).length;
+      console.log(`  note act ${act}: ${n} scars on the page`);
+    }
+
+    /*
+     * The claim the layer exists to make. It passes trivially with three scars
+     * and it is here so that it cannot stop being true by accident once there
+     * are thirty — the moment more than half the war is something Washington
+     * personally did, this game has started flattering him.
+     */
+    const his = SCARS.filter((sc) => sc.his).length;
+    check(`most of the war is not his doing (${his} of ${SCARS.length})`,
+      his * 2 <= SCARS.length);
   }
 
   /*

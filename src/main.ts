@@ -596,7 +596,12 @@ function frame(now: number): void {
   if (!busy) checkAmbient();
   const me = renderer.screenPos(pos);
   overlay.setThoughtAnchor(me.x, me.y - 6);
-  renderer.render();
+  // Nothing is drawing the world while the map is up: it covers the frame
+  // completely, and a WebGL diorama rendering at full rate behind an opaque
+  // panel is pure heat. It also starves the arrival animation, which shares the
+  // same frame budget — measured at under four frames a second in a headless
+  // browser with the diorama running, which is a fair proxy for a Chromebook.
+  if (!covered) renderer.render();
   requestAnimationFrame(frame);
 }
 
@@ -716,14 +721,24 @@ function arrive(sc: Scene): void {
  */
 let theatreAct = -1;
 
+/** True while a full-screen panel hides the world entirely. */
+let covered = false;
+
 function openAct(act: number, then: () => void): void {
   const sheet = THEATRES[act];
   if (theatreAct === act || !sheet) {
     then();
     return;
   }
+  // The page the player last saw, so the new one can arrive out of it. Absent
+  // on a fresh start, and the map simply is what it is.
+  const prev = theatreAct >= 0 ? THEATRES[theatreAct] : undefined;
   theatreAct = act;
-  overlay.showTheatre(sheet, then);
+  covered = true;
+  overlay.showTheatre(sheet, prev, () => {
+    covered = false;
+    then();
+  });
 }
 
 refreshCode();

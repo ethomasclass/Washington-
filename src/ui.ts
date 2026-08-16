@@ -25,7 +25,7 @@ import { cellStyle, portraitFor } from './portraits';
 import type { LedgerLine, Reckoning } from './ledger';
 import {
   CANVAS_ASPECT, CANVAS_W, canvasAt, confidenceOf, gridRef, labelOffset, longDate,
-  provenanceOf, theatreSheet, type Theatre,
+  provenanceOf, theatreMarks, theatreSheet, type Theatre,
 } from './theatre';
 
 /**
@@ -775,7 +775,7 @@ export class Overlay {
    * that drew the canvas. There is no second coordinate system to drift out of
    * step with the first — which is the bug this design exists to not have.
    */
-  showTheatre(theatre: Theatre, onDone: () => void): void {
+  showTheatre(theatre: Theatre, prev: Theatre | undefined, onDone: () => void): void {
     this.clearPanel();
 
     const el = document.createElement('div');
@@ -800,7 +800,26 @@ export class Overlay {
     sheet.style.height = `${Math.round(sh)}px`;
     // Drawn at 1.6× and shown down, which is the cheapest anti-aliasing there
     // is and it matters here: this page is nothing but ruled lines.
-    sheet.appendChild(theatreSheet(theatre, Math.round(sw * 1.6), Math.round(sh * 1.6)));
+    const cw = Math.round(sw * 1.6);
+    const ch = Math.round(sh * 1.6);
+    sheet.appendChild(theatreSheet(theatre, cw, ch));
+
+    /*
+     * THE ARRIVAL.
+     *
+     * The page opens on the war as the player last saw it and then changes in
+     * front of them: marks that moved slide, ghosts of where they were fade in
+     * behind, new scars ink themselves. About a second and a half, and they did
+     * nothing to cause any of it — which is the point. The war moved while they
+     * were busy somewhere else.
+     *
+     * Only the marks redraw. The paper, the coast and the grid are printed once
+     * and never touched, which is both what makes this cheap and what makes the
+     * eight pages read as one page at eight moments.
+     */
+    let marks = theatreMarks(theatre, prev, cw, ch, prev ? 0 : 1);
+    marks.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+    sheet.appendChild(marks);
 
     const ring = document.createElement('canvas');
     ring.className = 'ringlayer';
@@ -811,7 +830,7 @@ export class Overlay {
     const rc = ring.getContext('2d')!;
     sheet.appendChild(ring);
 
-    const marks = theatre.tokens.map((t) => {
+    const labels = theatre.tokens.map((t) => {
       const [fx, fy] = canvasAt(t.lon, t.lat);
       const conf = confidenceOf(t, theatre.asOf);
       const m = document.createElement('div');
@@ -824,6 +843,9 @@ export class Overlay {
       const s = sw / CANVAS_W;
       m.style.left = `calc(${(fx * 100).toFixed(3)}% + ${(dx * s).toFixed(1)}px)`;
       m.style.top = `calc(${(fy * 100).toFixed(3)}% + ${(dy * s).toFixed(1)}px)`;
+      // Held back until the marks have finished moving. A caption that arrives
+      // before the thing it names is a caption pointing at nothing.
+      if (prev) m.style.opacity = '0';
       sheet.appendChild(m);
       return m;
     });
@@ -842,7 +864,7 @@ export class Overlay {
     // -1 is the sheet itself: the act's standing, before any mark is chosen.
     let focus = -1;
     const draw = (): void => {
-      marks.forEach((m, i) => m.classList.toggle('on', i === focus));
+      labels.forEach((m, i) => m.classList.toggle('on', i === focus));
       rc.clearRect(0, 0, ring.width, ring.height);
       if (focus < 0) {
         caption.innerHTML =
@@ -873,6 +895,24 @@ export class Overlay {
         `<div class="from">${provenanceOf(t, theatre.asOf)}</div>`;
     };
     draw();
+
+    if (prev) {
+      const HOLD = 380;
+      const RUN = 1150;
+      const t0 = performance.now();
+      const step = (): void => {
+        // The panel is gone — the player pressed on. Stop redrawing it.
+        if (!el.isConnected) return;
+        const t = (performance.now() - t0 - HOLD) / RUN;
+        const next = theatreMarks(theatre, prev, cw, ch, Math.min(1, Math.max(0, t)));
+        next.style.cssText = marks.style.cssText;
+        marks.replaceWith(next);
+        marks = next;
+        if (t >= 0.78) for (const m of labels) m.style.opacity = '1';
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
 
     this.detach();
     this.keyHandler = (e: KeyboardEvent) => {

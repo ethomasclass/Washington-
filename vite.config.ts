@@ -27,6 +27,8 @@ export default defineConfig({
         // judge. A gait cannot be assessed one frame at a time, and certainly
         // not inside the game at eighty pixels while it is moving.
         sprites: 'sprites.html',
+        // The environment medium bake-off. A bench, not the game.
+        bakeoff: 'bakeoff.html',
       },
     },
   },

@@ -79,6 +79,57 @@
               '\n' + (e.filename || '') + (e.lineno ? ':' + e.lineno : '')
           );
         });
+
+        /*
+         * Resource failures — a script that 404s, or one the browser refuses on
+         * MIME grounds — do NOT reach a normal window error handler. They only
+         * surface in the capture phase, which is why the first version of this
+         * card reported "no error" for the single most common failure there is.
+         */
+        window.addEventListener(
+          'error',
+          function (e) {
+            var t = e.target;
+            if (!t || t === window || !(t.src || t.href)) return;
+            var url = String(t.src || t.href);
+            if (/\.ts(\?|$)/.test(url)) {
+              sourceNotBuild(url);
+              return;
+            }
+            show(
+              'A file this page needs would not load.',
+              'The browser refused or could not find the file below.',
+              url
+            );
+          },
+          true
+        );
+
+        /*
+         * The unambiguous diagnosis.
+         *
+         * If this page is asking for a .ts file, what is being served is the
+         * repository itself rather than the compiled build — no browser can
+         * execute TypeScript, so the page will always be blank. That is a
+         * hosting setting, not a bug in the game, and it is worth naming
+         * precisely instead of leaving anyone to infer it from a white screen.
+         */
+        function sourceNotBuild(url) {
+          show(
+            'This site is serving the source, not the build.',
+            'The page is asking the browser to run TypeScript, which no browser can execute, ' +
+              'so nothing will ever be drawn. This is a hosting setting rather than a fault in ' +
+              'the game. In the repository: Settings, then Pages, then set Source to ' +
+              '"GitHub Actions" instead of "Deploy from a branch". The workflow has already ' +
+              'built and published the compiled game; that setting decides whether it is served.',
+            'page:   ' + location.href + '\nasking: ' + url
+          );
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+          var raw = document.querySelector('script[src$=".ts"], script[src*=".ts?"]');
+          if (raw) sourceNotBuild(raw.getAttribute('src'));
+        });
         window.addEventListener('unhandledrejection', function (e) {
           show(
             'The prototype could not start.',

@@ -187,44 +187,162 @@ function planks(x: Ctx, box: Pt[], rnd: () => number, gap = 9): void {
   });
 }
 
-/** Tufts of grass — three or four strokes springing from one point. */
-function tuft(x: Ctx, px: number, py: number, s: number, rnd: () => number): void {
-  const n = 3 + Math.floor(rnd() * 2);
-  for (let i = 0; i < n; i++) {
-    const lean = (i - (n - 1) / 2) * 0.5 + (rnd() - 0.5) * 0.4;
-    pen(x, [[px, py], [px + lean * s * 0.7, py - s * (0.7 + rnd() * 0.5)]], rnd, 0.9);
+
+/**
+ * A wavy silhouette, for ground that rolls.
+ *
+ * The single biggest correction from the reference: land is not a band. Every
+ * ground plane in this style is a curve that rises and falls, and depth is read
+ * from one curve overlapping the next. Straight horizontal edges are what made
+ * the first attempt look like a bar chart.
+ */
+function ridge(x0: number, x1: number, y: number, amp: number, rnd: () => number, steps = 9): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const wob = Math.sin(t * Math.PI * (1.4 + rnd() * 0.6)) * amp + (rnd() - 0.5) * amp * 0.5;
+    out.push([x0 + (x1 - x0) * t, y - wob]);
+  }
+  return out;
+}
+
+/**
+ * Grass as directional hatching, not as scattered tufts.
+ *
+ * The reference covers open ground in dense short strokes that lie along the
+ * fall of the land, which is what stops a big green shape reading as a painted
+ * wall. Sparse tufts on flat colour read as speckle; this reads as a field.
+ */
+function grassLay(
+  x: Ctx,
+  region: Pt[],
+  rnd: () => number,
+  n: number,
+  lean: number,
+  len: number,
+): void {
+  const x0 = Math.min(...region.map((p) => p[0]));
+  const x1 = Math.max(...region.map((p) => p[0]));
+  const y0 = Math.min(...region.map((p) => p[1]));
+  const y1 = Math.max(...region.map((p) => p[1]));
+  inside(x, region, () => {
+    /*
+     * Clustered, not scattered. Evenly spread single strokes read as rain
+     * falling on the field; grass grows in patches, so each site puts down a
+     * small group of short strokes that share a lean, and the ground between
+     * them is left bare.
+     */
+    for (let i = 0; i < n / 5; i++) {
+      const cx2 = x0 + rnd() * (x1 - x0);
+      const t = rnd();
+      const cy2 = y0 + t * (y1 - y0);
+      const patchLean = lean + (rnd() - 0.5) * 0.5;
+      for (let k = 0; k < 5; k++) {
+        const gx = cx2 + (rnd() - 0.5) * 34;
+        const gy = cy2 + (rnd() - 0.5) * 12;
+        const s = len * (0.3 + t * 0.5) * (0.6 + rnd() * 0.6);
+        pen(x, [[gx, gy], [gx + patchLean * s * 1.6, gy - s * 0.42]], rnd, 0.75);
+      }
+    }
+  });
+}
+
+/**
+ * A tree: a dark mass with its branch structure drawn INSIDE it.
+ *
+ * This is the most recognisable single object in the reference and it is not
+ * how trees are usually stylised — the branches are not hidden behind the
+ * canopy, they are drawn straight over it in the same ink as the contour, so
+ * the mass reads as foliage carried on a structure rather than as a lollipop.
+ */
+function tree(x: Ctx, tx: number, groundY: number, h: number, rnd: () => number): void {
+  const trunkW = h * 0.045;
+  const crownR = h * 0.34;
+  const crownY = groundY - h * 0.66;
+
+  // Trunk, drawn first and then covered by the canopy.
+  shape(x, [[tx - trunkW, groundY], [tx - trunkW * 0.6, crownY],
+            [tx + trunkW * 0.6, crownY], [tx + trunkW, groundY]], C.timber, rnd, 1.8);
+
+  // The canopy: two or three overlapping lobed masses, not one circle.
+  const lobes: Pt[][] = [];
+  for (const [ox, oy, r] of [[-crownR * 0.5, 0, crownR * 0.8], [crownR * 0.45, -crownR * 0.2, crownR * 0.75], [0, -crownR * 0.5, crownR * 0.85]] as const) {
+    const pts: Pt[] = [];
+    const n = 17;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const rr = r * (0.82 + (i % 2 === 0 ? 0.2 : 0.03) + rnd() * 0.07);
+      pts.push([tx + ox + Math.cos(a) * rr, crownY + oy + Math.sin(a) * rr * 0.92]);
+    }
+    lobes.push(pts);
+    fill(x, pts, C.leaf);
+  }
+  for (const pts of lobes) pen(x, pts, rnd, 2.2, true);
+
+  // Branches drawn over the canopy, in ink, reaching into it.
+  x.save();
+  const hull = lobes.flat();
+  const bx0 = Math.min(...hull.map((p) => p[0]));
+  const bx1 = Math.max(...hull.map((p) => p[0]));
+  const by0 = Math.min(...hull.map((p) => p[1]));
+  const by1 = Math.max(...hull.map((p) => p[1]));
+  x.beginPath();
+  x.rect(bx0, by0, bx1 - bx0, by1 - by0);
+  x.clip();
+  const limb = (fx: number, fy: number, angle: number, len: number, depth: number): void => {
+    if (depth > 3 || len < 8) return;
+    const ex = fx + Math.cos(angle) * len;
+    const ey = fy + Math.sin(angle) * len;
+    pen(x, [[fx, fy], [ex, ey]], rnd, Math.max(0.9, 3.4 - depth));
+    limb(ex, ey, angle - 0.45 - rnd() * 0.3, len * 0.66, depth + 1);
+    limb(ex, ey, angle + 0.45 + rnd() * 0.3, len * 0.66, depth + 1);
+  };
+  limb(tx, crownY + crownR * 0.5, -Math.PI / 2, crownR * 0.62, 0);
+  x.restore();
+}
+
+/** A shrub: a cluster of small lobed masses, the cheapest incident there is. */
+function bush(x: Ctx, bx: number, by: number, r: number, rnd: () => number, colour: string = C.leaf): void {
+  for (let k = 0; k < 3; k++) {
+    const ox = (k - 1) * r * 0.55;
+    const rr = r * (0.62 + rnd() * 0.3);
+    const pts: Pt[] = [];
+    const n = 11;
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI + (i / (n - 1)) * Math.PI;
+      const q = rr * (0.8 + (i % 2 === 0 ? 0.24 : 0));
+      pts.push([bx + ox + Math.cos(a) * q, by + Math.sin(a) * q * 0.9]);
+    }
+    pts.push([bx + ox + rr, by], [bx + ox - rr, by]);
+    shape(x, pts, colour, rnd, 1.7);
   }
 }
 
-/** A lobed mass of foliage, with drawn leaf-clusters inside it. */
-function crown(x: Ctx, cx: number, cy: number, r: number, rnd: () => number): Pt[] {
-  const pts: Pt[] = [];
-  const lobes = 15 + Math.floor(rnd() * 5);
-  for (let i = 0; i < lobes; i++) {
-    const a = (i / lobes) * Math.PI * 2;
-    const rr = r * (0.80 + (i % 2 === 0 ? 0.20 : 0.02) + rnd() * 0.06);
-    pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.88]);
-  }
-  shape(x, pts, C.leaf, rnd, 2.1);
-  inside(x, pts, () => {
-    // A flat shaded side, with its own edge — never a gradient.
-    fill(x, [[cx - r, cy + r * 0.1], [cx + r, cy - r * 0.1], [cx + r, cy + r], [cx - r, cy + r]], C.leafShade);
-    for (let i = 0; i < 26; i++) {
-      const a = rnd() * Math.PI * 2;
-      const d = rnd() * r * 0.85;
-      const lx = cx + Math.cos(a) * d;
-      const ly = cy + Math.sin(a) * d * 0.88;
-      // Leaf clusters: a scalloped arc, not a leaf.
-      pen(x, [[lx - 7, ly], [lx - 3, ly - 5], [lx + 2, ly - 4], [lx + 6, ly + 1]], rnd, 1);
-    }
-  });
-  return pts;
+/** A sheep, a hen, a rabbit — small life, drawn tiny. The world is inhabited. */
+function beast(x: Ctx, px: number, py: number, s: number, rnd: () => number): void {
+  shape(x, [[px - s, py - s * 0.5], [px - s * 0.7, py - s], [px + s * 0.7, py - s],
+            [px + s, py - s * 0.45], [px + s * 0.6, py], [px - s * 0.6, py]], C.canvasLit, rnd, 1.3);
+  shape(x, [[px + s * 0.7, py - s * 0.95], [px + s * 1.25, py - s * 0.9],
+            [px + s * 1.2, py - s * 0.5], [px + s * 0.7, py - s * 0.5]], C.timberShade, rnd, 1.2);
+  pen(x, [[px - s * 0.5, py], [px - s * 0.5, py + s * 0.4]], rnd, 1);
+  pen(x, [[px + s * 0.4, py], [px + s * 0.4, py + s * 0.4]], rnd, 1);
 }
+
 
 /* ------------------------------------------------------------ the objects */
 
 function tent(x: Ctx, cx: number, base: number, w: number, rnd: () => number): void {
   const h = w * 1.35;
+  // Contact with the ground. Without it a drawn object floats, and in a style
+  // with no cast shadows this flat smear under the base is the only thing
+  // saying the thing is standing on something.
+  x.save();
+  x.globalAlpha = 0.16;
+  x.fillStyle = '#2E3320';
+  x.beginPath();
+  x.ellipse(cx, base + 2, w * 1.15, w * 0.2, 0, 0, Math.PI * 2);
+  x.fill();
+  x.restore();
   const body: Pt[] = [[cx - w, base], [cx, base - h], [cx + w, base]];
   shape(x, body, C.canvasLit, rnd, 2.1);
   // The shaded half, flat, with its own edge down the ridge.
@@ -308,7 +426,27 @@ function barrel(x: Ctx, px: number, py: number, s: number, rnd: () => number): v
 
 /* ------------------------------------------------------------- the scene */
 
-/** The camp before Boston, drawn. Plate size, ready to cut. */
+
+/**
+ * The camp before Boston, drawn.
+ *
+ * Rebuilt against reference. The corrections that mattered, in order of how
+ * badly the first attempt got them wrong:
+ *
+ *   - LAND ROLLS. Ground is a sequence of overlapping curved ridges, and depth
+ *     is read from one overlapping the next. Straight horizontal bands made the
+ *     first version look like a bar chart.
+ *   - GRASS IS HATCHING. Open ground is covered in dense short strokes lying
+ *     along the fall of the land. Scattered tufts on flat colour read as
+ *     speckle; this reads as a field.
+ *   - THE FOREGROUND IS FOLIAGE. A dark bank of drawn scrub across the bottom
+ *     edge, not a slab of earth — it is the frame's darkest mass and it is made
+ *     of line.
+ *   - THE PATH WANDERS and is narrow. A wide converging track reads as a road
+ *     in perspective, which is the one thing this space does not have.
+ *   - THE WORLD IS INHABITED. Sheep, distant figures, birds. Cheap, and it is
+ *     the difference between a diagram and a place.
+ */
 export function drawCamp(W = 1600, H = 900): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = W;
@@ -317,153 +455,223 @@ export function drawCamp(W = 1600, H = 900): HTMLCanvasElement {
   const rnd = mulberry(20775);
   const hz = H * 0.34;
 
-  // Parchment, everywhere, and it stays visible at the edges of everything.
   x.fillStyle = C.parchment;
   x.fillRect(0, 0, W, H);
 
-  // Sky, flat, with lobed clouds drawn over it.
-  fill(x, [[0, 0], [W, 0], [W, hz], [0, hz]], C.sky);
-  for (const [cx2, cy, r] of [[W * 0.24, hz * 0.36, 62], [W * 0.55, hz * 0.26, 84], [W * 0.83, hz * 0.44, 54]] as const) {
-    const puff: Pt[] = [];
-    const lobes = 13;
-    for (let i = 0; i < lobes; i++) {
-      const a = Math.PI + (i / (lobes - 1)) * Math.PI;
-      const rr = r * (0.72 + (i % 2 === 0 ? 0.28 : 0));
-      puff.push([cx2 + Math.cos(a) * rr * 1.5, cy + Math.sin(a) * rr * 0.72]);
+  // Sky, flat and pale, with rounded cloud banks over it.
+  fill(x, [[0, 0], [W, 0], [W, hz + 8], [0, hz + 8]], C.sky);
+  for (const [cx2, cy, r] of [[W * 0.20, hz * 0.34, 54], [W * 0.52, hz * 0.22, 76], [W * 0.84, hz * 0.40, 48]] as const) {
+    // Bulges, not spikes: each lobe is a full arc and they overlap.
+    /*
+     * A cloud is a row of overlapping round bulges sitting on a flat base, and
+     * the contour is drawn round the union of them. Sampling lobes at a regular
+     * angle made a croissant; walking the upper envelope of real circles makes
+     * a cloud.
+     */
+    const circles: { x: number; y: number; r: number }[] = [];
+    const n = 5;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      circles.push({
+        x: cx2 - r * 1.5 + t * r * 3,
+        y: cy - Math.sin(t * Math.PI) * r * 0.32,
+        r: r * (0.42 + Math.sin(t * Math.PI) * 0.42),
+      });
     }
-    puff.push([cx2 + r * 1.5, cy], [cx2 - r * 1.5, cy]);
+    const puff: Pt[] = [];
+    for (let px = cx2 - r * 1.9; px <= cx2 + r * 1.9; px += 5) {
+      let top = cy + 6;
+      for (const cc of circles) {
+        const dx2 = px - cc.x;
+        if (Math.abs(dx2) < cc.r) top = Math.min(top, cc.y - Math.sqrt(cc.r * cc.r - dx2 * dx2));
+      }
+      puff.push([px, Math.min(top, cy + 6)]);
+    }
+    puff.push([cx2 + r * 1.9, cy + 7], [cx2 - r * 1.9, cy + 7]);
     shape(x, puff, C.cloud, rnd, 2);
   }
 
-  // Hills behind the town, then the town, then the water. Each overlaps the
-  // last, which is the only depth cue this style has.
-  shape(x, [[0, hz - 4], [W * 0.18, hz - 46], [W * 0.42, hz - 22],
-            [W * 0.68, hz - 52], [W, hz - 26], [W, hz], [0, hz]], C.hillFar, rnd, 2);
+  // Far hills — cooler and flatter, with a few drawn creases for their folds.
+  const far = ridge(-20, W + 20, hz - 6, 44, rnd, 7);
+  const farPoly: Pt[] = [...far, [W + 20, hz + 20], [-20, hz + 20]];
+  shape(x, farPoly, C.hillFar, rnd, 2);
+  inside(x, farPoly, () => {
+    for (let i = 0; i < 14; i++) {
+      const px = rnd() * W;
+      const py = hz - 30 + rnd() * 26;
+      pen(x, [[px, py], [px + 18 + rnd() * 30, py + 12 + rnd() * 10]], rnd, 1);
+    }
+  });
 
-  // Boston: a rank of little drawn houses and three steeples, small and precise.
-  for (let i = 0; i < 16; i++) {
-    const bx = W * 0.40 + i * W * 0.038 + (rnd() - 0.5) * 6;
-    const bw = 20 + rnd() * 12;
-    const bh = 14 + rnd() * 10;
-    shape(x, [[bx, hz - bh], [bx + bw, hz - bh], [bx + bw, hz], [bx, hz]], C.stone, rnd, 1.4);
-    shape(x, [[bx - 2, hz - bh], [bx + bw / 2, hz - bh - 9], [bx + bw + 2, hz - bh]], C.roof, rnd, 1.3);
+  // Boston across the water: a rank of small drawn houses and three steeples.
+  for (let i = 0; i < 18; i++) {
+    const bx = W * 0.36 + i * W * 0.036 + (rnd() - 0.5) * 6;
+    const bw = 17 + rnd() * 11;
+    const bh = 12 + rnd() * 9;
+    shape(x, [[bx, hz - bh], [bx + bw, hz - bh], [bx + bw, hz], [bx, hz]], C.stone, rnd, 1.3);
+    shape(x, [[bx - 2, hz - bh], [bx + bw / 2, hz - bh - 8], [bx + bw + 2, hz - bh]], C.roof, rnd, 1.2);
   }
-  for (const sx of [0.47, 0.63, 0.79]) {
+  for (const sx of [0.45, 0.61, 0.77]) {
     const px = W * sx;
-    shape(x, [[px - 6, hz - 22], [px + 6, hz - 22], [px + 4, hz - 52], [px - 4, hz - 52]], C.stone, rnd, 1.4);
-    shape(x, [[px - 5, hz - 52], [px, hz - 78], [px + 5, hz - 52]], C.roofShade, rnd, 1.3);
+    shape(x, [[px - 5, hz - 20], [px + 5, hz - 20], [px + 3, hz - 48], [px - 3, hz - 48]], C.stone, rnd, 1.3);
+    shape(x, [[px - 4, hz - 48], [px, hz - 70], [px + 4, hz - 48]], C.roofShade, rnd, 1.2);
   }
 
-  // The water, with a few drawn ticks for chop.
-  const water: Pt[] = [[0, hz], [W, hz], [W, hz + 40], [0, hz + 46]];
-  shape(x, water, C.water, rnd, 1.8);
+  // The water: a narrow strip, with chop ticks.
+  const water: Pt[] = [[0, hz], [W, hz], [W, hz + 34], [0, hz + 38]];
+  shape(x, water, C.water, rnd, 1.7);
   inside(x, water, () => {
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 70; i++) {
       const wx = rnd() * W;
-      const wy = hz + 6 + rnd() * 32;
-      pen(x, [[wx, wy], [wx + 12 + rnd() * 10, wy]], rnd, 0.8);
+      const wy = hz + 5 + rnd() * 27;
+      pen(x, [[wx, wy], [wx + 10 + rnd() * 12, wy]], rnd, 0.75);
     }
   });
 
-  // The ground the player walks.
-  const ground: Pt[] = [[0, hz + 42], [W, hz + 36], [W, H], [0, H]];
-  shape(x, ground, C.grass, rnd, 2);
+  /*
+   * The ground, in three overlapping rolls rather than one band. Each is a
+   * curve, each is a slightly different green, and each overlaps the one behind
+   * — which is the only depth cue this space uses.
+   */
+  const rolls: { pts: Pt[]; colour: string; hatch: number }[] = [];
+  const rollAt = (y: number, amp: number, colour: string, hatch: number) => {
+    const top = ridge(-20, W + 20, y, amp, rnd, 8);
+    const pts: Pt[] = [...top, [W + 20, H + 20], [-20, H + 20]];
+    rolls.push({ pts, colour, hatch });
+    shape(x, pts, colour, rnd, 2.1);
+  };
+  rollAt(hz + 48, 20, C.grassDark, 150);
+  rollAt(hz + 150, 30, C.grass, 260);
+  rollAt(hz + 300, 26, C.grassDark, 300);
 
-  // The camp street: a worn track up the middle, left OPEN because that band is
-  // where the player walks and nothing may stand in it.
-  const track: Pt[] = [[W * 0.30, hz + 44], [W * 0.56, hz + 44], [W * 0.86, H], [W * 0.10, H]];
-  shape(x, track, C.track, rnd, 1.8);
-  inside(x, track, () => {
-    for (let i = 0; i < 7; i++) {
-      const t = i / 7;
-      pen(x, [[W * (0.33 + t * 0.2), hz + 50], [W * (0.16 + t * 0.62), H]], rnd, 1 + rnd());
-    }
-  });
+  // Grass, laid along the fall of the land, thickening toward the viewer.
+  rolls.forEach((r, i) => grassLay(x, r.pts, rnd, r.hatch, 0.55 - i * 0.1, 12 + i * 7));
 
-  // Grass tufts across the ground, thicker toward the viewer.
-  for (let i = 0; i < 190; i++) {
-    const t = rnd();
-    const gy = hz + 48 + t * t * (H - hz - 60);
-    const gx = rnd() * W;
-    // Keep the walkable street relatively clear.
-    const tw = 0.30 + (gy - hz) / (H - hz) * 0.26;
-    if (gx > W * (0.5 - tw) && gx < W * (0.5 + tw) && rnd() < 0.72) continue;
-    tuft(x, gx, gy, 7 + t * 16, rnd);
+  // A narrow track wandering up the middle, worn pale. It bends: a straight one
+  // reads as a road in perspective, which this space does not have.
+  const trackL: Pt[] = [];
+  const trackR: Pt[] = [];
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    const y = H - t * (H - hz - 46);
+    const mid = W * (0.47 + Math.sin(t * 2.4) * 0.07 - t * 0.02);
+    const half = (1 - t) * W * 0.055 + W * 0.008;
+    trackL.push([mid - half, y]);
+    trackR.push([mid + half, y]);
   }
+  const track: Pt[] = [...trackL, ...trackR.reverse()];
+  shape(x, track, C.track, rnd, 1.6);
+  inside(x, track, () => {
+    for (let i = 0; i < 5; i++) {
+      const off = (i - 2) * 0.3;
+      const line: Pt[] = trackL.map((p, k) => [p[0] + (trackR[trackR.length - 1 - k][0] - p[0]) * (0.5 + off * 0.3), p[1]]);
+      pen(x, line, rnd, 1.1);
+    }
+  });
 
-  // The house, stage left of centre, standing across the water's edge.
-  house(x, W * 0.055, hz + 6, W * 0.185, H * 0.16, rnd);
+  // The house, standing on the second roll, stage left.
+  house(x, W * 0.055, hz + 92, W * 0.17, H * 0.145, rnd);
 
-  // Brush shelters, near left: lumpy, made of sticks, unlike the tents.
+  // Brush shelters near left — sticks, lumpy, nothing like the tents.
   for (let i = 0; i < 3; i++) {
-    const bx = W * 0.045 + i * W * 0.085;
-    const by = hz + 232 + i * 40;
-    const s = 46 + i * 12;
-    const hut: Pt[] = [[bx, by], [bx + s * 0.3, by - s * 0.72], [bx + s * 0.9, by - s * 0.62], [bx + s * 1.2, by]];
+    const bx = W * 0.05 + i * W * 0.082;
+    const by = hz + 320 + i * 46;
+    const s = 44 + i * 13;
+    const hut: Pt[] = [[bx, by], [bx + s * 0.28, by - s * 0.7], [bx + s * 0.9, by - s * 0.6], [bx + s * 1.2, by]];
     shape(x, hut, C.timberShade, rnd, 2);
     inside(x, hut, () => {
-      for (let k = 0; k < 9; k++) {
-        pen(x, [[bx + s * (0.1 + k * 0.12), by], [bx + s * (0.3 + k * 0.07), by - s * 0.7]], rnd, 1);
-      }
+      for (let k = 0; k < 9; k++) pen(x, [[bx + s * (0.08 + k * 0.13), by], [bx + s * (0.3 + k * 0.07), by - s * 0.68]], rnd, 1);
     });
   }
 
-  // Greene's Rhode Islanders, stage right, in ordered rows — the one thing in
-  // the picture that looks like an army.
+  // Greene's tents, stage right, in ordered rows on the rolls.
   for (let row = 0; row < 3; row++) {
-    const base = hz + 150 + row * row * 46 + row * 54;
-    const w = 24 + row * 11;
+    const base = hz + 150 + row * row * 52 + row * 60;
+    const w = 22 + row * 10;
     for (let i = 0; i < 4 - Math.floor(row / 2); i++) {
-      tent(x, W * (0.665 + i * 0.088) + row * 14, base, w, rnd);
+      tent(x, W * (0.66 + i * 0.085) + row * 16, base, w, rnd);
     }
   }
 
-  // The flag at the tent lines: the one saturated note the act permits.
-  const fx = W * 0.645;
-  const fy = hz + 116;
-  pen(x, [[fx, fy + 74], [fx, fy - 34]], rnd, 2.4);
-  shape(x, [[fx, fy - 34], [fx + 46, fy - 28], [fx + 46, fy - 2], [fx, fy - 6]], C.flag, rnd, 1.8);
+  // The flag at the tent lines — the one saturated note the act permits.
+  const fx = W * 0.635;
+  const fy = hz + 120;
+  pen(x, [[fx, fy + 70], [fx, fy - 32]], rnd, 2.3);
+  shape(x, [[fx, fy - 32], [fx + 44, fy - 26], [fx + 44, fy - 2], [fx, fy - 6]], C.flag, rnd, 1.8);
 
-  // A cooking fire and stores by the street.
-  fire(x, W * 0.60, hz + 268, 40, rnd);
-  barrel(x, W * 0.565, hz + 300, 40, rnd);
-  barrel(x, W * 0.60, hz + 330, 46, rnd);
+  // Camp business by the track.
+  fire(x, W * 0.585, hz + 300, 36, rnd);
+  barrel(x, W * 0.55, hz + 330, 36, rnd);
 
-  // Trees flanking the frame.
-  for (const [tx, ty, tr] of [[W * 0.315, hz + 130, 74], [W * 0.955, hz + 178, 92]] as const) {
-    shape(x, [[tx - 7, ty], [tx + 7, ty], [tx + 10, ty + 66], [tx - 10, ty + 66]], C.timber, rnd, 2);
-    inside(x, [[tx - 10, ty], [tx + 10, ty], [tx + 10, ty + 66], [tx - 10, ty + 66]], () => {
-      for (let k = 0; k < 5; k++) pen(x, [[tx - 8, ty + 10 + k * 13], [tx + 8, ty + 6 + k * 13]], rnd, 0.8);
-    });
-    crown(x, tx, ty - tr * 0.55, tr, rnd);
+  // Trees: dark masses with their branches drawn inside them.
+  tree(x, W * 0.30, hz + 190, 210, rnd);
+  tree(x, W * 0.395, hz + 168, 150, rnd);
+  tree(x, W * 0.945, hz + 250, 240, rnd);
+
+  // Shrubs scattered along the rolls, at varying scale.
+  for (let i = 0; i < 22; i++) {
+    const t = rnd();
+    const by = hz + 90 + t * (H - hz - 260);
+    const bx = rnd() * W;
+    if (bx > W * 0.36 && bx < W * 0.6 && by > hz + 200) continue; // keep the street clear
+    bush(x, bx, by, 12 + t * 26, rnd, rnd() < 0.4 ? C.leafShade : C.leaf);
+  }
+
+  // The world is inhabited: sheep on the far roll, a few distant figures.
+  for (let i = 0; i < 5; i++) beast(x, W * (0.06 + rnd() * 0.22), hz + 70 + rnd() * 40, 7 + rnd() * 4, rnd);
+  for (let i = 0; i < 4; i++) {
+    const px = W * (0.62 + rnd() * 0.3);
+    const py = hz + 96 + rnd() * 40;
+    shape(x, [[px - 4, py], [px - 3, py - 13], [px + 3, py - 13], [px + 4, py]], C.timberShade, rnd, 1.2);
+    shape(x, [[px - 3, py - 13], [px + 3, py - 13], [px + 2, py - 19], [px - 2, py - 19]], C.canvasShade, rnd, 1.1);
+  }
+  // Birds: two strokes each, the cheapest life there is.
+  for (let i = 0; i < 7; i++) {
+    const px = rnd() * W;
+    const py = hz * (0.2 + rnd() * 0.5);
+    const s = 5 + rnd() * 5;
+    pen(x, [[px - s, py], [px, py - s * 0.45], [px + s, py]], rnd, 1);
   }
 
   /*
-   * The near-field bank, cropped by the bottom edge.
-   *
-   * Stated in LINE and dark colour, not in value alone: a flat style has no
-   * atmospheric perspective to separate a foreground from the ground behind it,
-   * so a foreground that is only a darker shape reads as a second stripe.
+   * The foreground: a dark bank of scrub across the bottom edge, made of line
+   * and the darkest mass in the frame. Not a slab of earth — the reference
+   * frames almost every exterior with foliage, and it is what gives a flat
+   * space its depth without any aerial perspective to call on.
    */
-  const bank: Pt[] = [[0, H - 118], [W * 0.3, H - 152], [W * 0.66, H - 128], [W, H - 164], [W, H], [0, H]];
-  shape(x, bank, C.bank, rnd, 2.6);
-  inside(x, bank, () => {
-    fill(x, [[0, H - 62], [W, H - 96], [W, H], [0, H]], C.bankShade);
-    pen(x, [[0, H - 62], [W, H - 96]], rnd, 1.6);
-    // Ruts, stones and grass along the crest.
-    for (let i = 0; i < 26; i++) {
-      const rx = rnd() * W;
-      const ry = H - 110 + rnd() * 96;
-      pen(x, [[rx, ry], [rx + 30 + rnd() * 60, ry + (rnd() - 0.5) * 8]], rnd, 1.1);
+  const scrubTop = ridge(-20, W + 20, H - 168, 52, rnd, 13);
+  const scrub: Pt[] = [...scrubTop, [W + 20, H + 20], [-20, H + 20]];
+  shape(x, scrub, '#59653D', rnd, 2.6);
+  inside(x, scrub, () => {
+    for (let i = 0; i < 44; i++) bush(x, rnd() * W, H - 130 + rnd() * 130, 26 + rnd() * 40, rnd, '#4E5A38');
+    for (let i = 0; i < 200; i++) {
+      const gx = rnd() * W;
+      const gy = H - 176 + rnd() * 190;
+      pen(x, [[gx, gy], [gx + (rnd() - 0.5) * 30, gy - 20 - rnd() * 30]], rnd, 1.1);
     }
-    for (let i = 0; i < 22; i++) {
-      const sx = rnd() * W;
-      const sy = H - 100 + rnd() * 84;
-      const s = 5 + rnd() * 9;
-      shape(x, [[sx - s, sy], [sx - s * 0.5, sy - s * 0.8], [sx + s * 0.6, sy - s * 0.7], [sx + s, sy]], C.stoneShade, rnd, 1.2);
-    }
-    for (let i = 0; i < 40; i++) tuft(x, rnd() * W, H - 116 + rnd() * 26, 12 + rnd() * 14, rnd);
   });
+
+  /*
+   * Paper grain and a soft warm falloff at the edges.
+   *
+   * The reference is not flat lighting end to end — interiors carry a real glow
+   * and every scene sits on a visible tooth of paper. Both are one pass over
+   * the finished picture rather than anything the drawing has to know about.
+   */
+  x.save();
+  x.globalAlpha = 0.05;
+  for (let i = 0; i < 2600; i++) {
+    const px = rnd() * W;
+    const py = rnd() * H;
+    x.fillStyle = rnd() < 0.5 ? '#6E5B45' : '#FFF6DE';
+    x.fillRect(px, py, 1 + rnd() * 2, 1 + rnd() * 2);
+  }
+  x.restore();
+  const vig = x.createRadialGradient(W * 0.5, H * 0.46, H * 0.32, W * 0.5, H * 0.5, H * 0.95);
+  vig.addColorStop(0, 'rgba(120,90,50,0)');
+  vig.addColorStop(1, 'rgba(78,58,32,0.20)');
+  x.fillStyle = vig;
+  x.fillRect(0, 0, W, H);
 
   return c;
 }

@@ -464,9 +464,18 @@ function house(x: Ctx, hx: number, hy: number, w: number, h: number, rnd: () => 
   const body: Pt[] = [[hx, hy], [hx + w, hy], [hx + w, hy + h], [hx, hy + h]];
   shape(x, body, C.stone, rnd, 2.3);
   stonework(x, body, rnd, h / 7);
-  // The gable end, a flat second tone.
-  fill(x, [[hx + w * 0.72, hy], [hx + w, hy], [hx + w, hy + h], [hx + w * 0.72, hy + h]], C.stoneShade);
-  pen(x, [[hx + w * 0.72, hy], [hx + w * 0.72, hy + h]], rnd, 1.5);
+  /*
+   * A band of shade under the eaves, and nothing else.
+   *
+   * This used to be a flat second tone over the right-hand quarter of the wall,
+   * meant to read as the gable end turning away. It did not: with no perspective
+   * on the wall to support it, it read as a stripe of different-coloured stone
+   * stuck to one end of the house. In a flat style a second tone only reads as
+   * form when it follows something the drawing already states — here, the line
+   * of the eaves.
+   */
+  fill(x, [[hx, hy], [hx + w, hy], [hx + w, hy + h * 0.14], [hx, hy + h * 0.14]], C.stoneShade);
+  pen(x, [[hx, hy + h * 0.14], [hx + w, hy + h * 0.14]], rnd, 1.3);
   // Roof: a shallow hip, shingled.
   const roof: Pt[] = [[hx - 9, hy], [hx + w * 0.5, hy - h * 0.46], [hx + w + 9, hy]];
   shape(x, roof, C.roof, rnd, 2.3);
@@ -784,14 +793,26 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
   });
 
   /*
-   * The Vassall house: two full storeys and a roof, so about two and a half
-   * men to the eaves. It was 1.1 — the height of a man and a hat — which is a
-   * shed.
+   * EVERYTHING THAT STANDS ON THE GROUND GOES IN A SORTED LIST.
+   *
+   * The plate has no depth buffer — 'order of calls is the only thing deciding
+   * what covers what' (STATE.md) — and drawing in the order things were
+   * conveniently written produced exactly the faults you would expect: barrels
+   * resting on the roofs of tents that stood in front of them, and sheep
+   * grazing across the front of a house they were a hundred yards behind.
+   *
+   * So nothing draws itself directly any more. Each object is queued with the y
+   * of its FEET, the list is sorted back to front, and only then is it painted.
+   * A painter's algorithm, which is the correct answer whenever depth is a
+   * scalar and the art is flat.
    */
+  const queue: { y: number; draw: () => void }[] = [];
+  const at = (y: number, draw: () => void) => queue.push({ y, draw });
+
   {
     const baseY = hz + 132;
     const h = man(baseY) * 2.4;
-    house(x, W * 0.075, baseY - h, h * 1.75, h, rnd);
+    at(baseY, () => house(x, W * 0.075, baseY - h, h * 1.75, h, rnd));
   }
 
   /*
@@ -807,7 +828,7 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     for (let i = 0; i < 3; i++) {
       const px = W * 0.70 + i * w * 3.4 + row * w * 0.9 - row * W * 0.02;
       if (px - w * 1.6 > W) continue;
-      tent(x, px, base, w, rnd);
+      at(base, () => tent(x, px, base, w, rnd));
     }
   }
 
@@ -818,10 +839,33 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     const m = man(by);
     const s = m * 1.05;
     const bx = W * 0.015 + i * W * 0.085;
-    const hut: Pt[] = [[bx, by], [bx + s * 0.28, by - s * 0.7], [bx + s * 0.9, by - s * 0.6], [bx + s * 1.2, by]];
-    shape(x, hut, C.timberShade, rnd, 2);
+    /*
+     * A brush shelter: a lean-to of poles with brush and turf thrown over it.
+     *
+     * It was a dark lump — a shape too low, too brown and too smooth to read as
+     * anything, which is worse than absent, because the eye stops on it and
+     * comes away with nothing. It now has the three things that say "somebody
+     * built this out of what was lying about": a ridge pole with its ends
+     * showing, a lighter turf side so it is not one flat mass, and the ends of
+     * the brush sticking out past the frame.
+     */
+    const hut: Pt[] = [[bx, by], [bx + s * 0.3, by - s * 0.78], [bx + s * 0.95, by - s * 0.66], [bx + s * 1.25, by]];
+    at(by, () => {
+    shape(x, hut, '#8A7A55', rnd, 2);
     inside(x, hut, () => {
-      for (let k = 0; k < 9; k++) pen(x, [[bx + s * (0.08 + k * 0.13), by], [bx + s * (0.3 + k * 0.07), by - s * 0.68]], rnd, 1);
+      // The turf half, flat, with its own edge.
+      fill(x, [[bx + s * 0.62, by - s * 0.72], [bx + s * 1.3, by - s * 0.6], [bx + s * 1.3, by], [bx + s * 0.6, by]], '#6F6A42');
+      pen(x, [[bx + s * 0.62, by - s * 0.72], [bx + s * 0.6, by]], rnd, 1.3);
+      for (let k = 0; k < 11; k++) {
+        pen(x, [[bx + s * (0.04 + k * 0.115), by], [bx + s * (0.32 + k * 0.062), by - s * 0.74]], rnd, 1.1);
+      }
+    });
+    // The ridge pole, its ends past the brush, which is what dates it as built.
+    pen(x, [[bx + s * 0.2, by - s * 0.82], [bx + s * 1.05, by - s * 0.7]], rnd, 2.2);
+    for (let k = 0; k < 5; k++) {
+      const px = bx + s * (0.34 + k * 0.16);
+      pen(x, [[px, by - s * (0.72 - k * 0.02)], [px + s * 0.1, by - s * 0.92]], rnd, 1.2);
+    }
     });
   }
 
@@ -830,17 +874,22 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     const fy = hz + 150;
     const m = man(fy);
     const fx = W * 0.63;
-    pen(x, [[fx, fy], [fx, fy - m * 2]], rnd, 2.6);
-    shape(x, [[fx, fy - m * 2], [fx + m * 0.9, fy - m * 1.85],
-              [fx + m * 0.9, fy - m * 1.3], [fx, fy - m * 1.4]], C.flag, rnd, 1.8);
+    at(fy, () => {
+      pen(x, [[fx, fy], [fx, fy - m * 2]], rnd, 2.6);
+      shape(x, [[fx, fy - m * 2], [fx + m * 0.9, fy - m * 1.85],
+                [fx + m * 0.9, fy - m * 1.3], [fx, fy - m * 1.4]], C.flag, rnd, 1.8);
+    });
   }
 
   // Camp business by the track, all of it man-relative.
   {
-    const fy = hz + 232;
-    fire(x, W * 0.655, fy, man(fy) * 0.5, rnd);
-    barrel(x, W * 0.70, hz + 250, man(hz + 250) * 0.55, rnd);
-    barrel(x, W * 0.725, hz + 276, man(hz + 276) * 0.55, rnd);
+    // Stores stand in the OPEN, clear of the tent lines. They were sitting on
+    // the tents' own ground and, drawn afterwards, appeared to rest on the
+    // canvas.
+    const fy = hz + 300;
+    at(fy, () => fire(x, W * 0.475, fy, man(fy) * 0.5, rnd));
+    at(hz + 336, () => barrel(x, W * 0.40, hz + 336, man(hz + 336) * 0.55, rnd));
+    at(hz + 362, () => barrel(x, W * 0.435, hz + 362, man(hz + 362) * 0.55, rnd));
   }
 
   /*
@@ -850,7 +899,7 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
    * scale error hidden.
    */
   for (const [tx, ty, k] of [[W * 0.30, hz + 150, 4.6], [W * 0.40, hz + 128, 3.6], [W * 0.955, hz + 230, 5.2]] as const) {
-    tree(x, tx, ty, man(ty) * k, rnd);
+    at(ty, () => tree(x, tx, ty, man(ty) * k, rnd));
   }
 
   // Shrubs, waist to shoulder high.
@@ -859,13 +908,18 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     const by = hz + 90 + t * (H - hz - 260);
     const bx = rnd() * W;
     if (bx > W * 0.36 && bx < W * 0.6 && by > hz + 200) continue;
-    bush(x, bx, by, man(by) * (0.2 + rnd() * 0.22), rnd, rnd() < 0.4 ? C.leafShade : C.leaf);
+    const r = man(by) * (0.2 + rnd() * 0.22);
+    const col = rnd() < 0.4 ? C.leafShade : C.leaf;
+    at(by, () => bush(x, bx, by, r, rnd, col));
   }
 
   // Sheep on the far roll — about a third of a man at the shoulder.
+  // Sheep, on the far roll BEHIND the house. They were drawn after it and so
+  // grazed across its front wall from a hundred yards further back.
   for (let i = 0; i < 5; i++) {
-    const by = hz + 70 + rnd() * 40;
-    beast(x, W * (0.06 + rnd() * 0.22), by, man(by) * 0.3, rnd);
+    const by = hz + 62 + rnd() * 34;
+    const bxs = W * (0.30 + rnd() * 0.26);
+    at(by, () => beast(x, bxs, by, man(by) * 0.3, rnd));
   }
 
   /*
@@ -880,12 +934,17 @@ function campGroundPlate(W: number, H: number): HTMLCanvasElement {
     const px = W * (0.60 + rnd() * 0.34);
     const py = hz + 120 + rnd() * 70;
     const m = man(py);
-    shape(x, [[px - m * 0.15, py], [px - m * 0.13, py - m * 0.62],
-              [px + m * 0.13, py - m * 0.62], [px + m * 0.15, py]], C.timberShade, rnd, 1.3);
-    shape(x, [[px - m * 0.11, py - m * 0.62], [px + m * 0.11, py - m * 0.62],
-              [px + m * 0.08, py - m * 0.86], [px - m * 0.08, py - m * 0.86]], C.canvasShade, rnd, 1.2);
-    pen(x, [[px - m * 0.16, py - m * 0.86], [px + m * 0.16, py - m * 0.86]], rnd, 1.4);
+    at(py, () => {
+      shape(x, [[px - m * 0.15, py], [px - m * 0.13, py - m * 0.62],
+                [px + m * 0.13, py - m * 0.62], [px + m * 0.15, py]], C.timberShade, rnd, 1.3);
+      shape(x, [[px - m * 0.11, py - m * 0.62], [px + m * 0.11, py - m * 0.62],
+                [px + m * 0.08, py - m * 0.86], [px - m * 0.08, py - m * 0.86]], C.canvasShade, rnd, 1.2);
+      pen(x, [[px - m * 0.16, py - m * 0.86], [px + m * 0.16, py - m * 0.86]], rnd, 1.4);
+    });
   }
+
+  // Back to front, and only now does anything touch the canvas.
+  queue.sort((a, b) => a.y - b.y).forEach((q) => q.draw());
   return c;
 }
 

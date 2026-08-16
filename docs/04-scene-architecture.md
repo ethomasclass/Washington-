@@ -820,11 +820,33 @@ The first cut framed the map neatly in a dark field with the caption underneath 
 
 The sheet is pinned to the top of the frame rather than centred, so it can be as large as the room above the caption allows and no larger. The paper is a warm tan (`#E2D6B6`), deliberately **not** `PAPER.BRIGHT`: at the game's brightest white it looked like printer stock and left the sea no room to be a different value from the land.
 
+### The extent is frozen
+
+**36.5°N to 45.5°N, and it does not change again.** The sheet stopped at 38° while only Acts 1–3 existed, which put Yorktown a degree off the bottom edge — and extending it in Act 6 would have been the one change this design cannot survive. Eight pages tell the war's story by being *the same page*; a page that re-frames halfway through is six unrelated pictures. So it grew once, early, while the cost was a constant, and the whole Chesapeake is on it because Act 6 happens on the Chesapeake.
+
+What is still off the bottom is the deep south — Camden, Cowpens, Guilford, Charleston, Savannah. **Those do not get more sheet. They get an inset**, the way an engraver of the period handled ground that would not fit, and the fact that the southern war arrives in a small box in the corner of somebody else's map is not a compromise. It is the argument.
+
+### Tracks — the second ink layer
+
+A mark says where a thing *is*. A track says where it came from: a dashed road with an arrowhead and its name written along it. Once the sheet carries both, movement is legible without the player having to hold the last act in their head.
+
+**The rule that makes it teach something: a track is drawn only where somebody watched it happen.** Not a record of what moved — a record of what was *seen* to move, which on a map about what one man knew is a different and much more useful thing.
+
+The consequence is the best line this map draws, and it draws it without a word:
+
+> **Their marks teleport. Yours walk.**
+
+An American force gets a dashed track and you can count the miles it cost. A British fleet gets none — off Boston in one act, in the Narrows the next, four hundred miles with nothing in between, because nobody on this side of the water saw it cross. That is what command of the sea looks like, drawn. Act 3 is where it detonates.
+
+British movement *overland* can carry a track where it was reported — Lafayette watched Cornwallis all summer — drawn at the confidence of the report like everything else. What can never carry one is a passage by sea, and the linter enforces exactly that and nothing wider.
+
+**Built:** Act 1 carries the express from Watertown, 19–28 April — the Lexington news travelling the whole length of the sheet in nine days. The first thing the map ever does is show a student how long information took to cross it, which means every later lesson about staleness is downstream of one dashed line and none of it needs explaining. Act 2 carries Washington's own road up from Philadelphia, 23 June to 2 July, and it is the only line on that page, because a siege is what happens when nothing moves.
+
 ### The lettered grid — the change that matters most for a fifteen-year-old
 
 The sheet was ruled at whole degrees with the figures in the margin, which is what surveyors did and which is **useless in a classroom**. Nobody says *"the fleet is at forty-two degrees twenty minutes north."*
 
-Five columns by four rows, **A–E across the top and bottom, 1–4 down both sides**, and every mark now has a name you can say out loud. Boston is **C2**. Ticonderoga is **B1**. The caption prints the square as a chip beside the mark's name, so two people looking at the same page — a teacher and a class, two students on one laptop — have a shared vocabulary for it. It is also period: plans of this date carry lettered borders for exactly this reason, so a despatch could refer to a square.
+Five columns by five rows, **A–E across the top and bottom, 1–5 down both sides**, and every mark now has a name you can say out loud. Boston is **C2**. Ticonderoga is **B1**. Yorktown, when Act 6 arrives, is **A5**. The caption prints the square as a chip beside the mark's name, so two people looking at the same page — a teacher and a class, two students on one laptop — have a shared vocabulary for it. It is also period: plans of this date carry lettered borders for exactly this reason, so a despatch could refer to a square.
 
 ### Simplified, on purpose
 
@@ -851,11 +873,23 @@ Shapes and fill carry the meaning, never colour: **theirs draws solid, ours draw
 - **V-TM.3** The coastline is a hand-drawn approximation at about seventy points. Right to roughly ten miles.
 - **V-TM.4** Act 1's *ships from England* mark — that London papers reaching Virginia over the winter of 1774–75 named three major-generals — is of the documented order (Howe, Burgoyne and Clinton sailed in April 1775) but the specific claim about what colonial readers knew, and when, is not sourced.
 
+### Still to build
+
+In rough order of payoff:
+
+1. **Ghosts** — last act's position for anything that moved, as a faint open outline, one act back only. Movement visible on a single page instead of requiring memory.
+2. **Scars** — battles don't move, they accumulate. A small mark placed once and never removed. Act 1's page has five marks; Act 8's is covered, and **most of what covers it is not his** — Saratoga is Gates's, Cowpens is Morgan's, King's Mountain is nobody's. The accumulation is the length of the war and no caption has to say so.
+3. **The arrival** — the page opens showing the war as the player last left it, then the marks that changed redraw over about a second and a half. `§7.4`'s staggered token ink-on, reused. One beat per act, no narration, and the player did nothing to earn it, which is right: the war moved while they were busy elsewhere.
+4. **The southern inset** — from Act 5. Small, at the edge, everything in it dashed; the form of the panel says *this is somewhere else and you do not know what is happening there* before a word is read. Then Cornwallis's track walks out of the box and onto the main map, which is what happened and is the hinge of the war.
+5. **The sequence, at the end** — let the player page through all eight sheets in order. No new art. That is the assessment artifact `08` has been asking for.
+
 ### Known limits
 
 Delaware Bay reads as a narrow loop rather than as a bay, because at this scale it is fifteen pixels wide and the shading routine offsets along one normal per run. The Chesapeake is a sliver in the corner. Both are cosmetic and both are on the page rather than hidden.
 
-The sheet is portrait-ish (about 1.12 wide to tall) on a landscape screen, so there is a good deal of table showing either side. That is the honest shape of the theatre and it will get **more** portrait, not less, as the war goes south — Yorktown is at 37.2° and Charleston at 32.8°, both below this sheet's bottom edge. When the southern acts are built the projection will have to grow downward, and the extra sheet has to come out of the north rather than out of the aspect.
+The sheet is now slightly taller than wide (about 0.95), so the caption sits **beside** it rather than beneath — a square map under a wide caption wasted half a landscape screen, cost the map a fifth of its size, and put the bottom row of grid letters behind the panel.
+
+Two bugs worth recording because neither was visible in code. Map content was clipped to the **paper** rather than to the **map**, so the Potomac, the Blue Ridge and the Virginia coast printed straight through the ruled border and out into the margin where the grid letters live. And the first cut of the no-sea-tracks check used a half-degree radius, which flagged Washington's road up from Philadelphia because it ends at Cambridge and the fleet is fifteen miles off in the harbour — in a theatre this crowded, proximity is not evidence, and the radius has to mean *the same mark*.
 
 ---
 

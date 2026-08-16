@@ -122,13 +122,15 @@ export const CSS = `
  */
 .theatre {
   position: absolute; inset: 0; z-index: 70; pointer-events: auto;
-  /* Top-aligned, not centred. Centred, the sheet grows downward into the
-     caption and the bottom row of grid letters prints through the panel — and
-     those letters are one of the two things on this page a student is meant to
-     use. Pinning the sheet high lets it be as large as the room above the
-     caption allows and no larger. */
-  display: flex; align-items: flex-start; justify-content: center;
-  padding-top: 20px;
+  /*
+   * Sheet on the left, caption beside it — because the sheet is now nearly
+   * square and a square map under a wide caption wastes half a landscape
+   * screen. Stacking them cost the map about a fifth of its size and put the
+   * bottom row of grid letters behind the panel, which are one of the two
+   * things on this page a student is meant to use.
+   */
+  display: flex; align-items: center; justify-content: center;
+  gap: 26px; padding: 20px 30px 44px;
   /* Oak, lit from over the reader's left shoulder like everything else in this
      game: plank seams, a fine grain across them, and the room falling away at
      the corners. */
@@ -178,9 +180,9 @@ export const CSS = `
  * the map, and this is the one screen in the game where that is allowed.
  */
 .theatre .caption {
-  position: absolute; left: 50%; bottom: 4.5vh; transform: translateX(-50%);
-  width: min(920px, calc(100vw - 80px)); min-height: 104px;
-  padding: 16px 26px 14px;
+  /* Width is set in script, from the same arithmetic that sizes the sheet. */
+  flex: 0 0 auto; align-self: center; min-height: 220px;
+  padding: 18px 24px 16px;
   background: rgba(20, 14, 9, 0.86);
   border: 1px solid #6B5B45;
   color: #EFE7D5; font-size: 17px; line-height: 1.5;
@@ -779,14 +781,12 @@ export class Overlay {
     const el = document.createElement('div');
     el.className = 'theatre';
 
-    // The sheet takes the frame, less a hand's width of table all round. The
-    // caption floats over its foot rather than sitting under it, so the map is
-    // not paying for the panel in height.
-    const availW = innerWidth - 72;
-    // Room under the sheet for the caption to sit on the table rather than on
-    // the map: the panel was covering the bottom row of grid letters and the
-    // scale bar, which are two of the things a student is meant to use.
-    const availH = innerHeight - 214;
+    // The sheet takes the height, the caption takes what is left of the width.
+    // One piece of arithmetic for both, so the panel can never overlap the
+    // paper however odd the viewport is.
+    const capW = Math.round(Math.min(460, Math.max(280, innerWidth * 0.31)));
+    const availW = innerWidth - capW - 116;
+    const availH = innerHeight - 92;
     let sw = availW;
     let sh = sw / CANVAS_ASPECT;
     if (sh > availH) {
@@ -830,6 +830,7 @@ export class Overlay {
 
     const caption = document.createElement('div');
     caption.className = 'caption';
+    caption.style.width = `${capW}px`;
     const keys = document.createElement('div');
     keys.className = 'keys';
     keys.innerHTML = '<b>← →</b> read the marks · <b>Space</b> to go on';

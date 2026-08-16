@@ -94,7 +94,23 @@ const SHEET_LIT = '#F0E7CE';
 const LON0 = -77.5;
 const LON_SPAN = 11.5;
 const LAT0 = 45.5;
-const LAT_SPAN = 7.5;
+/*
+ * Down to 36.5°N, and this number is FROZEN.
+ *
+ * The sheet stopped at 38° while only Acts 1–3 existed, which put Yorktown a
+ * degree off the bottom edge. Extending it later would have been the one change
+ * this whole design cannot survive: eight pages tell the war's story by being
+ * *the same page*, and a page that re-frames in Act 6 turns a sequence into six
+ * unrelated pictures. So it grows once, now, while it costs nothing but a
+ * constant — and never again.
+ *
+ * What is still off the bottom is the deep south: Camden, Cowpens, Guilford,
+ * Charleston, Savannah. Those do not get more sheet. They get an inset, the way
+ * an engraver of the period handled ground that would not fit, and the fact
+ * that the southern war arrives in a small box in the corner of somebody else's
+ * map is not a compromise — it is the argument.
+ */
+const LAT_SPAN = 9.0;
 const KX = Math.cos((42 * Math.PI) / 180);
 
 /** Width over height for any sheet drawn by this module. */
@@ -154,6 +170,24 @@ const DELAWARE_BAY: Pt[] = [
   [-75.25, 39.85], [-75.16, 39.95],
 ];
 
+/**
+ * The Delmarva peninsula, in two runs, because the water is on opposite sides
+ * of the two halves: the bay's western shore coming down from Wilmington, and
+ * the ocean side running on to Cape Charles.
+ */
+const DELMARVA_BAY: Pt[] = [
+  [-75.55, 39.62], [-75.42, 39.42], [-75.25, 39.15], [-75.13, 38.92], [-75.09, 38.79],
+];
+const DELMARVA_ATLANTIC: Pt[] = [
+  [-75.09, 38.79], [-75.06, 38.45], [-75.09, 38.1], [-75.22, 37.85], [-75.45, 37.6],
+  [-75.7, 37.38], [-75.97, 37.12],
+];
+
+/** Cape Henry southward, running off the foot of the sheet. */
+const VIRGINIA_COAST: Pt[] = [
+  [-76.03, 36.93], [-75.95, 36.72], [-75.88, 36.35],
+];
+
 /** Everything the eye has to read as water, and which flank to hatch. */
 const SHORES: { pts: Pt[]; side: 1 | -1 }[] = [];
 
@@ -174,18 +208,30 @@ const LONG_ISLAND: Pt[] = [
 ];
 
 /**
- * The Chesapeake, as one line up the western shore and back down the eastern.
- * It runs off the bottom of the sheet because the bay does — this page stops at
- * the Potomac, and in 1775 so did the war.
+ * The Chesapeake, entire: up the western shore from Cape Henry to the head, and
+ * back down the eastern to Cape Charles. Open at the mouth, because it is.
+ *
+ * On the sheet in full now, which matters for one reason: Act 6 happens on it.
+ * De Grasse closing that mouth is the single most important thing any navy did
+ * in this war, and it cannot be drawn on a map whose bottom edge is a hundred
+ * miles north of it.
  */
 const CHESAPEAKE: Pt[] = [
-  [-76.0, 38.0], [-76.25, 38.35], [-76.4, 38.6], [-76.5, 38.85], [-76.4, 39.1],
-  [-76.2, 39.3], [-76.05, 39.45], [-75.95, 39.35], [-76.0, 39.1], [-75.95, 38.8],
-  [-75.85, 38.4], [-75.8, 38.0],
+  [-76.03, 36.93], [-76.25, 37.2], [-76.45, 37.5], [-76.4, 37.8], [-76.55, 38.05],
+  [-76.4, 38.3], [-76.52, 38.6], [-76.5, 38.9], [-76.38, 39.15], [-76.18, 39.32],
+  [-76.05, 39.45],
+  [-75.95, 39.35], [-76.0, 39.05], [-75.9, 38.7], [-75.85, 38.3], [-75.95, 37.9],
+  [-76.05, 37.55], [-75.97, 37.12],
 ];
 
-SHORES.push({ pts: COAST, side: 1 }, { pts: DELAWARE_BAY, side: -1 },
-  { pts: CHESAPEAKE, side: -1 });
+SHORES.push(
+  { pts: COAST, side: 1 },
+  { pts: DELAWARE_BAY, side: -1 },
+  { pts: DELMARVA_BAY, side: 1 },
+  { pts: DELMARVA_ATLANTIC, side: 1 },
+  { pts: VIRGINIA_COAST, side: 1 },
+  { pts: CHESAPEAKE, side: -1 },
+);
 
 /**
  * The sea, as a closed shape: the ocean coast, then out to the sheet's edges.
@@ -202,7 +248,11 @@ SHORES.push({ pts: COAST, side: 1 }, { pts: DELAWARE_BAY, side: -1 },
  */
 const SEA: Pt[] = [
   ...COAST,
-  [-74.96, 36.0], [-60.0, 34.0], [-60.0, 48.0], [-66.0, 46.4],
+  // Across the mouth of Delaware Bay, down the ocean side of Delmarva, across
+  // the mouth of the Chesapeake, and on off the foot of the sheet.
+  ...DELMARVA_ATLANTIC,
+  ...VIRGINIA_COAST,
+  [-75.6, 34.5], [-60.0, 34.0], [-60.0, 48.0], [-66.0, 46.4],
 ];
 
 /**
@@ -297,14 +347,16 @@ const PLACES: { lon: number; lat: number; name: string; anchor?: 'l' | 'r' }[] =
   { lon: -71.41, lat: 41.82, name: 'Providence' },
   { lon: -71.31, lat: 41.49, name: 'Newport' },
   { lon: -70.76, lat: 43.07, name: 'Portsmouth' },
-  { lon: -73.57, lat: 45.5, name: 'Montreal', anchor: 'r' },
+  { lon: -73.57, lat: 45.33, name: 'Montreal', anchor: 'r' },
   { lon: -74.74, lat: 40.22, name: 'Trenton', anchor: 'r' },
   { lon: -76.61, lat: 39.29, name: 'Baltimore', anchor: 'r' },
+  { lon: -76.71, lat: 37.27, name: 'Williamsburg' },
+  { lon: -76.29, lat: 36.85, name: 'Norfolk', anchor: 'r' },
 ];
 
 /** Provinces, set in spaced letters across open ground the way a plan does. */
 const PROVINCES: { lon: number; lat: number; name: string; rot?: number }[] = [
-  { lon: -72.4, lat: 42.45, name: 'MASSACHUSETTS' },
+  { lon: -72.75, lat: 42.48, name: 'MASSACHUSETTS' },
   { lon: -72.5, lat: 41.62, name: 'CONNECTICUT' },
   { lon: -74.9, lat: 41.5, name: 'NEW YORK' },
   { lon: -74.6, lat: 40.35, name: 'THE JERSIES', rot: -0.5 },
@@ -396,6 +448,42 @@ export function labelOffset(t: Token): [number, number] {
   return [0, 24];
 }
 
+/**
+ * A TRACK: how something got from there to here.
+ *
+ * The second ink layer, and the one that turns eight still pages into a war.
+ * A mark says where a thing IS; a track says where it came from, and once the
+ * sheet carries both, movement is legible without the player having to hold the
+ * last act in their head.
+ *
+ * THE RULE THAT MAKES IT TEACH SOMETHING: **a track is drawn only where
+ * somebody watched it happen.** It is not a record of what moved — it is a
+ * record of what was *seen* to move, which is a different and much more useful
+ * thing on a map whose subject is what one man knew.
+ *
+ * The consequence is the best line this map draws, and it draws it without a
+ * word: **their marks teleport and yours walk.** An American force gets a
+ * dashed track and you can count the miles it cost. A British fleet gets no
+ * track at all — it was off Boston in one act and it is in the Narrows in the
+ * next, four hundred miles with nothing in between, because nobody on this side
+ * of the water saw it cross. That is what command of the sea looks like, drawn.
+ *
+ * Overland British movement CAN carry a track, where it was reported — Lafayette
+ * watched Cornwallis all summer. It is drawn at the confidence of the report,
+ * like everything else here. What can never carry one is a passage by sea, and
+ * the linter enforces exactly that and nothing wider.
+ */
+export interface Track {
+  /** Waypoints in lon/lat, in the order they were travelled. */
+  path: Pt[];
+  /** Written along the line, the way a plan labels a route. Short. */
+  label: string;
+  /** How well he knew it. The same ink language as the marks. */
+  conf: Confidence;
+  /** Where along the path the label sits, 0..1. Defaults to the middle. */
+  labelAt?: number;
+}
+
 export interface Theatre {
   act: number;
   /** ISO. The day the sheet is drawn as of. */
@@ -420,6 +508,8 @@ export interface Theatre {
    */
   standing: string;
   tokens: Token[];
+  /** What was seen to move, and how it came. */
+  tracks?: Track[];
 }
 
 export const THEATRES: Record<number, Theatre> = {
@@ -441,6 +531,32 @@ export const THEATRES: Record<number, Theatre> = {
     standing:
       'Something has happened in Massachusetts and the accounts do not agree. ' +
       'You are expected in Philadelphia on the tenth.',
+    /*
+     * The first track in the game is not an army. It is the NEWS.
+     *
+     * The Committee of Safety's express left Watertown on the nineteenth of
+     * April and the word reached Virginia around the twenty-eighth. Drawn, it
+     * runs the whole length of the sheet — Massachusetts to the Potomac, four
+     * hundred miles of dashes, nine days.
+     *
+     * Which means the first thing a student ever sees this map do is show them
+     * how long information took to cross it. Everything else this page teaches
+     * about staleness is downstream of that one line, and none of it has to be
+     * explained afterwards.
+     */
+    tracks: [
+      {
+        label: 'the express from Watertown · 19–28 April',
+        conf: 'certain',
+        // On the Connecticut leg, which is the flattest run on the road. A
+        // rotated label wants a stretch that is close to horizontal or it reads
+        // as a smear across whatever province it crosses.
+        labelAt: 0.20,
+        path: [[-71.23, 42.45], [-72.0, 41.9], [-72.68, 41.76], [-73.5, 41.2],
+          [-74.01, 40.71], [-74.74, 40.22], [-75.16, 39.95], [-76.61, 39.29],
+          [-77.09, 38.71]],
+      },
+    ],
     tokens: [
       {
         lon: -71.06, lat: 42.36, kind: 'foot', side: 'theirs',
@@ -527,6 +643,27 @@ export const THEATRES: Record<number, Theatre> = {
     standing:
       'You have been given an army that was already sitting where you found it, ' +
       'and a town you cannot go into and cannot walk away from.',
+    /*
+     * One track, and it is his own.
+     *
+     * He left Philadelphia on the twenty-third of June and reached Cambridge on
+     * the second of July: ten days, by New York and New Haven and Worcester, on
+     * horseback. The line is on the page for two reasons. It is the distance
+     * between the body that appointed him and the army he was appointed to,
+     * which is the whole administrative problem of Act 2 stated as geography.
+     * And it is the *only* line on this sheet — nothing else on it has been seen
+     * to move at all, because a siege is what happens when nothing does.
+     */
+    tracks: [
+      {
+        label: 'your own road up · 23 June – 2 July',
+        conf: 'seen',
+        labelAt: 0.55,
+        path: [[-75.16, 39.95], [-74.6, 40.35], [-74.01, 40.71], [-73.2, 41.1],
+          [-72.93, 41.31], [-72.4, 41.7], [-71.95, 42.15], [-71.5, 42.3],
+          [-71.11, 42.375]],
+      },
+    ],
     tokens: [
       {
         lon: -71.06, lat: 42.36, kind: 'foot', side: 'theirs',
@@ -705,7 +842,7 @@ export function canvasAt(lon: number, lat: number): [number, number] {
  * same reason: so that a despatch could refer to a square.
  */
 const COLS = 5;
-const ROWS = 4;
+const ROWS = 5;
 const LETTERS = 'ABCDE';
 
 /** Which square a position falls in — `C2`. */
@@ -1088,8 +1225,8 @@ function scaleBar(c: CanvasRenderingContext2D, x: number, y: number): void {
  * is the job the reference image's own title block is doing.
  */
 function cartouche(c: CanvasRenderingContext2D, title: string, sub: string): void {
-  const x = MAP_W * 0.79;
-  const y = MAP_H * 0.76;
+  const x = MAP_W * 0.72;
+  const y = MAP_H * 0.685;
   c.save();
   c.textAlign = 'center';
   c.fillStyle = INK.FLOOR;
@@ -1185,6 +1322,75 @@ function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): voi
 }
 
 /**
+ * A track: dashes, an arrowhead, and the route's name written along it.
+ *
+ * Drawn UNDER the marks and over everything else, because it is a line somebody
+ * added to the sheet after it was printed — which is exactly what it was.
+ *
+ * The label follows the local tangent and carries a halo of the paper's own
+ * colour behind it. Without the halo it prints over its own dashes and over the
+ * coast, and a route label that cannot be read is a route label that has made
+ * the map worse.
+ */
+function drawTrack(c: CanvasRenderingContext2D, tr: Track): void {
+  const scr = geo(tr.path);
+  const a = ALPHA[tr.conf];
+
+  c.save();
+  c.globalAlpha = a * 0.85;
+  c.strokeStyle = INK.SETTLED;
+  c.lineWidth = 2.2;
+  c.lineCap = 'butt';
+  // Long dashes for a road somebody travelled; the short broken dash is already
+  // spoken for by a position nobody has confirmed, and the two must not rhyme.
+  c.setLineDash([11, 7]);
+  c.beginPath();
+  smooth(c, scr);
+  c.stroke();
+  c.setLineDash([]);
+
+  // The arrowhead. Which way a thing went is half of what a track says.
+  const p = scr[scr.length - 2];
+  const q = scr[scr.length - 1];
+  const ang = Math.atan2(q[1] - p[1], q[0] - p[0]);
+  c.translate(q[0], q[1]);
+  c.rotate(ang);
+  c.globalAlpha = a;
+  c.fillStyle = INK.SETTLED;
+  c.beginPath();
+  c.moveTo(2, 0);
+  c.lineTo(-11, 5.5);
+  c.lineTo(-8, 0);
+  c.lineTo(-11, -5.5);
+  c.closePath();
+  c.fill();
+  c.restore();
+
+  // The name, set along the road at the point the author picked.
+  const t = Math.min(0.98, Math.max(0.02, tr.labelAt ?? 0.5));
+  const i = Math.min(scr.length - 2, Math.floor(t * (scr.length - 1)));
+  const [ax, ay] = scr[i];
+  const [bx, by] = scr[i + 1];
+  let ang2 = Math.atan2(by - ay, bx - ax);
+  // Never upside down. A map label reads left to right or it does not read.
+  if (ang2 > Math.PI / 2 || ang2 < -Math.PI / 2) ang2 += Math.PI;
+
+  c.save();
+  c.translate((ax + bx) / 2, (ay + by) / 2);
+  c.rotate(ang2);
+  c.font = 'italic 14px Georgia, "Times New Roman", serif';
+  c.textAlign = 'center';
+  c.lineJoin = 'round';
+  c.globalAlpha = a;
+  c.strokeStyle = SHEET;
+  c.lineWidth = 5;
+  c.strokeText(tr.label, 0, -9);
+  c.fillStyle = INK.FLOOR;
+  c.fillText(tr.label, 0, -9);
+  c.restore();
+}
+
+/**
  * The leader from a marker to its label. Only drawn where the label has been
  * pushed off the mark, and it stops short at both ends so it never touches
  * either. Without it the four marks around Boston have four captions floating
@@ -1260,9 +1466,18 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
 
   border(c);
 
-  // Into map space.
+  // Into map space, and CLIPPED TO IT.
+  //
+  // The clip is not a nicety. Without it the Potomac, the Blue Ridge and the
+  // Virginia coast — all of which properly run off the edge of the geography —
+  // printed straight through the ruled border and out into the margin where the
+  // grid letters live. A map whose content crosses its own frame does not read
+  // as a printed sheet; it reads as a bug.
   c.save();
   c.translate(BLEED + MARGIN, BLEED + MARGIN);
+  c.beginPath();
+  c.rect(0, 0, MAP_W, MAP_H);
+  c.clip();
   c.lineJoin = 'round';
   c.lineCap = 'round';
 
@@ -1294,7 +1509,8 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
   c.lineWidth = 2;
   c.stroke();
 
-  for (const line of [COAST, DELAWARE_BAY, CHESAPEAKE]) {
+  for (const line of [COAST, DELAWARE_BAY, DELMARVA_BAY, DELMARVA_ATLANTIC,
+    VIRGINIA_COAST, CHESAPEAKE]) {
     c.beginPath();
     smooth(c, geo(line));
     c.strokeStyle = INK.FLOOR;
@@ -1351,12 +1567,14 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
   c.globalAlpha = 0.5;
   c.font = 'italic 20px Georgia, "Times New Roman", serif';
   c.textAlign = 'center';
-  c.fillText('T H E   A T L A N T I C   O C E A N', MAP_W * 0.80, MAP_H * 0.46);
+  c.fillText('T H E   A T L A N T I C   O C E A N', MAP_W * 0.815, MAP_H * 0.40);
   c.restore();
 
   cartouche(c, theatre.sheetTitle, theatre.sheetSub);
-  compass(c, MAP_W * 0.925, MAP_H * 0.135, MAP_H * 0.072);
-  scaleBar(c, MAP_W * 0.62, MAP_H * 0.905);
+  compass(c, MAP_W * 0.925, MAP_H * 0.115, MAP_H * 0.062);
+  scaleBar(c, MAP_W * 0.60, MAP_H * 0.855);
+
+  for (const tr of theatre.tracks ?? []) drawTrack(c, tr);
 
   for (const t of theatre.tokens) {
     const conf = confidenceOf(t, theatre.asOf);

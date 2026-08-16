@@ -685,7 +685,7 @@ console.log('\nthe theatre map');
       // The lettered grid is only useful if it resolves. A mark that falls
       // outside A1..E4 means the projection and the grid have drifted apart.
       check(`${where}: sits in a named square (${gridRef(t.lon, t.lat)})`,
-        /^[A-E][1-4]$/.test(gridRef(t.lon, t.lat)));
+        /^[A-E][1-5]$/.test(gridRef(t.lon, t.lat)));
     }
 
     /*
@@ -730,6 +730,47 @@ console.log('\nthe theatre map');
     }
     check(`act ${act}'s labels do not print through each other`, clashes.length === 0,
       clashes.join('; '));
+  }
+
+  /*
+   * THEIR MARKS TELEPORT AND YOURS WALK.
+   *
+   * A track is a record of what somebody was SEEN to do, so a passage by sea can
+   * never carry one — nobody on this side of the water watched a fleet cross it.
+   * Draw a track to a ship and the map has quietly claimed a kind of knowledge
+   * the Continental army did not have, and Act 3's whole point (the fleet was
+   * off Boston, and then it was in the Narrows, and there is nothing in between)
+   * goes with it.
+   *
+   * Scoped exactly to sea passages and no wider. British forces that marched
+   * overland were watched and reported, and those tracks are legitimate.
+   */
+  for (const act of acts) {
+    const tm = THEATRES[act];
+    const ships = tm.tokens.filter((t) => t.kind === 'ship');
+    /*
+     * The radius has to mean "the same mark", not "nearby". The first cut used
+     * half a degree and flagged Washington's road up from Philadelphia, because
+     * it ends at Cambridge and the fleet is fifteen miles away in the harbour —
+     * which is true of practically everything in Act 2. In a theatre this
+     * crowded, proximity is not evidence; landing on the point is.
+     */
+    const landed = (tm.tracks ?? []).filter((tr) => {
+      const [ex, ey] = tr.path[tr.path.length - 1];
+      return ships.some((sh) => Math.abs(sh.lon - ex) < 0.08 && Math.abs(sh.lat - ey) < 0.06);
+    });
+    check(`act ${act}: nothing tracks a fleet across open water`, landed.length === 0,
+      landed.map((tr) => tr.label).join('; '));
+
+    for (const tr of tm.tracks ?? []) {
+      check(`act ${act} · ${tr.label}: the road has somewhere to go`, tr.path.length >= 2);
+      const off = tr.path.filter(([lo, la]) => {
+        const [x, y] = at(lo, la);
+        return x < 0 || x > 1 || y < 0 || y > 1;
+      });
+      check(`act ${act} · ${tr.label}: stays on the sheet`, off.length === 0,
+        `${off.length} waypoints off the map`);
+    }
   }
 }
 

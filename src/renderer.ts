@@ -28,6 +28,15 @@ import type { GroundPos } from './ground';
 /** Parallax coefficients, L0..L5. */
 const PARALLAX = [0.1, 0.26, 0.5, 0.74, 1.06, 1.6];
 const PARALLAX_MAX_PX = 64; // "breath", not a camera move
+/*
+ * The walkable ground is plate L2 (sky, hills, GROUND, farMid, midground,
+ * foreground). Everything that stands ON the ground — the player, the NPCs, the
+ * set pieces, even the insects — is glued to this same coefficient, so it breathes
+ * WITH the ground instead of sliding across it. Without this the figures held
+ * still while the ground swung under them as the player walked, and a man standing
+ * beside a tent drifted off the tent — which is the whole "weird perspective".
+ */
+const GROUND_PARALLAX = PARALLAX[2];
 
 
 const MOOD_FRAG = /* glsl */ `
@@ -227,6 +236,12 @@ export class DioramaRenderer {
 
   private breath = 0;
   private breathZ = 0;
+  /*
+   * The ground plate's current breath offset, mirrored here so screenPos() can
+   * shift a DOM prompt by the same amount the prop under it just moved. Updated
+   * every frame in setPlayerPos.
+   */
+  private groundOff = { x: 0, y: 0 };
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -500,7 +515,12 @@ export class DioramaRenderer {
   /** Screen pixels for a ground position, for placing DOM prompts. */
   screenPos(pos: GroundPos): { x: number; y: number } {
     const { x, y, scale } = this.project(pos);
-    const v = new THREE.Vector3(x, y + FIGURE_H * scale, 0).project(this.camera);
+    // The prop under the prompt breathes with the ground; the prompt follows it.
+    const v = new THREE.Vector3(
+      x + this.groundOff.x,
+      y + this.groundOff.y + FIGURE_H * scale,
+      0,
+    ).project(this.camera);
     return {
       x: ((v.x + 1) / 2) * innerWidth,
       y: ((1 - v.y) / 2) * innerHeight,
@@ -572,8 +592,37 @@ export class DioramaRenderer {
     }
     if (this.clouds) this.clouds.position.x = -this.breath * 0.16 * ((PARALLAX_MAX_PX / 1600) * VIEW_W);
 
+    /*
+     * Parallax breath, computed here at the top so the figures can be placed
+     * with it — walking across slides the stack sideways; walking into it pushes
+     * the near layers down and out, which is what sells the ground as a plane
+     * rather than a line.
+     *
+     * The vertical sign was once backwards: the camera holds the player, so it
+     * tilts down when he is near the front and up when he is at the back, and
+     * scenery moves against the camera, nearer layers moving most. Walking away
+     * settles the near layers downward, letting him climb clear of them.
+     */
+    const targetX = (pos.x - 0.5) * 2;
+    const targetY = (pos.z - 0.35) * 2;
+    this.breath += (targetX - this.breath) * 0.12;
+    this.breathZ += (targetY - this.breathZ) * 0.10;
+    const px = (PARALLAX_MAX_PX / 1600) * VIEW_W;
+    for (const l of this.layers) {
+      l.mesh.position.x = -this.breath * l.parallax * px;
+      l.mesh.position.y = -this.breathZ * l.parallax * px * 0.42;
+    }
+    // The offset the GROUND plate takes — and therefore the offset everything
+    // standing on it must take, so the cast breathes with the ground and only
+    // the nearer and farther plates parallax against it.
+    const gpx = -this.breath * GROUND_PARALLAX * px;
+    const gpy = -this.breathZ * GROUND_PARALLAX * px * 0.42;
+    this.groundOff.x = gpx;
+    this.groundOff.y = gpy;
+
     this.place(this.player, pos);
-    this.player.position.y += this.bob;
+    this.player.position.x += gpx;
+    this.player.position.y += this.bob + gpy;
     // The side cycle is drawn facing frame-left; mirror it to go the other way.
     if (this.facing === 'side' && this.facingSign > 0) {
       this.player.scale.x = -this.player.scale.x;
@@ -591,6 +640,8 @@ export class DioramaRenderer {
      */
     for (const n of this.npcs) {
       this.place(n.mesh, n.pos);
+      n.mesh.position.x += gpx;
+      n.mesh.position.y += gpy;
       if (!IDLE_SHIFTS) continue;
       n.wait -= dt;
       if (n.wait <= 0) {
@@ -614,16 +665,16 @@ export class DioramaRenderer {
     // thing in the camp that would look wrong holding perfectly steady.
     for (const pr of this.props) {
       const { x, y, scale } = this.project(pr.pos);
-      pr.mesh.position.x = x;
+      pr.mesh.position.x = x + gpx;
       pr.mesh.renderOrder = this.orderFor(pr.pos.z);
       if (pr.flicker) {
         pr.t += dt;
         const f = 1 + Math.sin(pr.t * 7.3) * 0.05 + Math.sin(pr.t * 17.1) * 0.03;
         pr.mesh.scale.set(scale * (2 - f), scale * f, 1);
-        pr.mesh.position.y = y + (FIGURE_H * PROP_H.fire * scale * f) / 2;
+        pr.mesh.position.y = y + gpy + (FIGURE_H * PROP_H.fire * scale * f) / 2;
       } else {
         pr.mesh.scale.setScalar(scale);
-        pr.mesh.position.y = y + (pr.mesh.geometry as THREE.PlaneGeometry).parameters.height * scale / 2;
+        pr.mesh.position.y = y + gpy + (pr.mesh.geometry as THREE.PlaneGeometry).parameters.height * scale / 2;
       }
     }
 
@@ -641,36 +692,9 @@ export class DioramaRenderer {
       const facing = Math.cos(b.t * b.fx + b.phx) >= 0 ? 1 : -1;
       const beat = 1 - b.squeeze * (0.5 - 0.5 * Math.cos(b.t * b.beat * Math.PI * 2));
       b.mesh.scale.set(p.scale * beat * facing, p.scale, 1);
-      b.mesh.position.x = p.x;
-      b.mesh.position.y = p.y + (b.hy + b.hr * Math.sin(b.t * b.fy + b.phy)) * p.scale;
+      b.mesh.position.x = p.x + gpx;
+      b.mesh.position.y = p.y + gpy + (b.hy + b.hr * Math.sin(b.t * b.fy + b.phy)) * p.scale;
       b.mesh.renderOrder = this.orderFor(z);
-    }
-
-    // Parallax breath on both axes. Walking across the frame slides the stack
-    // sideways; walking into it pushes the near layers down and out, which is
-    // what sells the ground as a plane rather than a line.
-    const targetX = (pos.x - 0.5) * 2;
-    /*
-     * The vertical sign, which was backwards.
-     *
-     * The camera holds the player, so it tilts down when he is near the front
-     * of the frame and up when he is at the back — and scenery moves against
-     * the camera, nearer layers moving most. Walking away should therefore
-     * settle the near layers downward, letting him climb clear of them.
-     *
-     * It did the opposite: the near ground rose with him, so he never gained on
-     * it. Walking back toward the house felt like descending a slope while the
-     * set rode up past him, which is exactly what the numbers were doing. The
-     * horizontal axis had the sign right all along, which is why walking left
-     * and right always felt fine and walking in and out never did.
-     */
-    const targetY = (pos.z - 0.35) * 2;
-    this.breath += (targetX - this.breath) * 0.12;
-    this.breathZ += (targetY - this.breathZ) * 0.10;
-    const px = (PARALLAX_MAX_PX / 1600) * VIEW_W;
-    for (const l of this.layers) {
-      l.mesh.position.x = -this.breath * l.parallax * px;
-      l.mesh.position.y = -this.breathZ * l.parallax * px * 0.42;
     }
   }
 

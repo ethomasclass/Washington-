@@ -1241,8 +1241,8 @@ export class Overlay {
       g.stroke();
     };
 
-    /** The eyepiece: the magnified crop, its faults, the reticle and the brass. */
-    const eyepiece = (cx: number, cy: number): void => {
+    /** The eyepiece: the magnified crop, its faults, the rings it resolves, and the brass. */
+    const eyepiece = (cx: number, cy: number, t: number): void => {
       const span = D / (scale * ZOOM); // source pixels shown across the glass
       const sx = (cx - ox) / scale - span / 2;
       const sy = (cy - oy) / scale - span / 2;
@@ -1269,6 +1269,35 @@ export class Overlay {
       vig.addColorStop(1, 'rgba(14,11,7,0.82)');
       g.fillStyle = vig;
       g.fillRect(cx - D / 2, cy - D / 2, D, D);
+
+      /*
+       * The rings, drawn AGAIN inside the glass at the magnified positions.
+       *
+       * The magnified crop is a slice of the raw scene and carries none of the
+       * rings painted on the backdrop, so without this a position vanished the
+       * moment the glass covered it — which is exactly the thing the glass is
+       * for. Here each position that falls within the crop is re-drawn at its
+       * place in the lens, larger because everything in the lens is larger, so
+       * putting the glass on a position is what makes it clearest, not what
+       * hides it.
+       */
+      const pulse = 0.5 + 0.5 * Math.sin(t / 620);
+      for (const tg of targets) {
+        const gx = cx - D / 2 + ((tg.at * source.width - sx) / span) * D;
+        const gy = cy - D / 2 + ((tg.y * source.height - sy) / span) * D;
+        if (Math.hypot(gx - cx, gy - cy) > D / 2 - 6) continue; // outside the lens
+        if (tg.done) {
+          ring(gx, gy, 26, 0.6, 0.9);
+          g.fillStyle = 'rgba(245, 226, 190, 0.95)';
+          g.font = '600 15px Georgia, "Times New Roman", serif';
+          g.textAlign = 'center';
+          g.fillText(tg.name.toUpperCase(), gx, gy + 46);
+        } else {
+          const focusing = focusId === tg.id ? focusMs / HOLD : 0;
+          ring(gx, gy, 24 + 5 * focusing, 0.3 + 0.16 * pulse + 0.7 * focusing, 0.5 + 0.5 * focusing);
+        }
+      }
+
       // A hair of a reticle. Two short strokes, not a rifle sight.
       g.strokeStyle = 'rgba(38,30,20,0.5)';
       g.lineWidth = 1;
@@ -1292,6 +1321,20 @@ export class Overlay {
       g.beginPath();
       g.arc(cx, cy, D / 2 + 8.5, 0, TAU);
       g.stroke();
+
+      /*
+       * The gathering arc, around the rim of the glass itself. Holding the glass
+       * on a position fills a bright ring clockwise from the top; when it closes,
+       * the position resolves. It lives on the brass rather than on the target,
+       * because the target is under the glass and cannot be seen from outside it.
+       */
+      if (focusId && focusMs > 0) {
+        g.strokeStyle = 'rgba(245, 205, 130, 0.95)';
+        g.lineWidth = 3.5;
+        g.beginPath();
+        g.arc(cx, cy, D / 2 + 6, -Math.PI / 2, -Math.PI / 2 + TAU * (focusMs / HOLD));
+        g.stroke();
+      }
     };
 
     let alive = true;
@@ -1338,21 +1381,15 @@ export class Overlay {
           g.textAlign = 'center';
           g.fillText(tg.name.toUpperCase(), x, y + 30);
         } else {
+          // A faint naked-eye shimmer, so the eye has somewhere to take the
+          // glass. It brightens a little as the glass gathers on it, but the
+          // real resolving — the bright ring, the name — happens in the lens.
           const focusing = focusId === tg.id ? focusMs / HOLD : 0;
-          const glow = 0.18 + 0.14 * pulse + 0.8 * focusing;
-          ring(x, y, 13 + 3 * focusing, glow, 0.3 + 0.5 * focusing);
-          // The gathering arc: a ring filling clockwise as the glass is held.
-          if (focusing > 0) {
-            g.strokeStyle = 'rgba(245, 205, 130, 0.95)';
-            g.lineWidth = 2.5;
-            g.beginPath();
-            g.arc(x, y, 20, -Math.PI / 2, -Math.PI / 2 + TAU * focusing);
-            g.stroke();
-          }
+          ring(x, y, 13, 0.16 + 0.12 * pulse + 0.35 * focusing, 0.26 + 0.3 * focusing);
         }
       }
 
-      eyepiece(pos.x, pos.y);
+      eyepiece(pos.x, pos.y, t);
       requestAnimationFrame(frame);
     };
 

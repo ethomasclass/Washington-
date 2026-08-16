@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Low-poly shading bakeoff</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: #14110d;
+        color: #e8dcc6;
+        font: 14px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+        padding: 20px;
+      }
+      h1 { font-size: 18px; font-weight: 600; letter-spacing: .02em; margin-bottom: 4px; }
+      p.lede { color: #9a8f78; margin-bottom: 18px; max-width: 70ch; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 16px;
+      }
+      .cell {
+        background: #000;
+        border: 1px solid #2a241b;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .cell canvas { display: block; width: 100%; height: 260px; }
+      .cap {
+        padding: 8px 12px;
+        border-top: 1px solid #2a241b;
+        background: #1a160f;
+      }
+      .cap b { color: #f0e6d2; }
+      .cap span { color: #8f856f; }
+    </style>
+  </head>
+  <body>
+    <h1>Low-poly shading bakeoff — the camp vignette, five ways</h1>
+    <p class="lede">
+      Same geometry, same camera, five non-photoreal treatments. Judge outline weight,
+      how the flat fills read, and whether the paper grain earns its place.
+    </p>
+    <div class="grid" id="grid"></div>
+    <script type="module" src="/src/samples.ts"></script>
+  </body>
+</html>

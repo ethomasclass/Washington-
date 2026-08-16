@@ -20,9 +20,10 @@
 
 import { INK, MEANING, PAPER } from './palette';
 
-export type Medium = 'aquatint' | 'wash' | 'poster' | 'comic';
+export type Medium = 'aquatint' | 'wash' | 'poster' | 'comic' | 'pentiment';
 
 export const MEDIA: { id: Medium; name: string; note: string }[] = [
+  { id: 'pentiment', name: 'Manuscript line', note: "Pentiment's grammar — hand-drawn contour, flat fill, world and figures in one language" },
   { id: 'aquatint', name: 'Aquatint / engraving', note: 'line structure, flat tinted washes over it' },
   { id: 'wash', name: 'Ink line + flat wash', note: 'the original direction — iron-gall line, bare paper as light' },
   { id: 'poster', name: 'Gouache poster-flat', note: 'flat shapes, hard edges, no contour' },
@@ -77,7 +78,53 @@ const PALETTES: Record<Medium, { paper: string; sky: string; far: string; water:
     paper: '#E4DCC6', sky: '#AEB8B8', far: '#5F6A62', water: '#7C8781',
     ground: '#9A9276', mass: '#5A5747', near: '#33342C', accent: '#A8492F',
   },
+  /*
+   * The manuscript palette. Warmer and higher-keyed than anything else here,
+   * because the ground is not canvas or a mid-tone: it is parchment, and it is
+   * the lightest thing in the picture. Colour sits ON it in flat, slightly
+   * uneven fills, the way a limner laid down pigment inside a drawn line.
+   */
+  pentiment: {
+    paper: '#EFE3C6', sky: '#A8C4CE', far: '#8FA48C', water: '#9FB6B4',
+    ground: '#A8B173', mass: '#C9BFA6', near: '#8E9A5E', accent: '#A8433A',
+  },
 };
+
+/** The ink of a drawn line: never black, always a warm brown-black. */
+const QUILL = '#3A2C1E';
+
+/**
+ * A line drawn by a hand rather than by a machine.
+ *
+ * The whole read of a manuscript style rests on this: the contour wanders, its
+ * weight varies along its length, and it does not perfectly meet itself at the
+ * corners. A path plotted exactly and stroked once looks like vector art no
+ * matter what colour it is filled with.
+ */
+function quill(x: Ctx, pts: Pt[], rnd: () => number, weight = 2.1, close = true): void {
+  const all = close ? [...pts, pts[0]] : pts;
+  x.save();
+  x.strokeStyle = QUILL;
+  x.lineCap = 'round';
+  x.lineJoin = 'round';
+  for (let i = 0; i < all.length - 1; i++) {
+    const [ax, ay] = all[i];
+    const [bx, by] = all[i + 1];
+    const steps = Math.max(2, Math.round(Math.hypot(bx - ax, by - ay) / 26));
+    x.lineWidth = weight * (0.78 + rnd() * 0.5);
+    x.globalAlpha = 0.82 + rnd() * 0.18;
+    x.beginPath();
+    x.moveTo(ax + (rnd() - 0.5) * 1.6, ay + (rnd() - 0.5) * 1.6);
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      // A slight bow across the span, so a "straight" edge is never straight.
+      const bow = Math.sin(t * Math.PI) * (rnd() - 0.5) * 3.2;
+      x.lineTo(ax + (bx - ax) * t + bow, ay + (by - ay) * t + bow * 0.6);
+    }
+    x.stroke();
+  }
+  x.restore();
+}
 
 /**
  * Put a shape down in the current medium.
@@ -93,6 +140,39 @@ function mass(x: Ctx, m: Medium, pts: Pt[], colour: string, rnd: () => number, d
     for (let i = 1; i < pts.length; i++) x.lineTo(pts[i][0], pts[i][1]);
     x.closePath();
   };
+
+  if (m === 'pentiment') {
+    /*
+     * Fill first, contour over it, and the contour is the picture.
+     *
+     * Two things separate this from the painted comic, and they are the two
+     * things that make a manuscript look like a manuscript. The fill is uneven —
+     * a limner's colour is laid by hand and pools — so a second, barely
+     * different tone is dragged over part of the shape. And the line is drawn
+     * rather than plotted: it wanders, it varies in weight, and it overshoots
+     * its corners. Depth is carried almost entirely by overlap and by where a
+     * thing sits on the page, not by value, because that is how a picture
+     * without linear perspective states which thing is in front.
+     */
+    x.fillStyle = colour;
+    path();
+    x.fill();
+    x.save();
+    path();
+    x.clip();
+    x.globalAlpha = 0.5;
+    x.fillStyle = shade(colour, -0.045);
+    for (let i = 0; i < 5; i++) {
+      const bx = rnd() * x.canvas.width;
+      const by = rnd() * x.canvas.height;
+      x.beginPath();
+      x.ellipse(bx, by, 60 + rnd() * 150, 22 + rnd() * 60, rnd() * 3, 0, Math.PI * 2);
+      x.fill();
+    }
+    x.restore();
+    quill(x, pts, rnd, 1.7 + depth * 0.8);
+    return;
+  }
 
   if (m === 'poster') {
     // Flat, hard-edged, no contour. Depth is carried purely by value.
@@ -250,6 +330,35 @@ export function renderCamp(m: Medium, W = 1280, H = 720): HTMLCanvasElement {
   x.moveTo(fx, hz + 46);
   x.lineTo(fx, hz + 110);
   x.stroke();
+
+  /*
+   * Trees and cloud.
+   *
+   * Both are drawn as decorative masses with a scalloped edge rather than as
+   * observed foliage or vapour, which is how every pre-perspective picture
+   * handles them and how Pentiment handles them still. They read as ornament in
+   * the manuscript sample and as shape in the others, which is a fair test:
+   * a style that cannot carry a tree cannot carry a scene.
+   */
+  const lobed = (cx: number, cy: number, r: number, lobes: number, squash = 1): Pt[] => {
+    const out: Pt[] = [];
+    for (let i = 0; i < lobes; i++) {
+      const a = (i / lobes) * Math.PI * 2;
+      const rr = r * (0.82 + ((i % 2) === 0 ? 0.22 : 0));
+      out.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * squash]);
+    }
+    return out;
+  };
+
+  // A cloud bank, upper centre — outlined in the manuscript sample, a plain
+  // shape everywhere else.
+  mass(x, m, lobed(W * 0.52, hz * 0.42, 86, 11, 0.52), shade(P.sky, 0.09), rnd, 0);
+
+  // Trees flanking the frame, standing on the ground band.
+  for (const [tx, ty, tr] of [[W * 0.05, hz + 52, 62], [W * 0.155, hz + 34, 46], [W * 0.94, hz + 60, 70]] as const) {
+    mass(x, m, [[tx - 5, ty], [tx + 5, ty], [tx + 7, ty + 54], [tx - 7, ty + 54]], shade(P.mass, -0.10), rnd, 0.7);
+    mass(x, m, lobed(tx, ty - tr * 0.5, tr, 13, 0.86), shade(P.ground, -0.14), rnd, 0.7);
+  }
 
   // The near-field occluder, cropped by the bottom edge: a rutted bank, heaviest
   // weight, almost no colour. Without it the frame has no depth.

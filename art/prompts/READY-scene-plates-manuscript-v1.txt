@@ -1,0 +1,114 @@
+READY-scene-plates-manuscript-v1.txt — the drawn world.
+Candidate medium for environments. Pairs with the line-and-fill figure sheets.
+
+WHAT THIS IS, AND THE ONE ADAPTATION THAT MATTERS
+
+Pentiment's grammar, and 1775's sources.
+
+The grammar is what makes that game cohere and it is entirely portable: a
+hand-drawn ink contour round everything, flat opaque colour inside it, no
+rendering, no cast shadows, no gradients, and a deliberately flattened space in
+which things are stacked up the page rather than receding into it. World and
+people drawn in one language, so a figure standing in a scene belongs to it.
+
+The sources are NOT portable, and copying them would be a mistake worth naming
+before anyone starts generating. Pentiment is set around 1500 and its style is
+its subject: the game is about manuscript illumination and the coming of print,
+so an illuminated hand IS the world it depicts. Borrow that hand for 1775 and
+the picture is 250 years out of date — a Bavarian scriptorium drawing the siege
+of Boston. It would read as a costume, and this project's whole discipline is
+that the picture is true.
+
+So the sources are the print culture this war actually had, which is a drawn,
+contoured, flat-coloured culture in its own right:
+
+  - Amos Doolittle's four engravings of Lexington and Concord, 1775 — already a
+    findable object in CB-03 and already the game's argument about the visual
+    record. Flat, frontal, naive in exactly the useful way.
+  - Broadside and newspaper woodcuts: heavy contour, no tone, no perspective.
+  - Pen-and-wash topographical views by military engineers — the original
+    direction in docs/02, and the way an officer actually recorded ground.
+  - Hand-coloured English aquatint views of towns and harbours.
+
+Every one of them is line first and colour second. That is the whole brief.
+
+=============================================================== THE STYLE BLOCK
+
+Paste verbatim. This replaces style-anchor-oil-v1 for environments if this
+medium is adopted; it does not touch the dialogue portraits.
+
+STYLE: a hand-drawn illustration in the manner of an eighteenth-century engraved
+view that has been coloured by hand. Every form is bounded by a drawn ink
+contour in warm brown-black, and the colour sits inside that contour as a flat,
+opaque, slightly uneven wash with no blending, no gradient, no highlight and no
+cast shadow. The line is a quill line: it varies in weight along its length, it
+wavers, and at the corners it overshoots slightly rather than closing exactly.
+Nothing is rendered and nothing is modelled — a wall is a shape with a line
+round it and two or three drawn courses of stone to say what it is made of, not
+a surface with light falling across it.
+
+THE SPACE: flattened and frontal, in the manner of a period engraved view.
+Depth is stated by overlap and by height on the page, not by atmospheric haze
+and not by dramatic converging perspective. Buildings are drawn nearly square to
+the viewer. Distant things are smaller and higher up, and they are drawn with
+the same weight of line as near things rather than fading out.
+
+THE DETAIL: drawn incident everywhere, and all of it made of line — courses of
+stone, ranks of roof shingles, the boards of a fence, tufts of grass, the ruts
+of a track, the weave of a tent's canvas. This is what separates the style from
+flat vector art: the picture is busy with drawn marks and empty of rendering.
+
+THE COLOUR: a warm parchment ground, and on it a small, muted, earthy palette —
+olive green, ochre, dull brick red, weathered timber brown, cold slate, and
+unbleached linen. Colours are laid flat and are allowed to pool slightly uneven
+within a shape. Nothing is pure black and nothing is pure white; the darkest
+value in the picture is the ink of the contour.
+
+=========================================================== NEGATIVE, ADAPTED
+
+Use negative-oil-v1 in full — every entry on it still applies — and add:
+
+ADDITIONAL NEGATIVE: illuminated manuscript, gold leaf, gilding, marginalia,
+drop capital, decorated initial, vellum, medieval, gothic, Book of Hours,
+scriptorium, monk, friar, Bavarian, half-timbered house, tonsure,
+oil painting, brush texture, impasto, painterly, soft edges, blended shading,
+cel shading with a hard terminator, ambient occlusion, drop shadow, gradient
+sky, sunset, volumetric light, watercolour bleed, wet edges,
+flat vector, clip art, infographic, sticker, thick uniform outline of even
+weight, perfectly closed contour, geometric precision, ruler-straight edges
+
+  The last line is the one that will need policing. The failure mode of this
+  style is not ugliness, it is TIDINESS: a machine draws a contour of perfectly
+  even weight that closes exactly, and the result reads as clip art. If a sample
+  comes back looking like a vector illustration, the fix is always the same —
+  ask for the line to wander and vary and overshoot.
+
+======================================================= COMPOSITION, UNCHANGED
+
+Everything in READY-scene-plates-v1.txt still governs, because those rules are
+about the CUT and not the medium: the horizon exactly one third down as a clean
+unbroken horizontal, the walkable ground open and unobstructed, no people
+anywhere in the frame, a near-field mass cropped by the bottom edge, generous
+margin on all four sides, and no legible lettering.
+
+One addition specific to this medium. The near-field mass must be stated in
+LINE and dark colour rather than in value alone — a bank of drawn earth with
+ruts and stones in it, a fence of drawn boards, a cart. In a flat style there is
+no atmospheric perspective to separate the foreground from the ground behind it,
+so if the foreground is only a darker shape the frame will read as two stripes.
+
+============================================================ WHY THIS PAIRS
+
+The figure sheets are already line-and-fill: closed ink contour, flat colour,
+no rendering. That was chosen for legibility at eighty pixels and it left the
+oil plates as the odd thing in the frame — a drawn man standing in a painting.
+
+In this medium the world is drawn in the man's own language, so he belongs to
+it. That is the entire argument, and /bakeoff.html demonstrates it against four
+alternatives with the real cut sprite standing in each.
+
+What it costs, stated plainly: the alla prima direction in docs/09 goes, and
+with it the atmospheric range that a painted ground gives — this style cannot do
+weather, or distance, or a sodden grey morning, by tone. It has to do them by
+palette and by drawn incident instead. The mood shader must be re-tuned for it:
+draining the colour out of a flat drawn picture reads as fading, not as gloom.

@@ -18,6 +18,7 @@ import {
   PLATE_DEPTHS, PLATE_SETS, paperTexture, prop, PROP_H, washington, washingtonFrames,
 } from './art';
 import type { Facing, LookOpts, PropKind } from './art';
+import { loadFigureSheet } from './figures';
 import { PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
@@ -39,6 +40,17 @@ const PARALLAX_MAX_PX = 64; // "breath", not a camera move
 const GROUND_PARALLAX = PARALLAX[2];
 /** Plate sets that are rooms, not open ground: no weather, no insects, no air. */
 const INTERIOR_PLATES = new Set(['parlour']);
+
+/*
+ * The painted figure sheet, fetched once for the whole session rather than per
+ * scene. Held as a promise so the first scene can build immediately with the
+ * procedural figures and adopt the sheet the moment it has been cut.
+ */
+let SHEET_FRAMES: Record<Facing, HTMLCanvasElement[]> | null = null;
+const sheetReady = loadFigureSheet().then((f) => {
+  SHEET_FRAMES = f;
+  return f;
+});
 
 
 const MOOD_FRAG = /* glsl */ `
@@ -495,6 +507,22 @@ export class DioramaRenderer {
     this.player = mk(washington('front', -1, { riband }), -1.2, 1.09);
     (this.player.material as THREE.MeshBasicMaterial).map = this.playerFrames.front[0];
 
+    /*
+     * If a painted sheet has been cut, swap it in over the procedural frames.
+     *
+     * Deliberately after the procedural build and not instead of it: the sheet
+     * is loaded asynchronously, may be absent, and may fail to cut. The player
+     * is on screen and walking before the image has been fetched, and the swap
+     * is invisible when it lands because both sets are nine frames in the same
+     * order at the same height.
+     */
+    if (SHEET_FRAMES) this.adoptSheet(SHEET_FRAMES);
+    else {
+      sheetReady.then((frames) => {
+        if (frames && this.player) this.adoptSheet(frames);
+      });
+    }
+
     npcPositions.forEach((a, i) => {
       const mesh = mk(
         characterCutout(a.coat, a.seed, 320, -1, {
@@ -507,6 +535,25 @@ export class DioramaRenderer {
       // Staggered so nobody moves at the same moment as anybody else.
       this.npcs.push({ mesh, pos: { x: a.x, z: a.z }, wait: 5 + i * 4.4, off: 0, target: 0 });
     });
+  }
+
+  /**
+   * Replace the procedural walk frames with a cut sheet.
+   *
+   * The old textures are disposed rather than dropped: a scene change already
+   * rebuilds these, and leaking a set per scene is how a Chromebook runs out of
+   * texture memory halfway through a class.
+   */
+  private adoptSheet(frames: Record<Facing, HTMLCanvasElement[]>): void {
+    for (const f of ['front', 'back', 'side'] as Facing[]) {
+      const cut = frames[f];
+      if (!cut || cut.length < 2) continue;
+      for (const t of this.playerFrames[f]) t.dispose();
+      this.playerFrames[f] = cut.map(textureFrom);
+    }
+    const mat = this.player.material as THREE.MeshBasicMaterial;
+    mat.map = this.playerFrames[this.facing][0];
+    mat.needsUpdate = true;
   }
 
   /** Draw order for an actor at depth z: after every layer further away. */

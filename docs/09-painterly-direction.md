@@ -24,6 +24,37 @@ supersedes the sections named in its title and nothing else.
 > facts and has no opinion on paint. **§1, §4, and the `style-anchor-env-v2` and
 > `char-style-block` texts are dead and are replaced here.**
 
+### 0.2 AMENDMENT — the walking figures are line-and-fill. 16 August 2026.
+
+**Owner's decision, recorded rather than inferred.** The figures the player walks
+past and walks as — the sprite sheets in `public/figures/`, cut by `src/figures.ts`
+— are **not** painted. They are drawn: a closed contour, flat colour inside it,
+legible as a person at eighty pixels. Everything behind them stays alla prima oil
+exactly as this document specifies.
+
+This is a deliberate contrast and not a drift, and it is worth being honest about
+what it costs and what it buys. It costs the unity the rest of this document
+argues for: a drawn man on a painted ground is visibly two media in one frame,
+and §1's whole case is that one medium consistently applied is what makes a
+cheap picture look intentional. It buys the thing the oil could not give at this
+size — a figure that reads instantly, holds an expression at eighty pixels, and
+can be told apart from another figure across a camp. The painterly figures were
+losing their silhouettes into the ground they stood on, which is correct for a
+painting and fatal for a character a player has to find and follow.
+
+The reference is a cut-paper figure on a painted stage, or a printed figure laid
+over a wash: the difference between the man and the world is the point, and the
+world is the thing that recedes.
+
+**What this amends:** the CHARACTER clauses only — `char-style-block-oil-v1` no
+longer governs walking figures, and the "lost edge" rule (§7 acceptance 1) is
+inverted for them, since a cutout that loses its outer edge develops a hole when
+the background is keyed. Edges may be lost *inside* a figure and never around it.
+
+**What this does not touch:** every plate, every environment, the mood controller,
+the palette, and the dialogue portraits, which are still painted studies and still
+governed by `char-style-block-oil-v1` in full.
+
 ### 0.1 What the project gives up, stated plainly so nobody has to discover it later
 
 `02` §1 made an argument, and it was a good one:

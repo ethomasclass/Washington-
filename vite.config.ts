@@ -5,6 +5,15 @@ export default defineConfig({
   // site, a district web server, or a folder opened over the network. The
   // deployment target for this is a school, and we do not get to pick the URL.
   base: './',
+  server: {
+    /*
+     * Do not watch our own build output. `npm run build:single` writes a 1 MB
+     * HTML file into the project, the dev watcher saw it appear and triggered a
+     * full page reload, which raced the next write and reloaded again — a storm
+     * that took the dev server down mid-session.
+     */
+    watch: { ignored: ['**/dist/**', '**/dist-single/**'] },
+  },
   build: {
     target: 'es2020',
     assetsInlineLimit: 0,

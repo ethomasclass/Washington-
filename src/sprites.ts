@@ -9,6 +9,7 @@
  */
 import { characterCutout, prop, washingtonFrames } from './art';
 import type { Facing, PropKind } from './art';
+import { loadFigureSheet } from './figures';
 
 const out = document.getElementById('out')!;
 
@@ -31,6 +32,36 @@ const row = (sec: HTMLElement, label: string, cells: HTMLCanvasElement[]) => {
   r.append(cap, ...cells);
   sec.append(r);
 };
+
+/*
+ * The cut sheet, first, because it is the thing most likely to be wrong.
+ *
+ * A generated grid is measured by eye and the numbers in figures.ts are a guess
+ * until this page says otherwise. Two failures show up here and nowhere else: a
+ * frame clipped by a mis-set margin, and a figure that drifts up or down its box
+ * between frames, which reads as a limp once it is eighty pixels tall and
+ * moving.
+ */
+void loadFigureSheet(undefined, 260).then((frames) => {
+  const sec = section(
+    frames ? 'The cut sheet — public/figures/washington-sheet.png' : 'No sheet cut',
+    'sheet',
+  );
+  if (!frames) {
+    const p = document.createElement('div');
+    p.className = 'cap';
+    p.textContent =
+      'No sheet found, or it would not cut. The game is drawing the procedural ' +
+      'figures below. Drop washington-sheet.png into public/figures/ and reload.';
+    sec.append(p);
+    return;
+  }
+  for (const facing of ['front', 'side', 'back'] as Facing[]) {
+    row(sec, facing, frames[facing]);
+  }
+  // Move it to the top: it is the bench, not an appendix.
+  out.prepend(sec);
+});
 
 for (const riband of [false, true]) {
   const sec = section(

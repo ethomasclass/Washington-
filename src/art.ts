@@ -3616,6 +3616,10 @@ export const PLATE_DEPTHS: Record<string, number[]> = {
   vernon: [1, 1, 1, 1, nearestOn(H * HORIZON + 236), 0],
   camp: [1, 1, 1, 1, nearestOn(H * HORIZON + 251), 0],
   lines: [1, 1, 1, 1, nearestOn(H * HORIZON + 214), 0],
+  // The parlour: the wall and floor sit behind the men, and there is no solid
+  // midground across the frame to stop the walk short — the room's depth is set
+  // by the scene's own walkTo, not by a plate.
+  parlour: [1, 1, 1, 1, 1, 0],
 };
 
 /**
@@ -3684,6 +3688,197 @@ export function walkFar(plateSet: string): number {
   return Math.max(0.30, far);
 }
 
+/* ---------------------------------------------------------------- the parlour
+ *
+ * CB-02, the Vassall House headquarters parlour — the one interior in an engine
+ * built for open ground. It is painted INTO the same six-layer plate stack as
+ * the exteriors, as a shallow room: the back wall stands where the sky and
+ * hills would (L0), the carpeted floor is the "ground" the figures walk (L2),
+ * and the layers between and in front are left empty because everything else in
+ * the room — the map table, the chairs — is a prop that stands ON the floor and
+ * so takes its place from the same ground curve as the men.
+ *
+ * There is no aerial perspective (no air to lose across a parlour) and no
+ * weather: the renderer holds the clouds, cloud-shadows and motes off any
+ * interior plate set. To keep the wall from shearing as the player walks, the
+ * whole of it — panelling, windows, mantel, the turned portrait — is painted on
+ * the single back plane, not spread across layers of different parallax.
+ *
+ * The shot is 05 §2.2: a confiscated Loyalist's fine room, Georgian panelling
+ * and a good carpet, and the map table in the middle of it buried in returns.
+ * The furniture is handsome and the paperwork is not, and the gap is the whole
+ * picture. The one detail that carries the confiscation is the family portrait
+ * still on the wall, turned to face it.
+ */
+const PARLOUR = {
+  WALL: '#B2A079',
+  WALL_HI: '#C6B78F',
+  WALL_LO: '#8B7A59',
+  WOOD: '#6B4F35',
+  WOOD_HI: '#8A6C49',
+  GLASS: '#C4CEC9',
+  GLASS_LO: '#9BA9A6',
+  FLOOR: '#7A5C3E',
+  FLOOR_LO: '#5F4832',
+  CARPET: EARTH.MADDER_LAKE,
+  CARPET_LO: '#6E3A37',
+} as const;
+
+/** L0 — the back wall: panelling, two windows, a mantel, and the turned portrait. */
+function parlourWall(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(521);
+  const hy = H * HORIZON; // 306 — where the wall meets the floor
+
+  // The whole field in wall colour; the floor plate covers the lower two-thirds,
+  // so what is painted below the skirting is only insurance against a seam.
+  solid(x, [[0, 0], [W, 0], [W, H], [0, H]], PARLOUR.WALL, rnd);
+  // Cornice, and its shadow.
+  solid(x, [[0, 0], [W, 0], [W, 24], [0, 24]], PARLOUR.WALL_HI, rnd);
+  inkLine(x, [[0, 26], [W, 26]], rnd, 1.6, 0.08);
+
+  const railY = hy - 92; // the chair rail
+  const cols = 7;
+  const panel = (x0: number, y0: number, x1: number, y1: number): void => {
+    solid(x, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], PARLOUR.WALL_LO, rnd);
+    const m = 11;
+    solid(x, [[x0 + m, y0 + m], [x1 - m, y0 + m], [x1 - m, y1 - m], [x0 + m, y1 - m]],
+      PARLOUR.WALL, rnd, PARLOUR.WALL_HI, 0.12);
+    // Shadow on the lower and right returns of the raised field.
+    inkLine(x, [[x1 - m, y0 + m], [x1 - m, y1 - m], [x0 + m, y1 - m]], rnd, 1.5, 0.08);
+  };
+  const bay = (i: number): [number, number] => {
+    const x0 = 22 + (i * (W - 44)) / cols;
+    const x1 = 22 + ((i + 1) * (W - 44)) / cols - 12;
+    return [x0, x1];
+  };
+  for (let i = 0; i < cols; i++) {
+    const [x0, x1] = bay(i);
+    panel(x0, 42, x1, railY - 12);       // tall panel above the rail
+    panel(x0, railY + 24, x1, hy - 12);  // dado panel below it
+  }
+  // The chair rail itself, over the panel seams.
+  solid(x, [[0, railY], [W, railY], [W, railY + 13], [0, railY + 13]], PARLOUR.WOOD_HI, rnd);
+  inkLine(x, [[0, railY + 13], [W, railY + 13]], rnd, 1.2, 0.1);
+  // Skirting along the floor line.
+  solid(x, [[0, hy - 10], [W, hy - 10], [W, hy + 8], [0, hy + 8]], PARLOUR.WOOD, rnd);
+
+  // Two tall sash windows, stage left, with a grey Cambridge morning in them.
+  const window = (wx: number): void => {
+    const ww = 150;
+    const wy0 = 46;
+    const wy1 = railY - 16;
+    // Reveal and frame.
+    solid(x, [[wx - 12, wy0 - 12], [wx + ww + 12, wy0 - 12], [wx + ww + 12, wy1 + 22], [wx - 12, wy1 + 22]],
+      PARLOUR.WOOD, rnd);
+    solid(x, [[wx, wy0], [wx + ww, wy0], [wx + ww, wy1], [wx, wy1]], PARLOUR.GLASS, rnd, PARLOUR.GLASS_LO, 0.4);
+    // A cool top-down daylight in the glass.
+    wash(x, [[wx, wy0], [wx + ww, wy0], [wx + ww, (wy0 + wy1) / 2], [wx, (wy0 + wy1) / 2]],
+      PAPER.BRIGHT, 0.4, rnd);
+    // Glazing bars — six over six.
+    for (let k = 1; k < 3; k++) inkLine(x, [[wx + (k * ww) / 3, wy0], [wx + (k * ww) / 3, wy1]], rnd, 2, 0);
+    for (let k = 1; k < 6; k++) inkLine(x, [[wx, wy0 + (k * (wy1 - wy0)) / 6], [wx + ww, wy0 + (k * (wy1 - wy0)) / 6]], rnd, 2, 0);
+    // Sill.
+    solid(x, [[wx - 16, wy1 + 18], [wx + ww + 16, wy1 + 18], [wx + ww + 16, wy1 + 30], [wx - 16, wy1 + 30]],
+      PARLOUR.WOOD_HI, rnd);
+  };
+  window(96);
+  window(300);
+
+  // A mantel and cold hearth, centre-right of the wall.
+  {
+    const mx = 812;
+    const mw = 236;
+    const my = hy - 8;
+    solid(x, [[mx, my - 150], [mx + mw, my - 150], [mx + mw, my], [mx, my]], PARLOUR.WALL_LO, rnd);
+    solid(x, [[mx + 26, my - 118], [mx + mw - 26, my - 118], [mx + mw - 26, my], [mx + 26, my]], '#2A2019', rnd); // firebox
+    // Mantel shelf.
+    solid(x, [[mx - 18, my - 168], [mx + mw + 18, my - 168], [mx + mw + 18, my - 150], [mx - 18, my - 150]],
+      PARLOUR.WOOD_HI, rnd);
+    inkLine(x, [[mx - 18, my - 150], [mx + mw + 18, my - 150]], rnd, 1.4, 0.06);
+  }
+
+  // The family portrait, still on the wall and turned to face it. We see the
+  // back: brown backing paper, the stretcher cross-brace, and the wire on its
+  // nail. Nobody has taken it down; nobody will hang it the right way round.
+  {
+    const px = 1300;
+    const pw = 150;
+    const ph = 188;
+    const py = 92;
+    solid(x, [[px, py], [px + pw, py], [px + pw, py + ph], [px, py + ph]], PARLOUR.WOOD_HI, rnd); // frame edge, seen from behind
+    solid(x, [[px + 12, py + 12], [px + pw - 12, py + 12], [px + pw - 12, py + ph - 12], [px + 12, py + ph - 12]],
+      '#9C8763', rnd, PARLOUR.WALL_LO, 0.3); // dust-brown backing paper
+    inkLine(x, [[px + 12, py + 12], [px + pw - 12, py + ph - 12]], rnd, 1.6, 0.05); // stretcher brace
+    inkLine(x, [[px + pw - 12, py + 12], [px + 12, py + ph - 12]], rnd, 1.6, 0.05);
+    // Hanging wire to a nail above.
+    inkLine(x, [[px + pw / 2, py + 6], [px + pw / 2 + 4, py - 30]], rnd, 1.2, 0.1);
+    inkLine(x, [[px + pw / 2, py + 6], [px + pw / 2 - 4, py - 30]], rnd, 1.2, 0.1);
+  }
+  return c;
+}
+
+/** L2 — the floor: oak boards running back to the wall, and a good Turkey carpet. */
+function parlourFloor(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(929);
+  const hy = H * HORIZON;
+
+  solid(x, [[0, hy - 2], [W, hy - 2], [W, H], [0, H]], PARLOUR.FLOOR, rnd, PARLOUR.FLOOR_LO, 0.2);
+  wash(x, [[0, hy - 2], [W, hy - 2], [W, hy + 120], [0, hy + 120]], PARLOUR.FLOOR_LO, 0.22, rnd); // shade at the wall foot
+
+  // Boards, converging toward a point on the wall line so the floor recedes.
+  const vp = W * 0.52;
+  for (let i = -7; i <= 7; i++) {
+    const nearX = W / 2 + i * 150;
+    inkLine(x, [[nearX, H], [vp + i * 10, hy]], rnd, 1.1, 0.22);
+  }
+  // A few cross-seams near the front.
+  for (let k = 1; k <= 3; k++) {
+    const y = hy + (k * (H - hy)) / 4;
+    inkLine(x, [[0, y], [W, y]], rnd, 0.8, 0.5);
+  }
+
+  // The Turkey carpet — deep madder, a dark border and a plain buff guard, laid
+  // square to the room. Drawn as a trapezoid so it lies in the floor's plane.
+  const cyN = H - 70;   // near edge
+  const cyF = hy + 128; // far edge
+  const nearHalf = 560;
+  const farHalf = 300;
+  const carpet: [number, number][] = [
+    [W / 2 - nearHalf, cyN], [W / 2 + nearHalf, cyN],
+    [W / 2 + farHalf, cyF], [W / 2 - farHalf, cyF],
+  ];
+  solid(x, carpet, PARLOUR.CARPET, rnd, PARLOUR.CARPET_LO, 0.25);
+  // Border band.
+  const inset = (f: number): [number, number][] => [
+    [W / 2 - (nearHalf - 30 * f), cyN - 22 * f], [W / 2 + (nearHalf - 30 * f), cyN - 22 * f],
+    [W / 2 + (farHalf - 18 * f), cyF + 14 * f], [W / 2 - (farHalf - 18 * f), cyF + 14 * f],
+  ];
+  inkLine(x, [...inset(1), inset(1)[0]], rnd, 3, 0.06);
+  solid(x, inset(1).concat([inset(1)[0]]) as [number, number][], PARLOUR.CARPET_LO, rnd);
+  solid(x, inset(2), PARLOUR.CARPET, rnd);
+  // A sparse buff medallion pattern, kept faint so it never fights the figures.
+  for (let i = 0; i < 22; i++) {
+    const t = rnd();
+    const y = cyF + 30 + t * (cyN - cyF - 60);
+    const spanHalf = (farHalf + (nearHalf - farHalf) * ((y - cyF) / (cyN - cyF))) - 70;
+    const px = W / 2 + (rnd() - 0.5) * 2 * spanHalf;
+    wash(x, [[px - 10, y], [px, y - 9], [px + 10, y], [px, y + 9]], MEANING.BUFF, 0.16, rnd, 2);
+  }
+  // Fringe at the near edge.
+  for (let i = 0; i < 90; i++) {
+    const px = W / 2 - nearHalf + (i / 90) * nearHalf * 2;
+    inkLine(x, [[px, cyN], [px + (rnd() - 0.5) * 4, cyN + 12]], rnd, 1, 0.3);
+  }
+  return c;
+}
+
+/** An empty plane, for the interior layers that carry nothing. */
+function blankPlate(): HTMLCanvasElement {
+  return surface(W, H).c;
+}
+
 export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
   vernon: () => withAir('vernon', [
     layerSky(), layerHills(), layerHouse(),
@@ -3699,6 +3894,12 @@ export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
     linesSky(), campHills(), linesGround(),
     linesFarMidground(), linesMidground(), linesForeground(),
   ]),
+  // The one interior. No withAir — a parlour has no distance to drain — and the
+  // between-layers are empty because the furniture is props on the floor.
+  parlour: () => [
+    parlourWall(), blankPlate(), parlourFloor(),
+    blankPlate(), blankPlate(), blankPlate(),
+  ],
 };
 
 /* -------------------------------------------------------------- set pieces

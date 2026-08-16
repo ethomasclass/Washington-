@@ -401,7 +401,7 @@ export interface Scene {
    */
   extras?: Extra[];
   /** Which placeholder plate set the renderer should build. */
-  plates: 'vernon' | 'camp' | 'lines';
+  plates: 'vernon' | 'camp' | 'lines' | 'parlour';
   /** Where the light comes from, in uv. Flat overcast sits high and central. */
   sun: [number, number];
 }

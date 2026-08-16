@@ -37,6 +37,8 @@ const PARALLAX_MAX_PX = 64; // "breath", not a camera move
  * beside a tent drifted off the tent — which is the whole "weird perspective".
  */
 const GROUND_PARALLAX = PARALLAX[2];
+/** Plate sets that are rooms, not open ground: no weather, no insects, no air. */
+const INTERIOR_PLATES = new Set(['parlour']);
 
 
 const MOOD_FRAG = /* glsl */ `
@@ -338,45 +340,54 @@ export class DioramaRenderer {
       this.layers.push({ mesh, parallax: PARALLAX[i], depth: depths[i] ?? 1 });
     });
 
-    // Cloud strip, between the sky and the hills. It never occludes anything,
-    // so it sits outside the sorted layer stack and just drifts.
-    const cloudBuild = CLOUD_BANDS[plateSet] ?? CLOUD_BANDS.vernon;
-    this.cloudTex = textureFrom(cloudBuild());
-    this.cloudTex.wrapS = THREE.RepeatWrapping;
-    this.clouds = new THREE.Mesh(
-      new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
-      new THREE.MeshBasicMaterial({ map: this.cloudTex, transparent: true, depthWrite: false }),
-    );
-    this.clouds.position.z = -0.25;
-    this.clouds.renderOrder = 0.5;
-    this.scene.add(this.clouds);
+    // Weather and insects belong to the open air. An interior plate set gets
+    // none of it: no cloud strip, no cloud-shadows crossing the floor, no motes,
+    // no bugs. The offset-advancing code in setPlayerPos is already guarded on
+    // each texture being present, so leaving them null is enough.
+    const interior = INTERIOR_PLATES.has(plateSet);
 
-    // Cloud shadows on the ground, between the ground plate and the far
-    // midground, drifting a little slower than the clouds that cast them.
-    this.shadowTex = textureFrom(cloudShadows());
-    this.shadowTex.wrapS = THREE.RepeatWrapping;
-    this.shadowMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
-      new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false }),
-    );
-    this.shadowMesh.position.z = -1.1;
-    this.shadowMesh.renderOrder = 2.5;
-    this.scene.add(this.shadowMesh);
+    if (!interior) {
+      // Cloud strip, between the sky and the hills. It never occludes anything,
+      // so it sits outside the sorted layer stack and just drifts.
+      const cloudBuild = CLOUD_BANDS[plateSet] ?? CLOUD_BANDS.vernon;
+      this.cloudTex = textureFrom(cloudBuild());
+      this.cloudTex.wrapS = THREE.RepeatWrapping;
+      this.clouds = new THREE.Mesh(
+        new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
+        new THREE.MeshBasicMaterial({ map: this.cloudTex, transparent: true, depthWrite: false }),
+      );
+      this.clouds.position.z = -0.25;
+      this.clouds.renderOrder = 0.5;
+      this.scene.add(this.clouds);
 
-    // Near-field motes, drifting diagonally in front of everything.
-    this.moteTex = textureFrom(motes());
-    this.moteTex.wrapS = THREE.RepeatWrapping;
-    this.moteTex.wrapT = THREE.RepeatWrapping;
-    this.moteTex.repeat.set(3.2, 1.8);
-    this.moteMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
-      new THREE.MeshBasicMaterial({ map: this.moteTex, transparent: true, depthWrite: false, opacity: 0.5 }),
-    );
-    this.moteMesh.position.z = 1.5;
-    this.moteMesh.renderOrder = 6;
-    this.scene.add(this.moteMesh);
+      // Cloud shadows on the ground, between the ground plate and the far
+      // midground, drifting a little slower than the clouds that cast them.
+      this.shadowTex = textureFrom(cloudShadows());
+      this.shadowTex.wrapS = THREE.RepeatWrapping;
+      this.shadowMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
+        new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false }),
+      );
+      this.shadowMesh.position.z = -1.1;
+      this.shadowMesh.renderOrder = 2.5;
+      this.scene.add(this.shadowMesh);
 
-    this.buildBugs(plateSet);
+      // Near-field motes, drifting diagonally in front of everything.
+      this.moteTex = textureFrom(motes());
+      this.moteTex.wrapS = THREE.RepeatWrapping;
+      this.moteTex.wrapT = THREE.RepeatWrapping;
+      this.moteTex.repeat.set(3.2, 1.8);
+      this.moteMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14),
+        new THREE.MeshBasicMaterial({ map: this.moteTex, transparent: true, depthWrite: false, opacity: 0.5 }),
+      );
+      this.moteMesh.position.z = 1.5;
+      this.moteMesh.renderOrder = 6;
+      this.scene.add(this.moteMesh);
+
+      this.buildBugs(plateSet);
+    }
+
     this.buildProps(props);
     this.buildActors(npcPositions, plateSet);
   }

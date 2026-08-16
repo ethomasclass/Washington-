@@ -59,6 +59,9 @@ export const PASSPORT_FLAGS: string[] = [
   'doc.a2.enlistment',
   'doc.a2.letter_home',
   'doc.a2.doolittle',
+  'doc.a2.knox',
+  'doc.a2.congress',
+  'doc.a2.returns',
 ];
 
 export const FLAG_REGISTRY: string[] = [
@@ -121,6 +124,25 @@ export const FLAG_REGISTRY: string[] = [
   'task.a2.gabions',
   'task.a2.passes',
   'obs.a2.lines_in_order',
+  // CB-02, the headquarters parlour.
+  'heard.a2.knox',
+  'heard.a2.gates',
+  'doc.a2.knox',
+  'doc.a2.congress',
+  'doc.a2.returns',
+  'obs.a2.map',
+  'obs.a2.inkstand',
+  'obs.a2.commissary',
+  'obs.a2.orders_july',
+  'obs.a2.books',
+  'obs.a2.chairs',
+  'obs.a2.window',
+  'obs.a2.portrait',
+  'obs.a2.congress_contradiction',
+  'task.a2.dispatches',
+  'task.a2.knox_sent',
+  'task.a2.firewood',
+  'obs.a2.hq_done',
 ];
 
 class BitWriter {

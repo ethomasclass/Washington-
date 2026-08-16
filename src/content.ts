@@ -8,6 +8,7 @@
 
 import { MV01 } from './scenes/mv01';
 import { CB01 } from './scenes/cb01';
+import { CB02 } from './scenes/cb02';
 import { CB03 } from './scenes/cb03';
 import type { Decision, Scene } from './types';
 import type { LedgerLine } from './ledger';
@@ -17,6 +18,7 @@ export * from './types';
 export const SCENES: Record<string, Scene> = {
   [MV01.id]: MV01,
   [CB01.id]: CB01,
+  [CB02.id]: CB02,
   [CB03.id]: CB03,
 };
 

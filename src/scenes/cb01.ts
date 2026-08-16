@@ -95,13 +95,14 @@ export const CB01: Scene = {
 
   /*
    * Two ways out of this camp in the design: up the lane to the parlour, and
-   * out along the trench to the lines. The parlour is an interior and wants a
-   * plate system that does not exist yet, so the trench is the one that leads
-   * anywhere for now and the lane stays as a thing to look at.
+   * out along the trench to the lines. The parlour now exists (CB-02), and it is
+   * the act's hub, so the lane is the way out and the war routes through
+   * headquarters before it reaches the lines. The trench stays as a thing to
+   * look at — the engine carries one way out of a scene, and the hub is it.
    */
-  exit: 'trench_out',
-  exitTo: 'CB-03',
-  exitPrompt: 'Out along the trench to the lines?',
+  exit: 'headquarters',
+  exitTo: 'CB-02',
+  exitPrompt: 'Up the lane to headquarters?',
   settled: 'The camp knows what it is going to know. The rest is paperwork.',
   allTasksFlag: 'obs.a2.orders_issued',
 
@@ -401,7 +402,8 @@ export const CB01: Scene = {
       examine:
         'A covered way running north out of the camp toward the works above Charlestown, dug deep ' +
         'enough to walk without being seen from the water. Everything you have ordered this ' +
-        'morning ends up at the far end of it.',
+        'morning ends up at the far end of it — by way of the parlour up the lane, where you ' +
+        'decide it first.',
     },
   ] as Interactable[],
 

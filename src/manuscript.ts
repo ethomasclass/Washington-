@@ -80,34 +80,90 @@ const C = {
  * stroke to stroke, and each segment starts and ends a little past where it
  * should. Take any of that away and the picture turns into vector art.
  */
+/**
+ * One-dimensional value noise. Smooth, and therefore LOW frequency.
+ *
+ * This is the correction that matters most in the whole file. A hand cutting a
+ * curve deviates over twenty or forty pixels, not over two. Per-segment random
+ * jitter — which is what this code did first — is high-frequency, and high
+ * frequency does not read as a hand: it reads as a bad printer, or as a filter.
+ * A line that wanders slowly and confidently reads as a tool held by a person.
+ */
+function wobble(seed: number): (t: number) => number {
+  const r = mulberry(seed);
+  const table: number[] = [];
+  for (let i = 0; i < 64; i++) table.push(r() * 2 - 1);
+  return (t: number) => {
+    const i = Math.floor(t);
+    const f = t - i;
+    const a = table[((i % 64) + 64) % 64];
+    const b = table[(((i + 1) % 64) + 64) % 64];
+    const u = f * f * (3 - 2 * f); // smoothstep, so there are no corners
+    return a + (b - a) * u;
+  };
+}
+
+/**
+ * A drawn line, as a filled shape rather than a stroke.
+ *
+ * A relief line is the wood LEFT STANDING after everything round it is cut
+ * away, so it swells where the knife is deep and tapers to nothing where it
+ * enters and leaves. `ctx.stroke()` cannot do that — it has one width for the
+ * whole path — so the line is built as a polygon: walk the path, offset by half
+ * the width along the normal on each side, and fill the loop that makes.
+ *
+ * Three further properties, all of them things a plotted line does not have:
+ * the contour wanders at low frequency; segments overshoot their junctions,
+ * because two cuts meeting rarely meet exactly; and the line occasionally
+ * BREAKS, because blocks chip and ink runs short. A contour in this medium
+ * closes visually without closing topologically.
+ */
 function pen(x: Ctx, pts: Pt[], rnd: () => number, weight = 2, close = false): void {
   const all = close ? [...pts, pts[0]] : pts;
-  x.save();
-  x.strokeStyle = INK;
-  x.lineCap = 'round';
-  x.lineJoin = 'round';
+  if (all.length < 2) return;
+  const wob = wobble(Math.floor(rnd() * 100000));
+  const stroke = 0.85 + rnd() * 0.3; // stroke-to-stroke variation
+
   for (let i = 0; i < all.length - 1; i++) {
+    if (rnd() < 0.09) continue; // the block chips; the line breaks
     const [ax, ay] = all[i];
     const [bx, by] = all[i + 1];
     const len = Math.hypot(bx - ax, by - ay);
-    const steps = Math.max(2, Math.round(len / 22));
-    // Overshoot: the stroke starts a hair before the corner and ends past it.
-    const ux = (bx - ax) / (len || 1);
-    const uy = (by - ay) / (len || 1);
-    const over = 1 + rnd() * 1.8;
-    x.lineWidth = weight * (0.75 + rnd() * 0.55);
-    x.globalAlpha = 0.85 + rnd() * 0.15;
-    x.beginPath();
-    x.moveTo(ax - ux * over, ay - uy * over);
-    for (let s = 1; s <= steps; s++) {
+    if (len < 0.5) continue;
+    const ux = (bx - ax) / len;
+    const uy = (by - ay) / len;
+    const nx = -uy;
+    const ny = ux;
+    // Overshoot: two cuts meeting rarely meet exactly.
+    const over = 1.5 + rnd() * 2.5;
+    const steps = Math.max(3, Math.round(len / 9));
+    const L: Pt[] = [];
+    const R: Pt[] = [];
+    for (let s = 0; s <= steps; s++) {
       const t = s / steps;
-      const bow = Math.sin(t * Math.PI) * (rnd() - 0.5) * Math.min(3.4, len * 0.05);
-      x.lineTo(ax + (bx - ax) * t - uy * bow, ay + (by - ay) * t + ux * bow);
+      // Low-frequency wander, ~0.6-1.2px over a 18-40px wavelength.
+      const wav = wob(t * (len / 28) + i * 3.1) * 1.1;
+      const px = ax + (bx - ax) * t - ux * over + ux * over * 2 * t + nx * wav;
+      const py = ay + (by - ay) * t - uy * over + uy * over * 2 * t + ny * wav;
+      /*
+       * The nib profile: fat in the middle, pointed at both ends, which is what
+       * a knife entering and leaving a block leaves behind.
+       */
+      const w = weight * stroke * (0.42 + Math.pow(Math.sin(Math.PI * t), 0.35) * 0.95);
+      L.push([px + nx * w * 0.5, py + ny * w * 0.5]);
+      R.push([px - nx * w * 0.5, py - ny * w * 0.5]);
     }
-    x.lineTo(bx + ux * over, by + uy * over);
-    x.stroke();
+    x.save();
+    x.fillStyle = INK;
+    x.globalAlpha = 0.8 + rnd() * 0.2;
+    x.beginPath();
+    x.moveTo(L[0][0], L[0][1]);
+    for (const p of L.slice(1)) x.lineTo(p[0], p[1]);
+    for (const p of R.reverse()) x.lineTo(p[0], p[1]);
+    x.closePath();
+    x.fill();
+    x.restore();
   }
-  x.restore();
 }
 
 /** Flat opaque colour inside a shape. No gradient, ever. */
@@ -122,9 +178,29 @@ function fill(x: Ctx, pts: Pt[], colour: string): void {
   x.restore();
 }
 
-/** Fill, then draw the contour round it. The two-step that makes everything. */
+/**
+ * Fill, then draw the contour round it — and DO NOT let them line up.
+ *
+ * The highest-value cue in the whole style, and the cheapest. A print was cut
+ * by one person and coloured by another, working fast over the top, so the
+ * colour overshoots the line on one side and falls short on the other. Perfect
+ * registration between a fill and its contour is the single loudest signal that
+ * a picture was made by a machine — it is the thing that survives even when the
+ * line itself has been roughened.
+ *
+ * The flat is therefore offset bodily by a pixel or three AND given its own
+ * independently wandering boundary, rather than being the same path drawn
+ * twice.
+ */
 function shape(x: Ctx, pts: Pt[], colour: string, rnd: () => number, weight = 2): void {
-  fill(x, pts, colour);
+  const dx = (rnd() - 0.5) * 5;
+  const dy = (rnd() - 0.5) * 5;
+  const wob = wobble(Math.floor(rnd() * 100000));
+  const wandered: Pt[] = pts.map((p, i) => [
+    p[0] + dx + wob(i * 0.7) * 2.2,
+    p[1] + dy + wob(i * 0.7 + 31) * 2.2,
+  ]);
+  fill(x, wandered, colour);
   pen(x, pts, rnd, weight, true);
 }
 
@@ -658,20 +734,76 @@ export function drawCamp(W = 1600, H = 900): HTMLCanvasElement {
    * and every scene sits on a visible tooth of paper. Both are one pass over
    * the finished picture rather than anything the drawing has to know about.
    */
-  x.save();
-  x.globalAlpha = 0.05;
-  for (let i = 0; i < 2600; i++) {
+  paper(x, W, H, rnd);
+  return c;
+}
+
+/**
+ * The sheet, multiplied over the finished picture.
+ *
+ * The largest single visual change available for the least code, and the reason
+ * is physical: ink printed onto rag paper sits IN the sheet, not on top of it.
+ * Multiplying the paper over the whole frame at the end puts every mark behind
+ * the same tooth, the same laid lines and the same unevenness — which is also
+ * what stops a procedural picture reading as clean layers stacked in software.
+ *
+ * 1775 America is laid RAG paper, not parchment: lighter, cooler, with chain
+ * lines and a visible wire mould. Vellum would be two centuries out of date and
+ * is reserved for engrossed legal instruments.
+ */
+function paper(x: Ctx, W: number, H: number, rnd: () => number): void {
+  const sheet = document.createElement('canvas');
+  sheet.width = W;
+  sheet.height = H;
+  const g = sheet.getContext('2d')!;
+  g.fillStyle = '#FFFFFF';
+  g.fillRect(0, 0, W, H);
+
+  // Laid lines: the close-set wires of the mould, running horizontally.
+  g.strokeStyle = 'rgba(110,91,69,0.035)';
+  g.lineWidth = 1;
+  for (let y = 0; y < H; y += 3) {
+    g.beginPath();
+    g.moveTo(0, y + (rnd() - 0.5));
+    g.lineTo(W, y + (rnd() - 0.5));
+    g.stroke();
+  }
+  // Chain lines: the widely spaced stitching, running the other way.
+  g.strokeStyle = 'rgba(110,91,69,0.05)';
+  for (let px = 20 + rnd() * 40; px < W; px += 58 + rnd() * 8) {
+    g.beginPath();
+    g.moveTo(px, 0);
+    g.lineTo(px + (rnd() - 0.5) * 3, H);
+    g.stroke();
+  }
+  // Fibres in the pulp.
+  for (let i = 0; i < 600; i++) {
     const px = rnd() * W;
     const py = rnd() * H;
-    x.fillStyle = rnd() < 0.5 ? '#6E5B45' : '#FFF6DE';
-    x.fillRect(px, py, 1 + rnd() * 2, 1 + rnd() * 2);
+    const a = rnd() * Math.PI;
+    g.strokeStyle = `rgba(${rnd() < 0.5 ? '110,91,69' : '255,246,222'},${0.02 + rnd() * 0.02})`;
+    g.beginPath();
+    g.moveTo(px, py);
+    g.lineTo(px + Math.cos(a) * (2 + rnd() * 4), py + Math.sin(a) * (2 + rnd() * 4));
+    g.stroke();
   }
-  x.restore();
-  const vig = x.createRadialGradient(W * 0.5, H * 0.46, H * 0.32, W * 0.5, H * 0.5, H * 0.95);
-  vig.addColorStop(0, 'rgba(120,90,50,0)');
-  vig.addColorStop(1, 'rgba(78,58,32,0.20)');
-  x.fillStyle = vig;
-  x.fillRect(0, 0, W, H);
+  // Foxing: the rust spots age gives a sheet.
+  for (let i = 0; i < 44; i++) {
+    g.fillStyle = `rgba(138,106,60,${0.04 + rnd() * 0.05})`;
+    g.beginPath();
+    g.arc(rnd() * W, rnd() * H, 2 + rnd() * 7, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Uneven inking: broad soft patches where the impression took more or less.
+  for (let i = 0; i < 14; i++) {
+    g.fillStyle = `rgba(90,72,48,${0.02 + rnd() * 0.035})`;
+    g.beginPath();
+    g.ellipse(rnd() * W, rnd() * H, 90 + rnd() * 260, 60 + rnd() * 160, rnd() * 3, 0, Math.PI * 2);
+    g.fill();
+  }
 
-  return c;
+  x.save();
+  x.globalCompositeOperation = 'multiply';
+  x.drawImage(sheet, 0, 0);
+  x.restore();
 }

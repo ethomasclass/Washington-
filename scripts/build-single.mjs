@@ -69,6 +69,26 @@ const html = `<!doctype html>
     justify-content: center; color: #C0AE8D; background: #241C14;
     font: italic 17px/1.5 Georgia, "Times New Roman", serif; letter-spacing: .02em;
   }
+  /* Failure names itself rather than leaving a blank field. */
+  #fault {
+    position: fixed; inset: 0; z-index: 99999; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+    background: #241C14; font: 16px/1.55 Georgia, "Times New Roman", serif;
+  }
+  #fault .card {
+    max-width: 640px; background: #EFE7D5; color: #3B2E22;
+    border: 1px solid #3B2E22; padding: 22px 26px;
+  }
+  #fault h1 {
+    margin: 0 0 10px; font-size: 21px; font-variant: small-caps;
+    letter-spacing: .06em; font-weight: 600;
+  }
+  #fault pre {
+    margin: 12px 0 0; padding: 10px 12px; overflow-x: auto;
+    background: #DCD2BC; border: 1px solid #C3B79B;
+    font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #241C14;
+    white-space: pre-wrap; word-break: break-word;
+  }
 </style>
 </head>
 <body>
@@ -77,6 +97,50 @@ const html = `<!doctype html>
   <div id="overlay"></div>
   <div id="boot">Laying the ground&hellip;</div>
 </div>
+<script>
+(function () {
+  var shown = false;
+  function show(title, body, detail) {
+    if (shown) return;
+    shown = true;
+    var boot = document.getElementById('boot');
+    if (boot) boot.remove();
+    var el = document.createElement('div');
+    el.id = 'fault';
+    var card = document.createElement('div');
+    card.className = 'card';
+    var h = document.createElement('h1');
+    h.textContent = title;
+    var p = document.createElement('p');
+    p.textContent = body;
+    card.appendChild(h);
+    card.appendChild(p);
+    if (detail) {
+      var pre = document.createElement('pre');
+      pre.textContent = detail;
+      card.appendChild(pre);
+    }
+    el.appendChild(card);
+    document.body.appendChild(el);
+  }
+  window.addEventListener('error', function (e) {
+    show('The prototype could not start.',
+      'Something threw before the first plate was painted.',
+      (e.message || 'unknown error') + '\\n' + (e.filename || '') + (e.lineno ? ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    show('The prototype could not start.', 'Something failed while loading.',
+      String((e && e.reason && (e.reason.stack || e.reason.message)) || e.reason));
+  });
+  try {
+    var probe = document.createElement('canvas');
+    if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) {
+      show('This browser cannot open WebGL.',
+        'The game draws its scenery with WebGL, and this browser is refusing it. That is usually hardware acceleration switched off, or a locked-down school profile.');
+    }
+  } catch (err) { /* the probe may fail quietly */ }
+})();
+</script>
 <script type="module">
 ${ascii}
 // The plates are painted; take the holding card away.

@@ -1029,10 +1029,28 @@ export interface PersonLook {
   facings?: string;
   /** A fringed linen hunting shirt over the coat — the Virginia riflemen. */
   hunting?: boolean;
+  /** The waistcoat showing between the coat fronts. Seeded when absent. */
+  waistcoat?: string;
+  /** What the man has in his hands. Seeded when absent. */
+  carry?: 'none' | 'musket' | 'spade' | 'bundle' | 'papers';
 }
 
 const SKINS = ['#C8A07C', '#B98D68', '#8C6242', '#6E4630', '#D2B08C'];
 const HAIRS = ['#3E3226', '#2B2118', '#6B5638', '#8A7A55', '#B9B0A0'];
+
+/*
+ * Waistcoats, and why they matter more than they sound.
+ *
+ * A coat in this camp is a muted earth by necessity — the authored colours are
+ * all dyes a New England militiaman could have had — and a crowd of them reads
+ * as one dark mass. The waistcoat is the period's own answer: it was worn
+ * showing, it was usually the lightest thing a man had on, and it runs the full
+ * height of the torso. One pale wedge down the middle of every figure breaks
+ * the mass, and it is a historical fact rather than a decoration.
+ */
+const WAISTCOATS = ['#D8CDAF', '#E2D9BF', '#C7B891', '#B6A47D', '#9E7A55', '#8E4A3C'];
+const CARRIES: NonNullable<PersonLook['carry']>[] =
+  ['none', 'none', 'musket', 'musket', 'spade', 'bundle', 'papers'];
 
 /**
  * A person, drawn.
@@ -1074,8 +1092,17 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
 
   const skin = look.skin ?? SKINS[Math.floor(rnd() * SKINS.length)];
   const hair = look.hair ?? HAIRS[Math.floor(rnd() * HAIRS.length)];
-  const facings = look.facings ?? shadeOf(look.coat, 0.1);
-  const coatShade = shadeOf(look.coat, -0.07);
+  /*
+   * A dye lot is never twice the same, and neither is a coat that has been in
+   * the weather since April. Half a dozen men authored with the same hex used
+   * to stand in a row as one repeated cutout; ±6% of lightness is enough to
+   * separate them and small enough that the authored colour still governs.
+   */
+  const coat = shadeOf(look.coat, (rnd() - 0.5) * 0.12);
+  const facings = look.facings ?? shadeOf(coat, 0.12);
+  const coatShade = shadeOf(coat, -0.07);
+  const waistcoat = look.waistcoat ?? WAISTCOATS[Math.floor(rnd() * WAISTCOATS.length)];
+  const carry = look.gown ? 'none' : look.carry ?? CARRIES[Math.floor(rnd() * CARRIES.length)];
 
   // Legs: breeches to the knee, then stockings, then a shoe. Drawn first so the
   // coat skirts close over the top of them.
@@ -1085,7 +1112,7 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
       shape(x, [[lx - W * 0.07, waist], [lx + W * 0.07, waist],
                 [lx + W * 0.06, knee], [lx - W * 0.06, knee]], '#C9BFA6', rnd, 1.5);
       shape(x, [[lx - W * 0.055, knee], [lx + W * 0.055, knee],
-                [lx + W * 0.05, foot - H * 0.03], [lx - W * 0.05, foot - H * 0.03]], '#E0D8C2', rnd, 1.4);
+                [lx + W * 0.05, foot - H * 0.03], [lx - W * 0.05, foot - H * 0.03]], '#CFC5AA', rnd, 1.4);
       shape(x, [[lx - W * 0.07, foot - H * 0.03], [lx + W * 0.075, foot - H * 0.03],
                 [lx + W * 0.075, foot], [lx - W * 0.07, foot]], '#2E2419', rnd, 1.5);
     }
@@ -1099,7 +1126,7 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
     : [[cx - halfSh, shoulder], [cx + halfSh, shoulder],
        [cx + halfHip * 0.92, waist], [cx + halfHip * 1.75, skirt],
        [cx - halfHip * 1.75, skirt], [cx - halfHip * 0.92, waist]];
-  shape(x, body, look.coat, rnd, 2);
+  shape(x, body, coat, rnd, 2);
   // The shaded half, a second flat with its own edge — never a gradient.
   inside(x, body, () => {
     fill(x, [[cx + halfSh * 0.15, shoulder - 4], [cx + halfSh * 2.4, shoulder - 4],
@@ -1108,14 +1135,27 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
   });
 
   if (!look.gown) {
+    // The coat worn open, and the waistcoat down the middle of the man. This is
+    // the one pale vertical in the figure and it is what keeps a crowd from
+    // reading as a hedge.
+    const wcBottom = waist + (skirt - waist) * 0.5;
+    shape(x, [[cx - halfSh * 0.24, shoulder + 2], [cx + halfSh * 0.24, shoulder + 2],
+              [cx + halfHip * 0.42, wcBottom], [cx - halfHip * 0.42, wcBottom]],
+      waistcoat, rnd, 1.4);
+    // The button stand, and the coat edges falling either side of it.
+    pen(x, [[cx + W * 0.008, shoulder + H * 0.03], [cx + W * 0.008, wcBottom - H * 0.01]], rnd, 1);
+    pen(x, [[cx - halfSh * 0.24, shoulder + 4], [cx - halfHip * 0.42, wcBottom]], rnd, 1.2);
+    pen(x, [[cx + halfSh * 0.24, shoulder + 4], [cx + halfHip * 0.42, wcBottom]], rnd, 1.2);
+
     // Lapels turned back, in the facing colour: the one thing that says which
-    // regiment a man belongs to, when he belongs to one at all.
-    shape(x, [[cx - halfSh * 0.72, shoulder + 2], [cx - halfSh * 0.1, shoulder + 2],
-              [cx - halfSh * 0.25, waist * 0.62 + shoulder * 0.38]], facings, rnd, 1.3);
-    shape(x, [[cx + halfSh * 0.72, shoulder + 2], [cx + halfSh * 0.1, shoulder + 2],
-              [cx + halfSh * 0.25, waist * 0.62 + shoulder * 0.38]], facings, rnd, 1.3);
+    // regiment a man belongs to, when he belongs to one at all. They flank the
+    // waistcoat rather than crossing it.
+    shape(x, [[cx - halfSh * 0.82, shoulder + 2], [cx - halfSh * 0.26, shoulder + 2],
+              [cx - halfSh * 0.36, waist * 0.62 + shoulder * 0.38]], facings, rnd, 1.3);
+    shape(x, [[cx + halfSh * 0.82, shoulder + 2], [cx + halfSh * 0.26, shoulder + 2],
+              [cx + halfSh * 0.36, waist * 0.62 + shoulder * 0.38]], facings, rnd, 1.3);
     // The vent up the back of the skirts.
-    pen(x, [[cx, waist], [cx, skirt]], rnd, 1.2);
+    pen(x, [[cx, wcBottom], [cx, skirt]], rnd, 1.2);
   }
 
   // A fringed hunting shirt over the coat — the Virginia riflemen, and the one
@@ -1132,14 +1172,28 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
     }
   }
 
-  // Arms, hanging. Two narrow shapes and a cuff — no hands worth the name.
+  /*
+   * Arms, hanging. Two narrow shapes and a cuff — no hands worth the name.
+   *
+   * Each arm gets its own drift at the wrist. Sixteen thousand men who all hang
+   * their arms at exactly the same angle read as one figure stamped repeatedly,
+   * which is what a stock woodcut looks like when it is reused badly; a few
+   * pixels of difference per elbow is the whole cure.
+   */
+  const sleeve = look.hunting ? '#DCD3BC' : coat;
+  const armEnd = waist + H * 0.06;
+  const drift: Record<number, number> = { [-1]: (rnd() - 0.5) * W * 0.11, 1: (rnd() - 0.5) * W * 0.11 };
+  // A man carrying a musket has the near hand up at the sling, not by his hip.
+  const nearUp = carry === 'musket' || carry === 'spade';
   for (const side of [-1, 1]) {
     const ax = cx + side * (halfSh - W * 0.02);
+    const d = drift[side];
+    const lift = nearUp && side === 1 ? -H * 0.09 : 0;
     shape(x, [[ax - W * 0.055, shoulder + 2], [ax + W * 0.055, shoulder + 4],
-              [ax + W * 0.05, waist + H * 0.06], [ax - W * 0.06, waist + H * 0.05]],
-      look.hunting ? '#DCD3BC' : look.coat, rnd, 1.5);
-    shape(x, [[ax - W * 0.06, waist + H * 0.03], [ax + W * 0.05, waist + H * 0.04],
-              [ax + W * 0.045, waist + H * 0.075], [ax - W * 0.055, waist + H * 0.065]],
+              [ax + d + W * 0.05, armEnd + lift], [ax + d - W * 0.06, armEnd + lift - H * 0.01]],
+      sleeve, rnd, 1.5);
+    shape(x, [[ax + d - W * 0.06, armEnd + lift - H * 0.03], [ax + d + W * 0.05, armEnd + lift - H * 0.02],
+              [ax + d + W * 0.045, armEnd + lift + H * 0.015], [ax + d - W * 0.055, armEnd + lift + H * 0.005]],
       facings, rnd, 1.2);
   }
 
@@ -1149,9 +1203,22 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
             [cx + W * 0.06, shoulder + H * 0.022], [cx - W * 0.06, shoulder + H * 0.022]],
     '#E8E2D4', rnd, 1.2);
 
-  // Hair behind the head, then the head over it.
-  shape(x, [[cx - W * 0.115, headY - headH * 0.5], [cx + W * 0.115, headY - headH * 0.5],
-            [cx + W * 0.12, headY + headH * 0.72], [cx - W * 0.12, headY + headH * 0.72]], hair, rnd, 1.5);
+  /*
+   * Hair behind the head, then the head over it.
+   *
+   * This was a rectangle taller and wider than the face, and in a brown it
+   * read as a wooden box with a man's features painted on the front — the
+   * single worst thing in the figure. Hair follows the skull: barely wider
+   * than the face, stopping at the jaw, with the queue tied at the nape doing
+   * the silhouette work instead.
+   */
+  const nape = headY + headH * 0.42;
+  shape(x, [[cx - W * 0.098, headY - headH * 0.5], [cx + W * 0.098, headY - headH * 0.5],
+            [cx + W * 0.104, nape], [cx - W * 0.104, nape]], hair, rnd, 1.4);
+  // The queue, clubbed and tied — worn by every man in the army who had hair.
+  shape(x, [[cx - W * 0.09, headY + headH * 0.05], [cx - W * 0.035, headY + headH * 0.1],
+            [cx - W * 0.05, shoulder + H * 0.012], [cx - W * 0.095, shoulder + H * 0.006]],
+    hair, rnd, 1.2);
   shape(x, [[cx - W * 0.088, headY - headH * 0.42], [cx + W * 0.088, headY - headH * 0.42],
             [cx + W * 0.082, headY + headH * 0.52], [cx - W * 0.082, headY + headH * 0.52]], skin, rnd, 1.5);
   // Two marks and a nose. Nothing else survives at eighty pixels.
@@ -1165,13 +1232,87 @@ export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvas
     shape(x, [[cx - W * 0.11, hy + headH * 0.1], [cx - W * 0.085, hy - headH * 0.42],
               [cx + W * 0.085, hy - headH * 0.42], [cx + W * 0.11, hy + headH * 0.1]], '#EFE7D5', rnd, 1.5);
   } else if (look.hat === 'tricorne') {
-    shape(x, [[cx - W * 0.20, hy + headH * 0.05], [cx - W * 0.06, hy - headH * 0.52],
-              [cx + W * 0.06, hy - headH * 0.52], [cx + W * 0.20, hy + headH * 0.05],
-              [cx, hy + headH * 0.18]], '#2E2419', rnd, 1.7);
+    /*
+     * Felt, not ink. Cocked hats were drawn near-black here and every man in
+     * the camp wore a hole in his own head — the darkest value in a frame is
+     * the line, never a fill, and a hat that matches the contour stops being a
+     * shape and becomes a blob. Brown felt with a pale binding along the cocked
+     * edge gives back the three-cornered read that made the hat worth drawing.
+     */
+    /*
+     * A cocked hat is WIDE and LOW. Drawn tall it becomes a brown box sitting
+     * on the head like a chimney, which is exactly what it was doing — the
+     * crown rose almost a full head above the brow and the whole face went
+     * under it. The read comes from the brim being nearly twice the width of
+     * the head while the crown barely clears it, and from the felt being brown
+     * rather than ink, since the darkest value in a frame is the line.
+     */
+    const felt = shadeOf('#4A3A2A', (rnd() - 0.5) * 0.10);
+    const brimY = hy + headH * 0.14;
+    const brimL: Pt = [cx - W * 0.215, brimY];
+    const peakL: Pt = [cx - W * 0.075, hy - headH * 0.26];
+    const peakR: Pt = [cx + W * 0.075, hy - headH * 0.26];
+    const brimR: Pt = [cx + W * 0.215, brimY];
+    shape(x, [brimL, peakL, peakR, brimR, [cx, brimY + headH * 0.16]], felt, rnd, 1.6);
+    // The binding, a drawn line just inside the cocked edge rather than a
+    // second flat — a pale shape in here reads as a hat inside a hat.
+    pen(x, [[brimL[0] + W * 0.03, brimY - headH * 0.03],
+            [peakL[0] + W * 0.012, peakL[1] + headH * 0.10],
+            [peakR[0] - W * 0.012, peakR[1] + headH * 0.10],
+            [brimR[0] - W * 0.03, brimY - headH * 0.03]], rnd, 1.1);
   } else if (look.hat === 'round') {
-    shape(x, [[cx - W * 0.155, hy + headH * 0.06], [cx + W * 0.155, hy + headH * 0.06],
-              [cx + W * 0.10, hy - headH * 0.5], [cx - W * 0.10, hy - headH * 0.5]], '#4A3B2C', rnd, 1.6);
-    pen(x, [[cx - W * 0.175, hy + headH * 0.06], [cx + W * 0.175, hy + headH * 0.06]], rnd, 1.8);
+    shape(x, [[cx - W * 0.17, hy + headH * 0.13], [cx + W * 0.17, hy + headH * 0.13],
+              [cx + W * 0.098, hy - headH * 0.24], [cx - W * 0.098, hy - headH * 0.24]],
+      shadeOf('#5A4833', (rnd() - 0.5) * 0.10), rnd, 1.6);
+    pen(x, [[cx - W * 0.195, hy + headH * 0.13], [cx + W * 0.195, hy + headH * 0.13]], rnd, 1.8);
+  }
+
+  /*
+   * What the man is holding.
+   *
+   * At this size a carried object is worth more than a face: a musket adds a
+   * hard vertical a head taller than the figure, and it is visible across the
+   * frame when nothing else about the man is. It also does the scene's work —
+   * a camp where some men carry arms, some carry tools and some carry paper is
+   * a camp doing something, and one where nobody carries anything is a row of
+   * statues. Drawn last, because a shouldered arm passes in front of the body.
+   */
+  const bar = (from: Pt, to: Pt, wide: number, colour: string): void => {
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = (-dy / len) * wide;
+    const ny = (dx / len) * wide;
+    shape(x, [[from[0] + nx, from[1] + ny], [to[0] + nx, to[1] + ny],
+              [to[0] - nx, to[1] - ny], [from[0] - nx, from[1] - ny]], colour, rnd, 1.3);
+  };
+
+  if (carry === 'musket') {
+    const butt: Pt = [cx + halfSh * 0.95, waist + H * 0.11];
+    const muzzle: Pt = [cx + halfSh * 1.45, top - H * 0.055];
+    bar(butt, muzzle, W * 0.022, '#3A2F24');
+    // The stock is wood and wider than the barrel, and it is the half nearest
+    // the man, so it reads as a musket rather than as a pole.
+    bar(butt, [butt[0] + (muzzle[0] - butt[0]) * 0.42, butt[1] + (muzzle[1] - butt[1]) * 0.42],
+      W * 0.042, '#6B4A2E');
+  } else if (carry === 'spade') {
+    const grip: Pt = [cx + halfSh * 1.05, waist - H * 0.02];
+    const heel: Pt = [cx + halfSh * 1.35, foot - H * 0.06];
+    bar(grip, heel, W * 0.02, '#7A5936');
+    shape(x, [[heel[0] - W * 0.075, heel[1]], [heel[0] + W * 0.075, heel[1]],
+              [heel[0] + W * 0.06, foot], [heel[0] - W * 0.06, foot]], '#5C5750', rnd, 1.4);
+  } else if (carry === 'bundle') {
+    const by = shoulder + H * 0.03;
+    shape(x, [[cx - halfSh * 1.55, by + H * 0.02], [cx - halfSh * 1.0, by - H * 0.04],
+              [cx - halfSh * 0.55, by + H * 0.05], [cx - halfSh * 1.15, by + H * 0.10]],
+      '#CFC3A4', rnd, 1.5);
+    pen(x, [[cx - halfSh * 1.35, by - H * 0.01], [cx - halfSh * 0.72, by + H * 0.07]], rnd, 1.1);
+  } else if (carry === 'papers') {
+    const py = waist + H * 0.045;
+    shape(x, [[cx + halfSh * 0.55, py], [cx + halfSh * 1.35, py - H * 0.012],
+              [cx + halfSh * 1.35, py + H * 0.055], [cx + halfSh * 0.55, py + H * 0.065]],
+      '#EDE6D2', rnd, 1.3);
+    pen(x, [[cx + halfSh * 0.68, py + H * 0.03], [cx + halfSh * 1.22, py + H * 0.022]], rnd, 1);
   }
 
   return c;

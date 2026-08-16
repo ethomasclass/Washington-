@@ -1,6 +1,18 @@
-# The Painterly Direction
+# The Painterly Direction — SUPERSEDED
 ### *In Washington's Shoes* — the medium, restated. Supersedes `02-art-direction.md` §1, §4, and both style anchors.
 **Version 1.0 — 15 August 2026**
+
+> ## ⛔ THIS DOCUMENT IS DEAD. READ `10-the-print-direction.md`.
+>
+> The alla prima oil pivot recorded here lasted one day and was reversed on
+> 16 August 2026. The game is a print: line first, flat colour second, on paper.
+>
+> It is kept because it is the record of a decision that was made and unmade, and
+> because §0.2's amendment — drawn figures, closed contour, legible at eighty
+> pixels — survived the reversal and is now the whole direction rather than an
+> exception to it. Everything else here, and both oil style anchors, are dead.
+> A dead style block left lying next to a live one gets pasted by mistake exactly
+> once; this banner is the only thing preventing that.
 **Owner:** Creative Director. **Audience:** everyone who generates, writes or renders an image.
 
 ---

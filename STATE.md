@@ -33,10 +33,16 @@ clock through Acts 1–3, and the player-facing writing register. **Steps 1–3 
 build order are done** (interface strings rewritten, the Return on the HUD, the
 two-line header). Step 4 — the ledger — is the next real work.
 
-**ART DIRECTION PIVOT — 15 Aug 2026.** The project is no longer pen and wash. It
-is alla prima oil: painterly, loaded brush, wet-into-wet, left unfinished, on a
-mid-toned ground. `docs/09-painterly-direction.md` is the new medium spec and
-supersedes `02` §1, §4 and both style anchors; §1 and §4 of `02` carry banners
+**ART DIRECTION — 16 Aug 2026. THE GAME IS A PRINT.** Line first, flat colour
+second, on laid rag paper. `docs/10-the-print-direction.md` is the medium spec
+and supersedes `09` entirely — the alla prima oil pivot lasted one day and is
+reversed. `src/manuscript.ts` DRAWS scenes rather than generating them, which is
+why: twenty-seven plates are consistent by construction, and a procedural
+engraver works where a procedural oil painter never will. The camp is drawn and
+in the game; the other three scenes are owed.
+
+The superseded oil note follows, kept for the record only. `docs/09` carries a
+banner saying it is dead; §1 and §4 of `02` carry banners
 saying so, and §9.3's "not oil impasto" is struck. Everything else in `02` — the
 palette's meaning logic, the mood controller, composition, the portrait rules,
 type, UI, and the rest of the anti-reference list — is still in force.

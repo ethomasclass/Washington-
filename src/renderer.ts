@@ -20,6 +20,7 @@ import {
 import type { Facing, LookOpts, PropKind } from './art';
 import { loadFigureSheet } from './figures';
 import { SCENERY, loadScenery } from './scenery';
+import { DRAWN_DEPTHS, DRAWN_PLATES } from './manuscript';
 import { PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
@@ -343,9 +344,24 @@ export class DioramaRenderer {
     this.breath = 0;
     this.breathZ = 0;
 
-    const build = PLATE_SETS[plateSet] ?? PLATE_SETS.vernon;
+    /*
+     * A drawn plate set wins over the procedural painter where one exists.
+     *
+     * Drawn scenes are built a layer at a time rather than cut out of a finished
+     * picture, so the ground exists behind the foreground whether anything moves
+     * or not — the occlusion problem that dogs image-cutting never arises. The
+     * medium can therefore be moved over one scene at a time: a plate set with
+     * no entry here keeps its placeholder and nothing else changes.
+     */
+    const drawn: ((w: number, h: number) => HTMLCanvasElement[]) | undefined =
+      DRAWN_PLATES[plateSet];
+    const build =
+      drawn !== undefined
+        ? () => drawn(1600, 900)
+        : (PLATE_SETS[plateSet] ?? PLATE_SETS.vernon);
     // Depths come from the plate painter, which knows what it painted and where.
-    const depths = PLATE_DEPTHS[plateSet] ?? PLATE_DEPTHS.vernon;
+    const depths =
+      (drawn !== undefined ? DRAWN_DEPTHS[plateSet] : PLATE_DEPTHS[plateSet]) ?? PLATE_DEPTHS.vernon;
     build().forEach((plate, i) => {
       // Held so a generated painting can replace the texture in place later,
       // without rebuilding the geometry or disturbing the draw order.

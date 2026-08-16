@@ -51,6 +51,9 @@ export const CB02: Scene = {
   // A shallow room: the walkable floor stops well short of the back wall, which
   // sits at the horizon. Authored, because a plate cannot know where a room ends.
   walkTo: 0.55,
+  // The camera brought into the room, so the men read at parlour scale rather
+  // than as small figures on a wide floor.
+  figureScale: 1.45,
 
   where: 'Cambridge, Massachusetts — headquarters, the Vassall house',
   when: 'November 1775',

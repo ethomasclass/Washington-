@@ -402,6 +402,12 @@ export interface Scene {
   extras?: Extra[];
   /** Which placeholder plate set the renderer should build. */
   plates: 'vernon' | 'camp' | 'lines' | 'parlour';
+  /**
+   * Size multiplier on the figures and props, 1 by default. Interiors set it
+   * above 1: the ground curve is calibrated for the open field, and a room needs
+   * the camera brought in so a man is not a small figure on a wide floor.
+   */
+  figureScale?: number;
   /** Where the light comes from, in uv. Flat overcast sits high and central. */
   sun: [number, number];
 }

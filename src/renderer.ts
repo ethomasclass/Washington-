@@ -244,6 +244,8 @@ export class DioramaRenderer {
    * every frame in setPlayerPos.
    */
   private groundOff = { x: 0, y: 0 };
+  /** Size multiplier on all figures and props. 1 outdoors; larger in a room. */
+  private figureScale = 1;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -518,9 +520,20 @@ export class DioramaRenderer {
    * Ground projection. Returns view-space x, the y of the actor's feet, and the
    * scale — all three driven by the same easing of z, so a figure that halves
    * in size also rises toward the horizon by the matching amount.
+   *
+   * `figureScale` multiplies the size only. It exists for interiors: the ground
+   * curve is calibrated for people seen across a lawn, and the same numbers leave
+   * a man a small figure on a parlour's floor. Scaling the size — not the feet
+   * position, which stays on the ground — brings the camera into the room without
+   * touching the plate geometry every other scene depends on.
    */
   private project(pos: GroundPos): { x: number; y: number; scale: number } {
-    return groundView(pos);
+    const v = groundView(pos);
+    return { x: v.x, y: v.y, scale: v.scale * this.figureScale };
+  }
+
+  setFigureScale(k: number): void {
+    this.figureScale = k;
   }
 
   /** Screen pixels for a ground position, for placing DOM prompts. */

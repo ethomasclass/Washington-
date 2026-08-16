@@ -676,6 +676,7 @@ function loadScene(id: string): void {
 
   lightFor(scene);
   BOUND.z1 = scene.walkTo ?? 0.82;
+  renderer.setFigureScale(scene.figureScale ?? 1);
   renderer.loadScene(scene.plates, actorsFor(scene), propsFor(scene));
   renderer.setSun(scene.sun[0], scene.sun[1]);
   overlay.setPlate(headOf(scene));

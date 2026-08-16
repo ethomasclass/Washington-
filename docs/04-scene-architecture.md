@@ -812,11 +812,33 @@ Every mark carries the date of the report that put it there and the date that re
 
 This is not a fog-of-war mechanic dressed as history. It is the history, and it happens to do a fog-of-war mechanic's job. It also gives the reading loop (`R2` — documents are the progression system) somewhere to pay off at full-screen size: **reading is not acting**, and this is the screen that says so.
 
+### It is an object, not a screen
+
+The whole viewport is a **wooden table**, running off all four edges. On it lies a **torn sheet**, casting a shadow, with **two corners curled up** off the wood on opposite diagonals — the back of the paper showing, brightest along the fold. The caption is a plate of smoked glass laid on the table below the sheet: the only thing on this screen that is not in the world, and it does not pretend to be.
+
+The first cut framed the map neatly in a dark field with the caption underneath and read as a slide in a presentation. This reads as a thing lying in front of you, which is what it has to be — the player is standing over a table, not looking at an interface.
+
+The sheet is pinned to the top of the frame rather than centred, so it can be as large as the room above the caption allows and no larger. The paper is a warm tan (`#E2D6B6`), deliberately **not** `PAPER.BRIGHT`: at the game's brightest white it looked like printer stock and left the sea no room to be a different value from the land.
+
+### The lettered grid — the change that matters most for a fifteen-year-old
+
+The sheet was ruled at whole degrees with the figures in the margin, which is what surveyors did and which is **useless in a classroom**. Nobody says *"the fleet is at forty-two degrees twenty minutes north."*
+
+Five columns by four rows, **A–E across the top and bottom, 1–4 down both sides**, and every mark now has a name you can say out loud. Boston is **C2**. Ticonderoga is **B1**. The caption prints the square as a chip beside the mark's name, so two people looking at the same page — a teacher and a class, two students on one laptop — have a shared vocabulary for it. It is also period: plans of this date carry lettered borders for exactly this reason, so a despatch could refer to a square.
+
+### Simplified, on purpose
+
+Three rivers came off the sheet (Mohawk, Merrimack, Schuylkill), five place names (Worcester, New London, Annapolis, Falmouth, and Virginia's province label, which was nine-tenths off the page). They were all true and they were all making the page busy. **The test for a name on this map is not "was it a town" — it is "will a student need it to understand a distance."**
+
+What is left is the Hudson–Champlain corridor (the road the guns have to come down), the Connecticut, the Delaware, the Potomac, and ten places. Everything that stayed got bolder: the coast doubled in weight, the markers are half again as large, the type went up two or three points across the board.
+
 ### Register and construction
 
-R2, and it is the one surface in the game that is not painterly — `09` governs every plate, and this is ink, ruled lines and a flat wash. `06` §2.8 is right that a survey plan has no atmosphere and no morale; nothing here is lit and the mood system must never touch it.
+R2, and it is the one surface in the game that is not painterly — `09` governs every plate, and this is ink, ruled lines and a flat wash. `06` §2.8 is right that a survey plan has no atmosphere and no morale; nothing here is lit and the mood system must never touch it. The one exception is the sheet itself, which has a cast shadow and lit curls, because the *paper* is an object in a room even though the *map* is not a place.
 
 Relief is **hachured**, not cel-shaded: strokes down the fall line, denser where the ground drops harder, no light source anywhere. The eighteenth century had already solved showing a third dimension on a flat page with no light in it, and it works identically in greyscale and for a colourblind student, which no lighting ramp does. The Berkshire wall between Ticonderoga and Cambridge is on the page from Act 2's first frame, and it is why that act is a logistics problem rather than a fetch quest.
+
+Hachures are drawn as a **band** — three rows of strokes down each flank, heaviest against the crest and thinning outward. A single row either side of the ridge line drew two combs facing each other, which reads as a railway rather than as ground.
 
 Everything is procedural canvas, in keeping with the `09` pivot — no `wash-map-v1` sheet is needed, and the hachures are computed from the ridge data rather than painted to match it. The projection is equirectangular with the east–west axis compressed by cos 42°, so distance on the page is honest. Marks are drawn in canvas; **labels are DOM**, so a screen reader can read them and a student can select them.
 
@@ -832,6 +854,8 @@ Shapes and fill carry the meaning, never colour: **theirs draws solid, ours draw
 ### Known limits
 
 Delaware Bay reads as a narrow loop rather than as a bay, because at this scale it is fifteen pixels wide and the shading routine offsets along one normal per run. The Chesapeake is a sliver in the corner. Both are cosmetic and both are on the page rather than hidden.
+
+The sheet is portrait-ish (about 1.12 wide to tall) on a landscape screen, so there is a good deal of table showing either side. That is the honest shape of the theatre and it will get **more** portrait, not less, as the war goes south — Yorktown is at 37.2° and Charleston at 32.8°, both below this sheet's bottom edge. When the southern acts are built the projection will have to grow downward, and the extra sheet has to come out of the north rather than out of the aspect.
 
 ---
 

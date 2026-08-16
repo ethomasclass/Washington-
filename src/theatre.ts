@@ -67,7 +67,21 @@
  *   whose subject is distance, and wrong for anything else.
  */
 
-import { INK, PAPER } from './palette';
+import { INK } from './palette';
+
+/**
+ * The sheet's own paper, and it is NOT `PAPER.BRIGHT`.
+ *
+ * Every other surface in this game is a fresh sheet on a desk. This one is a
+ * working map that has been folded into a saddlebag and opened on a table in
+ * the wet, and at `PAPER.BRIGHT` it came out looking like something off a
+ * printer — high, cold, and with no room underneath it for the sea to be a
+ * different value from the land. A warm tan gives the wash something to sit
+ * against and gives the ink somewhere to go.
+ */
+const SHEET = '#E2D6B6';
+/** The same stock in the light, for the folded-back corners. */
+const SHEET_LIT = '#F0E7CE';
 
 /* ------------------------------------------------------------------ the sheet
  *
@@ -191,7 +205,18 @@ const SEA: Pt[] = [
   [-74.96, 36.0], [-60.0, 34.0], [-60.0, 48.0], [-66.0, 46.4],
 ];
 
-/** Fresh water. The Hudson corridor is the spine of the whole northern war. */
+/**
+ * Fresh water, and only the water that carries an army.
+ *
+ * The Mohawk, the Merrimack and the Schuylkill were all on this sheet and all
+ * came off it. They are real rivers and they were making the page busy for a
+ * fifteen-year-old, which is the trade this map is always making: every line
+ * that does not carry a fact is a line competing with the six that do.
+ *
+ * What is left is the Hudson–Champlain corridor (the spine of the northern
+ * war, and the road the guns have to come down), the Connecticut, the Delaware,
+ * and the Potomac, which is on the page because Act 1 begins on it.
+ */
 const RIVERS: { name: string; path: Pt[]; weight: number }[] = [
   {
     name: 'Hudson',
@@ -221,21 +246,6 @@ const RIVERS: { name: string; path: Pt[]; weight: number }[] = [
     weight: 1.3,
     path: [[-75.16, 39.95], [-74.85, 40.1], [-74.74, 40.22], [-75.05, 40.55],
       [-75.21, 40.69], [-75.1, 41.0], [-74.85, 41.4], [-75.05, 41.8]],
-  },
-  {
-    name: 'Mohawk',
-    weight: 1.1,
-    path: [[-73.76, 42.75], [-74.2, 42.9], [-74.8, 42.95], [-75.4, 43.05]],
-  },
-  {
-    name: 'Merrimack',
-    weight: 1.0,
-    path: [[-70.82, 42.82], [-71.15, 42.75], [-71.45, 42.8], [-71.55, 43.2]],
-  },
-  {
-    name: 'Schuylkill',
-    weight: 1.0,
-    path: [[-75.16, 39.95], [-75.35, 40.12], [-75.6, 40.3]],
   },
   {
     name: 'Potomac',
@@ -271,18 +281,21 @@ const RIDGES: { path: Pt[]; weight: number }[] = [
   { weight: 1.0, path: [[-78.3, 38.6], [-77.9, 39.0], [-77.6, 39.35]] },
 ];
 
-/** Places named on the sheet whether or not anything is happening at them. */
+/**
+ * Places named whether or not anything is happening at them — cut to ten.
+ *
+ * Worcester, New London, Annapolis and Falmouth were all here and are gone.
+ * Springfield stays because the guns have to come through it. The test for a
+ * name on this page is not "was it a town" — it is "will a student need it to
+ * understand a distance".
+ */
 const PLACES: { lon: number; lat: number; name: string; anchor?: 'l' | 'r' }[] = [
   { lon: -74.01, lat: 40.71, name: 'New York', anchor: 'r' },
   { lon: -73.76, lat: 42.65, name: 'Albany', anchor: 'r' },
   { lon: -72.59, lat: 42.10, name: 'Springfield', anchor: 'r' },
-  { lon: -71.80, lat: 42.26, name: 'Worcester', anchor: 'r' },
-  { lon: -72.10, lat: 41.36, name: 'New London' },
-  { lon: -76.49, lat: 38.98, name: 'Annapolis', anchor: 'r' },
   { lon: -72.68, lat: 41.76, name: 'Hartford', anchor: 'r' },
   { lon: -71.41, lat: 41.82, name: 'Providence' },
   { lon: -71.31, lat: 41.49, name: 'Newport' },
-  { lon: -70.26, lat: 43.66, name: 'Falmouth' },
   { lon: -70.76, lat: 43.07, name: 'Portsmouth' },
   { lon: -73.57, lat: 45.5, name: 'Montreal', anchor: 'r' },
   { lon: -74.74, lat: 40.22, name: 'Trenton', anchor: 'r' },
@@ -291,14 +304,13 @@ const PLACES: { lon: number; lat: number; name: string; anchor?: 'l' | 'r' }[] =
 
 /** Provinces, set in spaced letters across open ground the way a plan does. */
 const PROVINCES: { lon: number; lat: number; name: string; rot?: number }[] = [
-  { lon: -72.05, lat: 42.62, name: 'MASSACHUSETTS' },
+  { lon: -72.4, lat: 42.45, name: 'MASSACHUSETTS' },
   { lon: -72.5, lat: 41.62, name: 'CONNECTICUT' },
   { lon: -74.9, lat: 41.5, name: 'NEW YORK' },
   { lon: -74.6, lat: 40.35, name: 'THE JERSIES', rot: -0.5 },
   { lon: -76.5, lat: 40.4, name: 'PENNSYLVANIA' },
-  { lon: -71.4, lat: 44.3, name: 'NEW HAMPSHIRE GRANTS' },
+  { lon: -71.95, lat: 44.65, name: 'THE GRANTS' },
   { lon: -76.9, lat: 39.15, name: 'MARYLAND' },
-  { lon: -77.15, lat: 38.95, name: 'VIRGINIA' },
 ];
 
 /* ------------------------------------------------------------------- tokens */
@@ -388,7 +400,19 @@ export interface Theatre {
   act: number;
   /** ISO. The day the sheet is drawn as of. */
   asOf: string;
+  /** What the caption calls it, in modern English. */
   title: string;
+  /**
+   * What the SHEET calls itself, printed on it as a cartouche.
+   *
+   * Two registers on one screen and both are wanted. The caption says *The army
+   * before Boston*, which is a fifteen-year-old's sentence about what is going
+   * on; the paper says *THE SEAT OF WAR*, which is what a map of 1775 with this
+   * on it was actually titled. A student reads the first and absorbs the second,
+   * and the second is the one that will look familiar in a museum.
+   */
+  sheetTitle: string;
+  sheetSub: string;
   /**
    * One sentence under the map, in the world's register. Never an objective,
    * never a summary of what the player is about to do — the state of the war
@@ -412,6 +436,8 @@ export const THEATRES: Record<number, Theatre> = {
     act: 1,
     asOf: '1775-05-04',
     title: 'The seat of the disturbances',
+    sheetTitle: 'THE BRITISH COLONIES',
+    sheetSub: 'from the Chesapeake to the Province of Maine',
     standing:
       'Something has happened in Massachusetts and the accounts do not agree. ' +
       'You are expected in Philadelphia on the tenth.',
@@ -496,6 +522,8 @@ export const THEATRES: Record<number, Theatre> = {
     act: 2,
     asOf: '1775-07-03',
     title: 'The army before Boston',
+    sheetTitle: 'THE SEAT OF WAR',
+    sheetSub: 'in New England, with the northern posts',
     standing:
       'You have been given an army that was already sitting where you found it, ' +
       'and a town you cannot go into and cannot walk away from.',
@@ -620,26 +648,86 @@ const ALPHA: Record<Confidence, number> = {
   seen: 1, certain: 1, recent: 0.82, old: 0.6, stale: 0.4,
 };
 
-/* ------------------------------------------------------------------ drawing
+/* --------------------------------------------------------------- the object
  *
- * EVERYTHING BELOW IS DRAWN IN BASE UNITS, on a sheet BASE wide.
+ * The map is not a rectangle of pixels. It is a torn sheet lying on a table,
+ * and the canvas holds all three things: the shadow it casts, the paper, and
+ * the two corners that have curled up off the wood.
  *
- * The first cut hard-coded pixel sizes and then rendered the canvas at 1.6× for
- * anti-aliasing, so every label, hairline and hachure came out at 62% of the
- * size it was written at and the place names were unreadable. Scaling the
- * context once, here, means an `11px` in this file is eleven pixels on the
- * player's screen at any canvas resolution — which is the only way type sizes
- * in a drawing routine can be reasoned about at all.
+ * Three nested boxes, all in BASE UNITS. Every size in this file is one of
+ * these units and the context is scaled once at the top of `theatreSheet`, so
+ * an `11px` here is eleven pixels on the player's screen at any resolution.
+ *
+ *   CANVAS   the whole drawing, with transparent bleed for the shadow and the
+ *            curls. The wood shows through it — the table is CSS, and it fills
+ *            the viewport rather than stopping at the canvas.
+ *   PAPER    the sheet. Torn edges, chamfered at two corners where it has
+ *            lifted, and the printed border rule sits inside it.
+ *   MAP      the geography. Everything the projection knows about.
  */
 
-/** Nominal sheet width. All sizes below are in these units. */
-export const BASE = 1100;
-const BASE_H = BASE / SHEET_ASPECT;
+/** The geography, in base units. */
+export const MAP_W = 1100;
+export const MAP_H = MAP_W / SHEET_ASPECT;
+/** The printed margin: border rule, and the letters and figures of the grid. */
+const MARGIN = 54;
+/** Transparent bleed for the cast shadow and the curled corners. */
+const BLEED = 46;
+/** How far in the two lifted corners are cut. */
+const CURL = 104;
 
-/** Longitude and latitude to base units. */
+const PAPER_W = MAP_W + MARGIN * 2;
+const PAPER_H = MAP_H + MARGIN * 2;
+export const CANVAS_W = PAPER_W + BLEED * 2;
+export const CANVAS_H = PAPER_H + BLEED * 2;
+export const CANVAS_ASPECT = CANVAS_W / CANVAS_H;
+
+/** Map fractions to canvas fractions, for anything positioned in the DOM. */
+export function canvasAt(lon: number, lat: number): [number, number] {
+  const [x, y] = at(lon, lat);
+  return [
+    (BLEED + MARGIN + x * MAP_W) / CANVAS_W,
+    (BLEED + MARGIN + y * MAP_H) / CANVAS_H,
+  ];
+}
+
+/*
+ * THE GRID, and it is the change that matters most for a fifteen-year-old.
+ *
+ * The sheet used to be ruled at whole degrees of latitude and longitude with
+ * the figures in the margin, which is what the surveyors did and which is
+ * useless to a student: nobody in a classroom says "the fleet is at forty-two
+ * degrees twenty minutes north". Five columns by four rows, lettered and
+ * numbered, and now every mark on the page has a name you can say out loud —
+ * *Boston is C2* — which is how two people looking at the same map talk.
+ *
+ * It is also period. Plans of this date carry lettered borders for exactly the
+ * same reason: so that a despatch could refer to a square.
+ */
+const COLS = 5;
+const ROWS = 4;
+const LETTERS = 'ABCDE';
+
+/** Which square a position falls in — `C2`. */
+export function gridRef(lon: number, lat: number): string {
+  const [x, y] = at(lon, lat);
+  const c = Math.min(COLS - 1, Math.max(0, Math.floor(x * COLS)));
+  const r = Math.min(ROWS - 1, Math.max(0, Math.floor(y * ROWS)));
+  return `${LETTERS[c]}${r + 1}`;
+}
+
+/* ------------------------------------------------------------------ drawing */
+
+/** Longitude and latitude to base units, in MAP space. */
 const bu = (lon: number, lat: number): Pt => {
   const [x, y] = at(lon, lat);
-  return [x * BASE, y * BASE_H];
+  return [x * MAP_W, y * MAP_H];
+};
+
+/** Repeatable noise, so a torn edge is torn the same way every frame. */
+const wobble = (n: number): number => {
+  const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return ((v % 1) + 1) % 1;
 };
 
 /**
@@ -670,22 +758,114 @@ function smooth(c: CanvasRenderingContext2D, pts: Pt[], close = false): void {
 const geo = (pts: Pt[]): Pt[] => pts.map(([lo, la]) => bu(lo, la));
 
 /**
+ * The silhouette of the sheet: torn on all four sides, and cut back at the
+ * top-left and bottom-right where it has curled up off the table.
+ *
+ * Returned rather than stroked, because three separate passes need it — the
+ * shadow, the fill, and the clip that stops the map printing off the paper.
+ */
+function paperOutline(): Pt[] {
+  const x1 = BLEED;
+  const y1 = BLEED;
+  const x2 = BLEED + PAPER_W;
+  const y2 = BLEED + PAPER_H;
+  const pts: Pt[] = [];
+  const STEP = 26;
+
+  // Each edge is walked in small steps with the deckle riding in and out. A
+  // torn edge is not a wavy edge: the amplitude itself varies, so some stretches
+  // are nearly straight and others have taken a real bite out of the sheet.
+  const edge = (
+    ax: number, ay: number, bx: number, by: number, seed: number,
+  ): void => {
+    const len = Math.hypot(bx - ax, by - ay);
+    const n = Math.max(2, Math.round(len / STEP));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const w1 = wobble(seed + i * 3.1);
+      const w2 = wobble(seed + i * 0.37);
+      const amp = (1.5 + w2 * 6.5) * Math.sin(Math.PI * Math.min(1, t * 1.4));
+      const nx = (by - ay) / len;
+      const ny = -(bx - ax) / len;
+      pts.push([
+        ax + (bx - ax) * t + nx * (w1 - 0.5) * amp,
+        ay + (by - ay) * t + ny * (w1 - 0.5) * amp,
+      ]);
+    }
+  };
+
+  edge(x1 + CURL, y1, x2, y1, 11);            // top, starting past the TL curl
+  edge(x2, y1, x2, y2 - CURL, 29);            // right, stopping at the BR curl
+  edge(x2 - CURL, y2, x1, y2, 47);            // bottom, starting past the BR curl
+  edge(x1, y2, x1, y1 + CURL, 63);            // left, stopping at the TL curl
+  return pts;
+}
+
+/**
+ * A corner that has lifted.
+ *
+ * The chamfer taken out of the outline is folded back across its own hypotenuse
+ * — the reflection works out to a right triangle inside the sheet, which is why
+ * this is eight lines rather than a matrix. The flap is the BACK of the paper,
+ * so it carries none of the printing and takes a gradient from the fold line
+ * outward, and it drops a shadow on the map underneath it.
+ *
+ * Two corners, on opposite diagonals. Four would read as a decorative frame
+ * rather than as a sheet somebody has been handling.
+ */
+function curl(c: CanvasRenderingContext2D, corner: 'tl' | 'br'): void {
+  const x1 = BLEED;
+  const y1 = BLEED;
+  const x2 = BLEED + PAPER_W;
+  const y2 = BLEED + PAPER_H;
+  const [a, b, folded]: [Pt, Pt, Pt] =
+    corner === 'tl'
+      ? [[x1 + CURL, y1], [x1, y1 + CURL], [x1 + CURL, y1 + CURL]]
+      : [[x2 - CURL, y2], [x2, y2 - CURL], [x2 - CURL, y2 - CURL]];
+
+  c.save();
+  // What the flap casts on the sheet it is lying on.
+  c.globalAlpha = 0.3;
+  c.fillStyle = '#4B3B27';
+  c.beginPath();
+  c.moveTo(a[0], a[1]);
+  c.lineTo(b[0], b[1]);
+  c.lineTo(folded[0] + (corner === 'tl' ? 9 : -9), folded[1] + (corner === 'tl' ? 9 : -9));
+  c.closePath();
+  c.fill();
+  c.restore();
+
+  // The flap itself: the reverse of the sheet, brightest along the fold where
+  // it is standing closest to the light and falling off toward the loose edge.
+  const g = c.createLinearGradient(a[0], a[1], folded[0], folded[1]);
+  g.addColorStop(0, SHEET_LIT);
+  g.addColorStop(0.55, '#DDD0AE');
+  g.addColorStop(1, '#B0A07C');
+  c.save();
+  c.beginPath();
+  c.moveTo(a[0], a[1]);
+  c.lineTo(b[0], b[1]);
+  c.lineTo(folded[0], folded[1]);
+  c.closePath();
+  c.fillStyle = g;
+  c.fill();
+  c.strokeStyle = 'rgba(90, 72, 48, 0.55)';
+  c.lineWidth = 1.2;
+  c.stroke();
+  c.restore();
+}
+
+/**
  * Coastal shading: lines run parallel to the shore on the seaward side,
  * spreading and fading outward.
  *
- * This is how a period plan says "this is the water" without filling the water,
- * and it is why the sheet can stay bare paper nearly everywhere. Offsetting
- * along the left-hand normal puts it on the correct side for a coast walked
- * from Maine down to Delaware; a path walked the other way would need the sign
- * flipped, which is why there is only the one coast.
+ * This is how a period plan says "this is the water" without filling it, and it
+ * is why the sheet can stay bare paper nearly everywhere. Offsetting along one
+ * normal means each run has to declare which flank its water is on.
  */
 function shoreShading(c: CanvasRenderingContext2D, pts: Pt[], side: 1 | -1): void {
   const scr = geo(pts);
-
   for (let band = 1; band <= 7; band++) {
-    // Widening gaps: tight hatching at the shore opening out to sea, which is
-    // the gradient every engraver of the period used and which the eye reads as
-    // depth without ever being told to.
     const off = band * band * 1.1 + band * 1.9;
     const offset: Pt[] = scr.map((p, i) => {
       const a = scr[Math.max(0, i - 1)];
@@ -698,8 +878,8 @@ function shoreShading(c: CanvasRenderingContext2D, pts: Pt[], side: 1 | -1): voi
     c.beginPath();
     smooth(c, offset);
     c.strokeStyle = INK.FADED;
-    c.globalAlpha = 0.46 / band;
-    c.lineWidth = 0.85;
+    c.globalAlpha = 0.5 / band;
+    c.lineWidth = 1;
     c.stroke();
   }
   c.globalAlpha = 1;
@@ -713,12 +893,6 @@ function shoreShading(c: CanvasRenderingContext2D, pts: Pt[], side: 1 | -1): voi
  * wanted: relief is carried entirely by how much ink is on the paper, which is
  * a technique that works identically in a screenshot, in greyscale, and for a
  * colourblind student, and which no lighting ramp can say the same of.
- *
- * Short and dense. The first pass drew them long and evenly spaced on both
- * sides of the ridge line and the Green Mountains came out looking like a
- * centipede — the giveaway that they were being generated rather than drawn.
- * Real hachuring is a mass of short marks whose *density* carries the slope,
- * so the length here stays small and the count goes up.
  */
 function hachure(c: CanvasRenderingContext2D, pts: Pt[], weight: number): void {
   const scr = geo(pts);
@@ -732,68 +906,104 @@ function hachure(c: CanvasRenderingContext2D, pts: Pt[], weight: number): void {
     const dx = (bx - ax) / seg;
     const dy = (by - ay) / seg;
 
-    for (let d = 0; d < seg; d += 1.9) {
+    for (let d = 0; d < seg; d += 1.5) {
       const t = d / seg;
       // A ridge is not a wall. Strokes shorten toward each end of a run so the
       // range dies away instead of stopping square, which is the one difference
       // between hachuring and a hatched rectangle.
       const taper = Math.sin(Math.PI * Math.min(1, Math.max(0, t))) * 0.5 + 0.5;
-      const r = ((Math.sin(d * 12.9898 + i * 78.233) * 43758.5453) % 1 + 1) % 1;
+      const r = wobble(d * 12.9 + i * 78.2);
       const x = ax + dx * d;
       const y = ay + dy * d;
 
+      /*
+       * Three rows of strokes down each flank, not one.
+       *
+       * A single row on either side of the ridge line drew two combs facing
+       * each other, which reads as a railway and not as ground. Hachuring is a
+       * BAND: strokes packed side by side, heaviest against the crest and
+       * thinning outward, so the range has a dense spine and a soft foot. Three
+       * rows is the fewest that gets there.
+       */
       for (const side of [1, -1]) {
-        // The two flanks are offset half a step and jittered independently, so
-        // the ridge does not read as a single mirrored comb.
-        const j = ((Math.sin(d * 3.71 + side * 19.3 + i * 5.1) * 1237.7) % 1 + 1) % 1;
-        const len = (3.2 + j * 4.2) * weight * taper;
-        const skew = (j - 0.5) * 0.5;
-        const nx = dy * side + dx * skew;
-        const ny = -dx * side + dy * skew;
-        const n = Math.hypot(nx, ny) || 1;
-        c.beginPath();
-        c.moveTo(x + (nx / n) * 1.2, y + (ny / n) * 1.2);
-        c.lineTo(x + (nx / n) * len, y + (ny / n) * len);
-        c.globalAlpha = (0.36 + r * 0.4) * weight * taper;
-        c.lineWidth = 0.7 + r * 0.55;
-        c.stroke();
+        for (let row = 0; row < 3; row++) {
+          const j = wobble(d * 3.71 + side * 19.3 + i * 5.1 + row * 41.7);
+          const fall = 1 - row * 0.3;
+          const start = 1.4 + row * 4.6;
+          const len = start + (2.6 + j * 3.4) * weight * taper * fall;
+          const skew = (j - 0.5) * 0.55;
+          const nx = dy * side + dx * skew;
+          const ny = -dx * side + dy * skew;
+          const n = Math.hypot(nx, ny) || 1;
+          c.beginPath();
+          c.moveTo(x + (nx / n) * start, y + (ny / n) * start);
+          c.lineTo(x + (nx / n) * len, y + (ny / n) * len);
+          c.globalAlpha = (0.4 + r * 0.4) * weight * taper * fall;
+          c.lineWidth = 0.85 + r * 0.55;
+          c.stroke();
+        }
       }
     }
   }
   c.globalAlpha = 1;
 }
 
-/** The graticule, ruled at whole degrees the way a surveyor read one. */
-function graticule(c: CanvasRenderingContext2D): void {
+/** The lettered grid, ruled across the map. Five columns, four rows. */
+function grid(c: CanvasRenderingContext2D): void {
+  c.save();
   c.strokeStyle = INK.FLOOR;
-  c.globalAlpha = 0.16;
-  c.lineWidth = 0.9;
-  for (let lat = 39; lat <= 45; lat++) {
-    const [, y] = bu(0, lat);
-    c.beginPath();
-    c.moveTo(0, y);
-    c.lineTo(BASE, y);
-    c.stroke();
-  }
-  for (let lon = -77; lon <= -66; lon++) {
-    const [x] = bu(lon, 0);
+  c.globalAlpha = 0.2;
+  c.lineWidth = 1.4;
+  for (let i = 1; i < COLS; i++) {
+    const x = (i / COLS) * MAP_W;
     c.beginPath();
     c.moveTo(x, 0);
-    c.lineTo(x, BASE_H);
+    c.lineTo(x, MAP_H);
     c.stroke();
   }
-
-  // Margin ticks. A plan says what its lines mean, and a student who reads one
-  // number off this page has learned that the grid is latitude and not décor.
-  c.globalAlpha = 0.5;
-  c.fillStyle = INK.LIGHT;
-  c.font = 'italic 11px Georgia, "Times New Roman", serif';
-  c.textAlign = 'left';
-  for (let lat = 39; lat <= 45; lat++) {
-    const [, y] = bu(0, lat);
-    c.fillText(`${lat}°`, 6, y - 4);
+  for (let i = 1; i < ROWS; i++) {
+    const y = (i / ROWS) * MAP_H;
+    c.beginPath();
+    c.moveTo(0, y);
+    c.lineTo(MAP_W, y);
+    c.stroke();
   }
-  c.globalAlpha = 1;
+  c.restore();
+}
+
+/**
+ * The printed border: a heavy rule, a hair rule inside it, and the letters and
+ * figures of the grid in the space between them.
+ *
+ * Drawn in PAPER space, not map space, so it frames the geography rather than
+ * sitting on top of it.
+ */
+function border(c: CanvasRenderingContext2D): void {
+  const x1 = BLEED + MARGIN;
+  const y1 = BLEED + MARGIN;
+  c.save();
+  c.strokeStyle = INK.FLOOR;
+  c.lineWidth = 3.4;
+  c.strokeRect(x1 - 12, y1 - 12, MAP_W + 24, MAP_H + 24);
+  c.lineWidth = 1.2;
+  c.strokeRect(x1 - 20, y1 - 20, MAP_W + 40, MAP_H + 40);
+
+  c.fillStyle = INK.FLOOR;
+  c.font = 'bold 22px Georgia, "Times New Roman", serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  for (let i = 0; i < COLS; i++) {
+    const x = x1 + ((i + 0.5) / COLS) * MAP_W;
+    c.fillText(LETTERS[i], x, y1 - 32);
+    c.fillText(LETTERS[i], x, y1 + MAP_H + 32);
+  }
+  for (let i = 0; i < ROWS; i++) {
+    const y = y1 + ((i + 0.5) / ROWS) * MAP_H;
+    c.fillText(String(i + 1), x1 - 34, y);
+    c.fillText(String(i + 1), x1 + MAP_W + 34, y);
+  }
+  c.textBaseline = 'alphabetic';
+  c.restore();
 }
 
 /** North, drawn as the period drew it: a long point and a short one. */
@@ -801,11 +1011,12 @@ function compass(c: CanvasRenderingContext2D, cx: number, cy: number, r: number)
   c.save();
   c.translate(cx, cy);
   c.strokeStyle = INK.SETTLED;
-  c.globalAlpha = 0.7;
-  c.lineWidth = 1;
+  c.globalAlpha = 0.85;
+  c.lineWidth = 1.6;
   c.beginPath();
   c.arc(0, 0, r, 0, Math.PI * 2);
   c.stroke();
+  c.lineWidth = 1;
   c.beginPath();
   c.arc(0, 0, r * 0.78, 0, Math.PI * 2);
   c.stroke();
@@ -819,10 +1030,8 @@ function compass(c: CanvasRenderingContext2D, cx: number, cy: number, r: number)
     c.stroke();
   }
 
-  // The needle. Filled on one flank only — a drawn compass rose is lit from
-  // nowhere and reads as three-dimensional anyway, which is the same trick the
-  // hachures are playing at the other end of the sheet.
   c.globalAlpha = 1;
+  c.lineWidth = 1.4;
   c.beginPath();
   c.moveTo(0, -r * 0.64);
   c.lineTo(r * 0.15, 0);
@@ -838,9 +1047,9 @@ function compass(c: CanvasRenderingContext2D, cx: number, cy: number, r: number)
   c.fillStyle = INK.SETTLED;
   c.fill();
 
-  c.font = `italic ${Math.round(r * 0.4)}px Georgia, "Times New Roman", serif`;
+  c.font = `bold ${Math.round(r * 0.44)}px Georgia, "Times New Roman", serif`;
   c.textAlign = 'center';
-  c.fillText('N', 0, -r * 0.86);
+  c.fillText('N', 0, -r * 0.88);
   c.restore();
 }
 
@@ -848,24 +1057,62 @@ function compass(c: CanvasRenderingContext2D, cx: number, cy: number, r: number)
 function scaleBar(c: CanvasRenderingContext2D, x: number, y: number): void {
   // A degree of latitude is 69.05 statute miles, and the sheet's vertical scale
   // is the honest one — the horizontal is compressed by the projection.
-  const unit = (20 * BASE_H) / LAT_SPAN / 69.05;
+  const unit = (20 * MAP_H) / LAT_SPAN / 69.05;
   c.save();
   c.translate(x, y);
-  c.strokeStyle = INK.SETTLED;
-  c.fillStyle = INK.SETTLED;
-  c.lineWidth = 1;
-  const bh = 6;
+  c.strokeStyle = INK.FLOOR;
+  c.fillStyle = INK.FLOOR;
+  c.lineWidth = 1.4;
+  const bh = 8;
   for (let i = 0; i < 5; i++) {
     c.beginPath();
     c.rect(i * unit, 0, unit, bh);
     c.stroke();
     if (i % 2 === 0) c.fill();
   }
-  c.font = 'italic 12px Georgia, "Times New Roman", serif';
+  c.font = 'bold 13px Georgia, "Times New Roman", serif';
   c.textAlign = 'center';
-  for (let i = 0; i <= 5; i++) c.fillText(String(i * 20), i * unit, -6);
+  for (let i = 0; i <= 5; i++) c.fillText(String(i * 20), i * unit, -7);
   c.textAlign = 'left';
-  c.fillText('English Miles', 0, bh + 15);
+  c.font = 'italic 14px Georgia, "Times New Roman", serif';
+  c.fillText('English Miles', 0, bh + 18);
+  c.restore();
+}
+
+/**
+ * The cartouche: what the sheet calls itself.
+ *
+ * Set large and low in the open water, the way an engraver filled a dead corner
+ * with the title rather than leaving it blank. It is also the fastest possible
+ * answer to "what am I looking at" for a student who has just sat down, which
+ * is the job the reference image's own title block is doing.
+ */
+function cartouche(c: CanvasRenderingContext2D, title: string, sub: string): void {
+  const x = MAP_W * 0.79;
+  const y = MAP_H * 0.76;
+  c.save();
+  c.textAlign = 'center';
+  c.fillStyle = INK.FLOOR;
+  c.font = '38px Georgia, "Times New Roman", serif';
+  c.fillText(title, x, y);
+
+  const w = Math.max(c.measureText(title).width, 230) / 2 + 16;
+  c.strokeStyle = INK.FLOOR;
+  c.globalAlpha = 0.75;
+  c.lineWidth = 1.6;
+  c.beginPath();
+  c.moveTo(x - w, y + 13);
+  c.lineTo(x + w, y + 13);
+  c.stroke();
+  c.lineWidth = 0.9;
+  c.beginPath();
+  c.moveTo(x - w * 0.72, y + 18);
+  c.lineTo(x + w * 0.72, y + 18);
+  c.stroke();
+
+  c.globalAlpha = 0.8;
+  c.font = 'italic 15px Georgia, "Times New Roman", serif';
+  c.fillText(sub, x, y + 38);
   c.restore();
 }
 
@@ -878,14 +1125,14 @@ function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): voi
   c.globalAlpha = ALPHA[conf];
   c.strokeStyle = INK.FLOOR;
   c.fillStyle = INK.FLOOR;
-  c.lineWidth = conf === 'stale' || conf === 'old' ? 1.2 : 1.6;
+  c.lineWidth = conf === 'stale' || conf === 'old' ? 1.8 : 2.4;
   // Anything he has not had confirmed is drawn broken. A dashed outline is what
   // a careful hand did with a position it did not trust, and it needs no key.
-  c.setLineDash(conf === 'stale' ? [2.5, 2.5] : conf === 'old' ? [5, 3] : []);
+  c.setLineDash(conf === 'stale' ? [3, 3] : conf === 'old' ? [6, 4] : []);
 
   if (t.kind === 'foot') {
     c.beginPath();
-    c.rect(x - 10, y - 5, 20, 10);
+    c.rect(x - 12, y - 6, 24, 12);
     c.stroke();
     if (solid) {
       c.globalAlpha = ALPHA[conf] * 0.85;
@@ -897,7 +1144,7 @@ function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): voi
     c.beginPath();
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
-      const r = i % 2 ? 4.5 : 10.5;
+      const r = i % 2 ? 5.5 : 13;
       const px = x + Math.cos(a) * r;
       const py = y + Math.sin(a) * r;
       if (i) c.lineTo(px, py);
@@ -912,38 +1159,36 @@ function drawToken(c: CanvasRenderingContext2D, t: Token, conf: Confidence): voi
   } else if (t.kind === 'ship') {
     c.setLineDash([]);
     c.beginPath();
-    c.moveTo(x - 11, y);
-    c.quadraticCurveTo(x, y + 7, x + 11, y);
+    c.moveTo(x - 13, y);
+    c.quadraticCurveTo(x, y + 9, x + 13, y);
     c.closePath();
     c.stroke();
     if (solid) c.fill();
-    c.lineWidth = 1.2;
+    c.lineWidth = 1.8;
     c.beginPath();
-    c.moveTo(x - 4, y - 1);
-    c.lineTo(x - 4, y - 11);
-    c.moveTo(x + 4, y - 1);
-    c.lineTo(x + 4, y - 9);
+    c.moveTo(x - 5, y - 1);
+    c.lineTo(x - 5, y - 14);
+    c.moveTo(x + 5, y - 1);
+    c.lineTo(x + 5, y - 11);
     c.stroke();
   } else {
     // A seat of government: a ringed dot, the oldest map mark there is.
     c.beginPath();
-    c.arc(x, y, 7.5, 0, Math.PI * 2);
+    c.arc(x, y, 9, 0, Math.PI * 2);
     c.stroke();
     c.setLineDash([]);
     c.beginPath();
-    c.arc(x, y, 2.8, 0, Math.PI * 2);
+    c.arc(x, y, 3.6, 0, Math.PI * 2);
     c.fill();
   }
   c.restore();
 }
 
 /**
- * The leader from a marker to its label.
- *
- * Only drawn where the label has been pushed off the mark, and it stops short
- * at both ends so it never touches either. Without it the four marks around
- * Boston have four captions floating in the sea with nothing to say which
- * belongs to which.
+ * The leader from a marker to its label. Only drawn where the label has been
+ * pushed off the mark, and it stops short at both ends so it never touches
+ * either. Without it the four marks around Boston have four captions floating
+ * in the sea with nothing to say which belongs to which.
  */
 function leader(c: CanvasRenderingContext2D, t: Token, conf: Confidence): void {
   const [dx, dy] = labelOffset(t);
@@ -953,18 +1198,19 @@ function leader(c: CanvasRenderingContext2D, t: Token, conf: Confidence): void {
   const ux = dx / len;
   const uy = dy / len;
   c.save();
-  c.globalAlpha = ALPHA[conf] * 0.55;
+  c.globalAlpha = ALPHA[conf] * 0.6;
   c.strokeStyle = INK.SETTLED;
-  c.lineWidth = 0.8;
+  c.lineWidth = 1.2;
   c.beginPath();
-  c.moveTo(x + ux * 13, y + uy * 13);
-  c.lineTo(x + dx - ux * 12, y + dy - uy * 12);
+  c.moveTo(x + ux * 16, y + uy * 16);
+  c.lineTo(x + dx - ux * 14, y + dy - uy * 14);
   c.stroke();
   c.restore();
 }
 
 /**
- * Draw the sheet.
+ * Draw the whole object: the shadow, the sheet, the map on it, and the corners
+ * that have lifted.
  *
  * Everything except the token labels, which are DOM — this is the one place the
  * project's rule that type is never textured pays a dividend, because a label
@@ -975,27 +1221,55 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
   cv.width = w;
   cv.height = h;
   const c = cv.getContext('2d')!;
-  c.scale(w / BASE, w / BASE);
+  c.scale(w / CANVAS_W, w / CANVAS_W);
 
-  c.fillStyle = PAPER.BRIGHT;
-  c.fillRect(0, 0, BASE, BASE_H);
+  const outline = paperOutline();
 
-  // A faint warm cast toward the edges. A sheet this size was never evenly
-  // toned, and the corners are where it browned first.
-  const g = c.createRadialGradient(
-    BASE * 0.45, BASE_H * 0.45, BASE_H * 0.2, BASE * 0.5, BASE_H * 0.5, BASE_H * 1.05);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(1, 'rgba(150, 120, 80, 0.20)');
-  c.fillStyle = g;
-  c.fillRect(0, 0, BASE, BASE_H);
+  // What the sheet casts on the table. Down and to the right, because the light
+  // in this room comes from over the reader's left shoulder, as it does in
+  // every painting in the rest of the game.
+  c.save();
+  c.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  c.shadowBlur = 26;
+  c.shadowOffsetX = 10;
+  c.shadowOffsetY = 14;
+  c.fillStyle = SHEET;
+  c.beginPath();
+  smooth(c, outline, true);
+  c.fill();
+  c.restore();
 
+  // Inside the paper from here on. Nothing prints off the torn edge.
+  c.save();
+  c.beginPath();
+  smooth(c, outline, true);
+  c.clip();
+
+  c.fillStyle = SHEET;
+  c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // A sheet this size was never evenly toned, and the edges are where it
+  // browned first.
+  const tone = c.createRadialGradient(
+    CANVAS_W * 0.44, CANVAS_H * 0.42, CANVAS_H * 0.18,
+    CANVAS_W * 0.5, CANVAS_H * 0.5, CANVAS_H * 0.82);
+  tone.addColorStop(0, 'rgba(0,0,0,0)');
+  tone.addColorStop(1, 'rgba(126, 92, 48, 0.38)');
+  c.fillStyle = tone;
+  c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  border(c);
+
+  // Into map space.
+  c.save();
+  c.translate(BLEED + MARGIN, BLEED + MARGIN);
   c.lineJoin = 'round';
   c.lineCap = 'round';
 
   // Water first: the wash, the islands punched back out of it, then the
   // hatching that does the actual telling.
   c.save();
-  c.fillStyle = 'rgba(88, 110, 138, 0.11)';
+  c.fillStyle = 'rgba(70, 92, 120, 0.22)';
   c.beginPath();
   smooth(c, geo(SEA), true);
   c.fill();
@@ -1005,35 +1279,35 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
   c.restore();
 
   c.save();
-  c.fillStyle = PAPER.BRIGHT;
+  c.fillStyle = SHEET;
   c.beginPath();
   smooth(c, geo(LONG_ISLAND), true);
   c.fill();
   c.restore();
 
   for (const sh of SHORES) shoreShading(c, sh.pts, sh.side);
-  graticule(c);
+  grid(c);
 
   c.beginPath();
   smooth(c, geo(LONG_ISLAND), true);
-  c.strokeStyle = INK.SETTLED;
-  c.lineWidth = 1.3;
+  c.strokeStyle = INK.FLOOR;
+  c.lineWidth = 2;
   c.stroke();
 
   for (const line of [COAST, DELAWARE_BAY, CHESAPEAKE]) {
     c.beginPath();
     smooth(c, geo(line));
-    c.strokeStyle = INK.SETTLED;
-    c.lineWidth = 1.7;
+    c.strokeStyle = INK.FLOOR;
+    c.lineWidth = 2.6;
     c.stroke();
   }
 
   for (const r of RIVERS) {
     c.beginPath();
     smooth(c, geo(r.path));
-    c.strokeStyle = INK.FADED;
-    c.globalAlpha = 0.85;
-    c.lineWidth = r.weight;
+    c.strokeStyle = INK.SETTLED;
+    c.globalAlpha = 0.9;
+    c.lineWidth = r.weight * 1.5;
     c.stroke();
   }
   c.globalAlpha = 1;
@@ -1042,15 +1316,15 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
 
   // Province names, spaced out across open ground the way an engraver set them.
   c.save();
-  c.fillStyle = INK.LIGHT;
+  c.fillStyle = INK.SETTLED;
   c.textAlign = 'center';
   for (const p of PROVINCES) {
     const [x, y] = bu(p.lon, p.lat);
     c.save();
     c.translate(x, y);
     if (p.rot) c.rotate(p.rot);
-    c.globalAlpha = 0.44;
-    c.font = '12px Georgia, "Times New Roman", serif';
+    c.globalAlpha = 0.62;
+    c.font = '16px Georgia, "Times New Roman", serif';
     // letterSpacing is not universal; spacing the string is, and on a map this
     // is what the engraver did anyway.
     c.fillText(p.name.split('').join(' '), 0, 0);
@@ -1060,35 +1334,52 @@ export function theatreSheet(theatre: Theatre, w: number, h: number): HTMLCanvas
 
   // Places that are only places.
   c.save();
-  c.fillStyle = INK.SETTLED;
-  c.font = 'italic 13px Georgia, "Times New Roman", serif';
+  c.fillStyle = INK.FLOOR;
+  c.font = 'italic 16px Georgia, "Times New Roman", serif';
   for (const p of PLACES) {
     const [x, y] = bu(p.lon, p.lat);
-    c.globalAlpha = 0.78;
     c.beginPath();
-    c.arc(x, y, 2, 0, Math.PI * 2);
+    c.arc(x, y, 3, 0, Math.PI * 2);
     c.fill();
     c.textAlign = p.anchor === 'r' ? 'right' : 'left';
-    c.fillText(p.name, x + (p.anchor === 'r' ? -7 : 7), y + 4.5);
+    c.fillText(p.name, x + (p.anchor === 'r' ? -9 : 9), y + 5.5);
   }
   c.restore();
 
   c.save();
-  c.fillStyle = INK.LIGHT;
-  c.globalAlpha = 0.42;
-  c.font = 'italic 17px Georgia, "Times New Roman", serif';
+  c.fillStyle = INK.SETTLED;
+  c.globalAlpha = 0.5;
+  c.font = 'italic 20px Georgia, "Times New Roman", serif';
   c.textAlign = 'center';
-  c.fillText('T H E   A T L A N T I C   O C E A N', BASE * 0.79, BASE_H * 0.63);
+  c.fillText('T H E   A T L A N T I C   O C E A N', MAP_W * 0.80, MAP_H * 0.46);
   c.restore();
 
-  compass(c, BASE * 0.915, BASE_H * 0.30, BASE_H * 0.062);
-  scaleBar(c, BASE * 0.60, BASE_H * 0.90);
+  cartouche(c, theatre.sheetTitle, theatre.sheetSub);
+  compass(c, MAP_W * 0.925, MAP_H * 0.135, MAP_H * 0.072);
+  scaleBar(c, MAP_W * 0.62, MAP_H * 0.905);
 
   for (const t of theatre.tokens) {
     const conf = confidenceOf(t, theatre.asOf);
     leader(c, t, conf);
     drawToken(c, t, conf);
   }
+
+  c.restore();  // out of map space
+
+  // A little wear along the torn edge, so the paper looks handled rather than
+  // die-cut. Inside the clip, so it never bleeds onto the table.
+  c.save();
+  c.strokeStyle = 'rgba(122, 96, 62, 0.5)';
+  c.lineWidth = 7;
+  c.beginPath();
+  smooth(c, outline, true);
+  c.stroke();
+  c.restore();
+
+  c.restore();  // out of the paper clip
+
+  curl(c, 'tl');
+  curl(c, 'br');
 
   return cv;
 }

@@ -24,8 +24,8 @@ import { grainTile, portraitPlate } from './art';
 import { cellStyle, portraitFor } from './portraits';
 import type { LedgerLine, Reckoning } from './ledger';
 import {
-  at, BASE, confidenceOf, labelOffset, longDate, provenanceOf, SHEET_ASPECT, theatreSheet,
-  type Theatre,
+  CANVAS_ASPECT, CANVAS_W, canvasAt, confidenceOf, gridRef, labelOffset, longDate,
+  provenanceOf, theatreSheet, type Theatre,
 } from './theatre';
 
 /**
@@ -109,48 +109,52 @@ export const CSS = `
 /*
  * THE THEATRE MAP — the page that opens an act.
  *
- * A sheet of paper on a board, and the CSS's whole job is to make it read as an
- * object with a size rather than as a screen. It fills the frame because it is
- * the only thing on the frame: the act has not started, the player has control
- * of nothing, and for these few seconds they are looking at a map the way the
- * man looked at maps.
+ * A worn sheet on a wooden table, and the whole screen is the table. The first
+ * cut framed the map neatly in the middle of a dark field with the caption
+ * underneath, which read as a slide in a presentation. This reads as a thing
+ * lying in front of you: the wood runs off all four edges, the sheet is torn,
+ * two of its corners have lifted, and the caption is a panel laid OVER the foot
+ * of the map rather than a paragraph beneath it.
  *
- * The markers are drawn in canvas and the LABELS ARE DOM, which is not a
- * shortcut — a label the browser sets is one a screen reader can read and a
- * student can select, and 02 §6's rule that type is never textured means the
- * two layers were always going to be separate anyway.
+ * Everything about the sheet itself — shadow, tear, curl, ink — is canvas. The
+ * table is CSS, because it has to fill a viewport of unknown shape and there is
+ * nothing on it to get wrong.
  */
 .theatre {
   position: absolute; inset: 0; z-index: 70; pointer-events: auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; padding: 24px;
-  background: #2A2118;
-}
-/* The board the sheet lies on. Linen over wood, and it is what stops the map
-   floating in a void — a plan is a thing somebody has put down somewhere. */
-.theatre .board {
-  position: relative; padding: 16px;
-  background-color: #4A3D2C;
-  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px),
-                    repeating-linear-gradient(0deg, rgba(0,0,0,.08) 0 1px, transparent 1px 3px);
-  border: 1px solid #23180F;
+  /* Top-aligned, not centred. Centred, the sheet grows downward into the
+     caption and the bottom row of grid letters prints through the panel — and
+     those letters are one of the two things on this page a student is meant to
+     use. Pinning the sheet high lets it be as large as the room above the
+     caption allows and no larger. */
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 20px;
+  /* Oak, lit from over the reader's left shoulder like everything else in this
+     game: plank seams, a fine grain across them, and the room falling away at
+     the corners. */
+  background-color: #43301E;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.34) 0 3px, rgba(0,0,0,0) 3px 152px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.11) 0 1px, rgba(0,0,0,0) 1px 7px),
+    repeating-linear-gradient(90deg, rgba(255,244,222,.035) 0 2px, rgba(0,0,0,0) 2px 23px),
+    radial-gradient(ellipse at 42% 38%, rgba(168,124,72,.55), rgba(24,16,10,.92) 82%);
 }
 .theatre .sheet { position: relative; display: block; }
 .theatre .sheet canvas { display: block; width: 100%; height: 100%; }
-/* Marker labels. Absolutely placed against the sheet in fractions, so they
+/* Marker labels. Absolutely placed against the canvas in fractions, so they
    follow the map at any size and never need a second projection. */
 .theatre .tmark {
   position: absolute; transform: translate(-50%, -50%);
-  font: italic 13px/1.25 Georgia, "Times New Roman", serif;
+  font: italic 15px/1.25 Georgia, "Times New Roman", serif;
   color: ${INK.FLOOR}; white-space: nowrap; pointer-events: none;
   /* The border is always there and usually invisible, so picking a mark does
      not shift the label by a pixel. */
-  padding: 1px 4px; border: 1px solid transparent;
+  padding: 1px 5px; border: 1px solid transparent;
 }
 /* Faint captions for stale marks, matching the ink of the marker they name — a
    position nobody has confirmed does not get a confident label over it. */
-.theatre .tmark.old { opacity: 0.68; }
-.theatre .tmark.stale { opacity: 0.48; font-style: italic; }
+.theatre .tmark.old { opacity: 0.7; }
+.theatre .tmark.stale { opacity: 0.52; font-style: italic; }
 /* The focused mark: the label gets its line, and nothing else changes. */
 .theatre .tmark.on { opacity: 1; background: ${PAPER.BRIGHT}; border-color: ${INK.SETTLED}; }
 /*
@@ -161,33 +165,53 @@ export const CSS = `
  * was right to. Not because a circle is wrong here — a plan circles the thing
  * it is annotating — but because a circle drawn by the CSS box model is a web
  * element pretending, and this one has to be a pen going round a position on a
- * map. Two lines of canvas, and it sits in the same ink as everything it is
- * pointing at.
+ * map. Two arcs of canvas, and it sits in the same ink as everything it points
+ * at.
  */
 .theatre .ringlayer { position: absolute; inset: 0; pointer-events: none; }
-/* The caption strip. Fixed minimum height so cycling marks never reflows the
-   page — a map that jumps when you read it is a map you stop reading. */
+
+/*
+ * The caption, laid over the foot of the map.
+ *
+ * Not a sheet of paper — this is the only thing on the screen that is not in
+ * the world, so it does not pretend to be. It is a plate of smoked glass over
+ * the map, and this is the one screen in the game where that is allowed.
+ */
 .theatre .caption {
-  width: 100%; max-width: 900px; min-height: 96px;
-  color: #E4DAC4; font-size: 16px; line-height: 1.5;
+  position: absolute; left: 50%; bottom: 4.5vh; transform: translateX(-50%);
+  width: min(920px, calc(100vw - 80px)); min-height: 104px;
+  padding: 16px 26px 14px;
+  background: rgba(20, 14, 9, 0.86);
+  border: 1px solid #6B5B45;
+  color: #EFE7D5; font-size: 17px; line-height: 1.5;
 }
 .theatre .caption .head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
-  padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px solid #6B5B45;
+  padding-bottom: 7px; margin-bottom: 9px; border-bottom: 1px solid #6B5B45;
 }
-.theatre .caption .who { font-variant: small-caps; letter-spacing: .09em; font-size: 17px; }
-.theatre .caption .when { font-style: italic; opacity: 0.72; font-size: 14px; }
-.theatre .caption .standing { font-style: italic; opacity: 0.9; }
+.theatre .caption .who {
+  font-variant: small-caps; letter-spacing: .09em; font-size: 20px; color: #F3B75B;
+}
+.theatre .caption .when { font-style: italic; opacity: 0.75; font-size: 14px; }
+/* The square the mark sits in — C2 — set as a chip, because the whole reason
+   the grid is lettered is so that a student can say it out loud. */
+.theatre .caption .sq {
+  font: 600 13px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em;
+  color: #1B120A; background: #F3B75B; padding: 4px 7px; margin-right: 10px;
+  vertical-align: 2px;
+}
+.theatre .caption .standing { font-style: italic; opacity: 0.92; }
 /* The provenance line — where this came from and how old it is. It is the whole
    point of the screen, so it is set apart and never abbreviated. */
 .theatre .caption .from {
-  margin-top: 8px; font-size: 13px; letter-spacing: .03em; color: #B8A98C;
+  margin-top: 9px; font-size: 13px; letter-spacing: .03em; color: #C0AE8D;
 }
 .theatre .keys {
+  position: absolute; left: 50%; bottom: 1.4vh; transform: translateX(-50%);
   font: 12px/1 ui-monospace, Menlo, Consolas, monospace;
-  letter-spacing: .08em; color: #B8A98C; opacity: 0.8;
+  letter-spacing: .08em; color: #C0AE8D; opacity: 0.85;
 }
-.theatre .keys b { color: #EFE7D5; font-weight: 600; }
+.theatre .keys b { color: #F3B75B; font-weight: 600; }
 
 /* The dev scene picker. Plain, out of the way, and obviously a tool. */
 .devtab {
@@ -755,28 +779,27 @@ export class Overlay {
     const el = document.createElement('div');
     el.className = 'theatre';
 
-    // Fit the sheet inside the frame at its true proportions, leaving room for
-    // the caption strip and the key line under it.
-    // The caption strip is fixed at 96px and the key line and gaps take another
-    // ~90; leaving less than that pushed the provenance line under the keys,
-    // which put the one thing this screen exists to say behind a control hint.
-    const availW = Math.min(innerWidth - 96, 1180);
-    const availH = innerHeight - 280;
+    // The sheet takes the frame, less a hand's width of table all round. The
+    // caption floats over its foot rather than sitting under it, so the map is
+    // not paying for the panel in height.
+    const availW = innerWidth - 72;
+    // Room under the sheet for the caption to sit on the table rather than on
+    // the map: the panel was covering the bottom row of grid letters and the
+    // scale bar, which are two of the things a student is meant to use.
+    const availH = innerHeight - 214;
     let sw = availW;
-    let sh = sw / SHEET_ASPECT;
+    let sh = sw / CANVAS_ASPECT;
     if (sh > availH) {
       sh = availH;
-      sw = sh * SHEET_ASPECT;
+      sw = sh * CANVAS_ASPECT;
     }
 
-    const board = document.createElement('div');
-    board.className = 'board';
     const sheet = document.createElement('div');
     sheet.className = 'sheet';
     sheet.style.width = `${Math.round(sw)}px`;
     sheet.style.height = `${Math.round(sh)}px`;
     // Drawn at 1.6× and shown down, which is the cheapest anti-aliasing there
-    // is and it matters here: this page is nothing but hairlines.
+    // is and it matters here: this page is nothing but ruled lines.
     sheet.appendChild(theatreSheet(theatre, Math.round(sw * 1.6), Math.round(sh * 1.6)));
 
     const ring = document.createElement('canvas');
@@ -789,7 +812,7 @@ export class Overlay {
     sheet.appendChild(ring);
 
     const marks = theatre.tokens.map((t) => {
-      const [fx, fy] = at(t.lon, t.lat);
+      const [fx, fy] = canvasAt(t.lon, t.lat);
       const conf = confidenceOf(t, theatre.asOf);
       const m = document.createElement('div');
       m.className = `tmark ${conf}`;
@@ -798,23 +821,20 @@ export class Overlay {
       // out of base units — one set of numbers for the ink and the type both,
       // so a label can never drift off the end of its own leader.
       const [dx, dy] = labelOffset(t);
-      const s = sw / BASE;
+      const s = sw / CANVAS_W;
       m.style.left = `calc(${(fx * 100).toFixed(3)}% + ${(dx * s).toFixed(1)}px)`;
       m.style.top = `calc(${(fy * 100).toFixed(3)}% + ${(dy * s).toFixed(1)}px)`;
       sheet.appendChild(m);
       return m;
     });
 
-    board.appendChild(sheet);
-
     const caption = document.createElement('div');
     caption.className = 'caption';
     const keys = document.createElement('div');
     keys.className = 'keys';
-    keys.innerHTML =
-      '<b>← →</b> read the marks · <b>Space</b> to go on';
+    keys.innerHTML = '<b>← →</b> read the marks · <b>Space</b> to go on';
 
-    el.append(board, caption, keys);
+    el.append(sheet, caption, keys);
     this.root.appendChild(el);
     this.panel = el;
 
@@ -832,12 +852,12 @@ export class Overlay {
         return;
       }
       const t = theatre.tokens[focus];
-      const [fx, fy] = at(t.lon, t.lat);
+      const [fx, fy] = canvasAt(t.lon, t.lat);
       // Drawn twice at slightly different radii, the way a hand goes round
       // twice when it wants a thing found again later.
       rc.strokeStyle = INK.SETTLED;
       rc.lineWidth = 1;
-      for (const [r, a] of [[22, 0.85], [25.5, 0.4]] as [number, number][]) {
+      for (const [r, a] of [[26, 0.9], [30, 0.45]] as [number, number][]) {
         rc.globalAlpha = a;
         rc.beginPath();
         rc.arc(fx * ring.width, fy * ring.height, r, 0, Math.PI * 2);
@@ -846,7 +866,7 @@ export class Overlay {
       rc.globalAlpha = 1;
       caption.innerHTML =
         '<div class="head">' +
-        `<span class="who">${t.label}</span>` +
+        `<span class="who"><span class="sq">${gridRef(t.lon, t.lat)}</span>${t.label}</span>` +
         `<span class="when">${focus + 1} of ${theatre.tokens.length}</span></div>` +
         `<div class="note">${t.note}</div>` +
         `<div class="from">${provenanceOf(t, theatre.asOf)}</div>`;

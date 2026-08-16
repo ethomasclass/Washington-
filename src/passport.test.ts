@@ -13,7 +13,7 @@ import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
 import { decisionList, ledgerFor, sceneList } from './content';
 import { reckon, RECKONED_ACTS } from './ledger';
-import { at, BASE, confidenceOf, labelOffset, SHEET_ASPECT, THEATRES } from './theatre';
+import { at, confidenceOf, gridRef, labelOffset, MAP_H, MAP_W, THEATRES } from './theatre';
 import { figureHalfW, frameX } from './ground';
 import { walkFar } from './art';
 import { councilFor, lockOn, rejoinderFor } from './council';
@@ -681,6 +681,11 @@ console.log('\nthe theatre map');
       // The label sits beside the mark, in the margin of a page. It is not the
       // note, and the moment it starts explaining, the map has become a wiki.
       check(`${where}: the label is a label`, t.label.split(/\s+/).length <= 5);
+
+      // The lettered grid is only useful if it resolves. A mark that falls
+      // outside A1..E4 means the projection and the grid have drifted apart.
+      check(`${where}: sits in a named square (${gridRef(t.lon, t.lat)})`,
+        /^[A-E][1-4]$/.test(gridRef(t.lon, t.lat)));
     }
 
     /*
@@ -712,7 +717,7 @@ console.log('\nthe theatre map');
       const [x, y] = at(t.lon, t.lat);
       const [dx, dy] = labelOffset(t);
       // Sheet fractions to base units, which is what the offsets are in.
-      return { t, x: x * BASE + dx, y: (y * BASE) / SHEET_ASPECT + dy };
+      return { t, x: x * MAP_W + dx, y: y * MAP_H + dy };
     });
     const clashes: string[] = [];
     for (let i = 0; i < placed.length; i++) {

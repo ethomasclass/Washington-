@@ -254,11 +254,12 @@ export const CB03: Scene = {
           at: 0.14,
           y: 0.35,
           bearing: 'directly across the water',
-          name: 'Charlestown',
+          name: 'the ground they hold at Charlestown',
           text:
-            'What is left of it. They burned it on the seventeenth of June to clear their way up ' +
-            'the hill, and nobody has rebuilt so much as a shed since. Chimneys, and the lines of ' +
-            'streets, and nothing standing between them.',
+            'What is left of the town they burned on the seventeenth of June to clear their way ' +
+            'up the hill — and they hold every foot of it. Red coats posted where the streets ran, ' +
+            'sentries where the houses stood. They took this ground once, at a price, and they ' +
+            'mean to keep it.',
           grants: 'map.a2.charlestown',
         },
         {
@@ -266,11 +267,11 @@ export const CB03: Scene = {
           at: 0.11,
           y: 0.24,
           bearing: 'the high ground behind it',
-          name: "Bunker's Hill",
+          name: "the regiments on Bunker's Hill",
           text:
-            'Theirs now, and dug in properly. They paid a thousand men for that hill and they do ' +
-            'not intend to pay for it twice. Prescott took his regiment off it and has been ' +
-            'looking at it ever since.',
+            'Theirs now, and dug in properly — whole regiments behind earth, drilled men who ' +
+            'load and fire on the word and have already stood their ground once without breaking. ' +
+            'They paid a thousand men for that hill in June and do not intend to pay for it twice.',
           grants: 'map.a2.bunker',
         },
         {
@@ -278,10 +279,11 @@ export const CB03: Scene = {
           at: 0.52,
           y: 0.31,
           bearing: 'the north point of the town',
-          name: "Copp's Hill battery",
+          name: "the battery on Copp's Hill",
           text:
-            'The guns that fired on Charlestown while it burned. They are still there, still ' +
-            'laid, and they can reach this hill more easily than this hill can reach them.',
+            'The guns that fired on Charlestown while it burned, still laid and still manned. ' +
+            'Count them: that is more artillery in one work than the whole of your line has the ' +
+            'powder to answer — and it reaches this hill more easily than this hill reaches it.',
           grants: 'map.a2.copps',
         },
         {
@@ -289,11 +291,11 @@ export const CB03: Scene = {
           at: 0.44,
           y: 0.21,
           bearing: 'the tallest spire in the north end',
-          name: 'Christ Church',
+          name: 'their lookout in Christ Church',
           text:
-            'Two lanterns hung in that steeple on the eighteenth of April and the whole country ' +
-            'turned out because of it. It is a church again now, and the men who hung them are ' +
-            'inside the British lines.',
+            'Two lanterns hung in that steeple in April and the whole country turned out. There ' +
+            'is a man at the top of it now with a glass of his own, watching you dig exactly as ' +
+            'you are watching him — and the men who hung the lanterns are inside his lines.',
           grants: 'map.a2.north_church',
         },
         {
@@ -301,11 +303,11 @@ export const CB03: Scene = {
           at: 0.60,
           y: 0.27,
           bearing: 'the hill above the town',
-          name: 'Beacon Hill',
+          name: 'the height they hold at Beacon Hill',
           text:
-            'The mast the town is named for, and nothing lit on it. From up there a man can see ' +
-            'every one of your works at once, which is worth remembering every time you order a ' +
-            'new one dug.',
+            'The mast the town is named for, and the hill under it is theirs. From up there a man ' +
+            'sees every work on this side at once — so take it that every spadeful you order dug ' +
+            'was counted by someone before the earth was turned.',
           grants: 'map.a2.beacon',
         },
         {
@@ -313,10 +315,11 @@ export const CB03: Scene = {
           at: 0.26,
           y: 0.41,
           bearing: 'the near shore, below the ruins',
-          name: 'the Charlestown ferry ways',
+          name: 'the landing at the ferry ways',
           text:
-            'Where the boats came over in June, and where they would come over again. A hundred ' +
-            'yards of shingle that decides whether this hill is a position or a trap.',
+            'A hundred yards of shingle where the boats came over in June — and where the next ' +
+            'regiments come over the day the fleet decides to send them. This is the ground that ' +
+            'decides whether you are besieging them or waiting on them.',
           grants: 'map.a2.ferry',
         },
         {
@@ -324,11 +327,11 @@ export const CB03: Scene = {
           at: 0.80,
           y: 0.43,
           bearing: 'the anchorage beyond',
-          name: 'the men-of-war',
+          name: 'the fleet in the stream',
           text:
-            'Anchored in the stream with their yards crossed, which is how an army in a besieged ' +
-            'town gets fed. Until somebody can shut that water, the siege is a fence and not a ' +
-            'noose.',
+            'Ships of the line with their yards crossed, which is how a besieged town gets fed ' +
+            'and how fresh regiments come ashore dry. Until someone can shut that water their army ' +
+            'can be made larger any week they choose — while yours goes home in December.',
           grants: 'map.a2.shipping',
         },
       ],

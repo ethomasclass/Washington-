@@ -20,7 +20,7 @@ import {
 import type { Facing, LookOpts, PropKind } from './art';
 import { loadFigureSheet } from './figures';
 import { SCENERY, loadScenery } from './scenery';
-import { DRAWN_DEPTHS, DRAWN_PLATES } from './manuscript';
+import { drawnPerson, DRAWN_DEPTHS, DRAWN_PLATES } from './manuscript';
 import { PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
@@ -574,11 +574,29 @@ export class DioramaRenderer {
     }
 
     npcPositions.forEach((a, i) => {
+      /*
+       * Drawn people where the scene is drawn, and the placeholder cutouts
+       * everywhere else.
+       *
+       * Keyed off the plate set rather than off a flag, so a scene's figures
+       * always speak the same language as the ground they stand on — which is
+       * the whole reason the medium was settled. A placeholder figure in a drawn
+       * world got worse every time the world improved.
+       */
       const mesh = mk(
-        characterCutout(a.coat, a.seed, 320, -1, {
-          hat: a.hat, build: a.build, gown: a.gown, skin: a.skin,
-          hair: a.hair, facings: a.facings, cap: a.cap,
-        }),
+        DRAWN_PLATES[plateSet]
+          ? drawnPerson(
+              {
+                coat: a.coat, hat: a.hat, build: a.build, gown: a.gown,
+                skin: a.skin, hair: a.hair, facings: a.facings, cap: a.cap,
+              },
+              a.seed,
+              320,
+            )
+          : characterCutout(a.coat, a.seed, 320, -1, {
+              hat: a.hat, build: a.build, gown: a.gown, skin: a.skin,
+              hair: a.hair, facings: a.facings, cap: a.cap,
+            }),
         -1.25,
         a.tall ?? 1,
       );

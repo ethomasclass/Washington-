@@ -1011,3 +1011,177 @@ export function drawCamp(W = 1600, H = 900): HTMLCanvasElement {
   paper(x, W, H, mulberry(31));
   return c;
 }
+
+/* ------------------------------------------------------------- the people */
+
+export interface PersonLook {
+  coat: string;
+  hat?: 'tricorne' | 'round' | 'none';
+  /** Shoulder and hip width multiplier, around 1. */
+  build?: number;
+  /** Height multiplier, around 1. */
+  tall?: number;
+  gown?: boolean;
+  cap?: boolean;
+  skin?: string;
+  hair?: string;
+  /** Cuffs and lapels. A livery is defined by its facings. */
+  facings?: string;
+  /** A fringed linen hunting shirt over the coat — the Virginia riflemen. */
+  hunting?: boolean;
+}
+
+const SKINS = ['#C8A07C', '#B98D68', '#8C6242', '#6E4630', '#D2B08C'];
+const HAIRS = ['#3E3226', '#2B2118', '#6B5638', '#8A7A55', '#B9B0A0'];
+
+/**
+ * A person, drawn.
+ *
+ * The brief is narrow and it is the same brief the figure sheets were cut to:
+ * this is read at about eighty pixels, moving, against a drawn world, and the
+ * player has to be able to tell one man from another well enough to remember
+ * which one they have already spoken to. So everything here is spent on
+ * SILHOUETTE — the hat, the width of the coat skirts, the length of the
+ * garment, whether the man is carrying anything — and almost nothing is spent
+ * on the face, which at this size is two marks and a nose and cannot be more.
+ *
+ * The period silhouette is the whole trick: a coat cut close to the body and
+ * flaring hard from the waist into skirts that end at mid-thigh. Get that and a
+ * figure reads as eighteenth-century before any detail is legible. Miss it and
+ * no amount of buttons will save it.
+ */
+export function drawnPerson(look: PersonLook, seed: number, H = 320): HTMLCanvasElement {
+  const rnd = mulberry(seed * 7919 + 13);
+  const build = look.build ?? 1;
+  const tall = look.tall ?? 1;
+  const W = Math.round(H * 0.46); // ground.ts FIGURE_ASPECT
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const x = c.getContext('2d')!;
+
+  const cx = W / 2;
+  const foot = H * 0.985;
+  const top = H * (1 - tall) + H * 0.02;
+  const headH = (foot - top) * 0.135;
+  const headY = top + headH * 0.5;
+  const shoulder = top + headH * 1.35;
+  const waist = top + (foot - top) * 0.46;
+  const skirt = top + (foot - top) * (look.gown ? 0.99 : 0.63);
+  const knee = top + (foot - top) * 0.76;
+  const halfSh = W * 0.19 * build;
+  const halfHip = W * 0.17 * build;
+
+  const skin = look.skin ?? SKINS[Math.floor(rnd() * SKINS.length)];
+  const hair = look.hair ?? HAIRS[Math.floor(rnd() * HAIRS.length)];
+  const facings = look.facings ?? shadeOf(look.coat, 0.1);
+  const coatShade = shadeOf(look.coat, -0.07);
+
+  // Legs: breeches to the knee, then stockings, then a shoe. Drawn first so the
+  // coat skirts close over the top of them.
+  if (!look.gown) {
+    for (const side of [-1, 1]) {
+      const lx = cx + side * halfHip * 0.5;
+      shape(x, [[lx - W * 0.07, waist], [lx + W * 0.07, waist],
+                [lx + W * 0.06, knee], [lx - W * 0.06, knee]], '#C9BFA6', rnd, 1.5);
+      shape(x, [[lx - W * 0.055, knee], [lx + W * 0.055, knee],
+                [lx + W * 0.05, foot - H * 0.03], [lx - W * 0.05, foot - H * 0.03]], '#E0D8C2', rnd, 1.4);
+      shape(x, [[lx - W * 0.07, foot - H * 0.03], [lx + W * 0.075, foot - H * 0.03],
+                [lx + W * 0.075, foot], [lx - W * 0.07, foot]], '#2E2419', rnd, 1.5);
+    }
+  }
+
+  // The garment. A gown falls straight from the shoulder; a coat is cut close
+  // and flares hard from the waist, which is the period's whole silhouette.
+  const body: Pt[] = look.gown
+    ? [[cx - halfSh, shoulder], [cx + halfSh, shoulder],
+       [cx + halfHip * 2.0, skirt], [cx - halfHip * 2.0, skirt]]
+    : [[cx - halfSh, shoulder], [cx + halfSh, shoulder],
+       [cx + halfHip * 0.92, waist], [cx + halfHip * 1.75, skirt],
+       [cx - halfHip * 1.75, skirt], [cx - halfHip * 0.92, waist]];
+  shape(x, body, look.coat, rnd, 2);
+  // The shaded half, a second flat with its own edge — never a gradient.
+  inside(x, body, () => {
+    fill(x, [[cx + halfSh * 0.15, shoulder - 4], [cx + halfSh * 2.4, shoulder - 4],
+             [cx + halfHip * 2.4, skirt + 4], [cx + halfHip * 0.2, skirt + 4]], coatShade);
+    pen(x, [[cx + halfSh * 0.15, shoulder], [cx + halfHip * 0.2, skirt]], rnd, 1.3);
+  });
+
+  if (!look.gown) {
+    // Lapels turned back, in the facing colour: the one thing that says which
+    // regiment a man belongs to, when he belongs to one at all.
+    shape(x, [[cx - halfSh * 0.72, shoulder + 2], [cx - halfSh * 0.1, shoulder + 2],
+              [cx - halfSh * 0.25, waist * 0.62 + shoulder * 0.38]], facings, rnd, 1.3);
+    shape(x, [[cx + halfSh * 0.72, shoulder + 2], [cx + halfSh * 0.1, shoulder + 2],
+              [cx + halfSh * 0.25, waist * 0.62 + shoulder * 0.38]], facings, rnd, 1.3);
+    // The vent up the back of the skirts.
+    pen(x, [[cx, waist], [cx, skirt]], rnd, 1.2);
+  }
+
+  // A fringed hunting shirt over the coat — the Virginia riflemen, and the one
+  // garment in the camp that reads at a hundred yards.
+  if (look.hunting) {
+    const hs: Pt[] = [[cx - halfSh * 1.05, shoulder + 2], [cx + halfSh * 1.05, shoulder + 2],
+                      [cx + halfHip * 1.5, skirt * 0.82 + waist * 0.18],
+                      [cx - halfHip * 1.5, skirt * 0.82 + waist * 0.18]];
+    shape(x, hs, '#DCD3BC', rnd, 1.8);
+    const fy = skirt * 0.82 + waist * 0.18;
+    for (let i = 0; i < 11; i++) {
+      const fx2 = cx - halfHip * 1.45 + (i / 10) * halfHip * 2.9;
+      pen(x, [[fx2, fy], [fx2 + (rnd() - 0.5) * 3, fy + H * 0.035]], rnd, 1);
+    }
+  }
+
+  // Arms, hanging. Two narrow shapes and a cuff — no hands worth the name.
+  for (const side of [-1, 1]) {
+    const ax = cx + side * (halfSh - W * 0.02);
+    shape(x, [[ax - W * 0.055, shoulder + 2], [ax + W * 0.055, shoulder + 4],
+              [ax + W * 0.05, waist + H * 0.06], [ax - W * 0.06, waist + H * 0.05]],
+      look.hunting ? '#DCD3BC' : look.coat, rnd, 1.5);
+    shape(x, [[ax - W * 0.06, waist + H * 0.03], [ax + W * 0.05, waist + H * 0.04],
+              [ax + W * 0.045, waist + H * 0.075], [ax - W * 0.055, waist + H * 0.065]],
+      facings, rnd, 1.2);
+  }
+
+  // The stock at the throat: a scrap of white that separates head from body at
+  // any size, and every man in the period wore one.
+  shape(x, [[cx - W * 0.075, shoulder - 3], [cx + W * 0.075, shoulder - 3],
+            [cx + W * 0.06, shoulder + H * 0.022], [cx - W * 0.06, shoulder + H * 0.022]],
+    '#E8E2D4', rnd, 1.2);
+
+  // Hair behind the head, then the head over it.
+  shape(x, [[cx - W * 0.115, headY - headH * 0.5], [cx + W * 0.115, headY - headH * 0.5],
+            [cx + W * 0.12, headY + headH * 0.72], [cx - W * 0.12, headY + headH * 0.72]], hair, rnd, 1.5);
+  shape(x, [[cx - W * 0.088, headY - headH * 0.42], [cx + W * 0.088, headY - headH * 0.42],
+            [cx + W * 0.082, headY + headH * 0.52], [cx - W * 0.082, headY + headH * 0.52]], skin, rnd, 1.5);
+  // Two marks and a nose. Nothing else survives at eighty pixels.
+  pen(x, [[cx - W * 0.05, headY - headH * 0.05], [cx - W * 0.02, headY - headH * 0.05]], rnd, 1.1);
+  pen(x, [[cx + W * 0.02, headY - headH * 0.05], [cx + W * 0.05, headY - headH * 0.05]], rnd, 1.1);
+  pen(x, [[cx, headY + headH * 0.02], [cx - W * 0.012, headY + headH * 0.18]], rnd, 1);
+
+  // The hat. It is doing more work than the face and it is worth more strokes.
+  const hy = headY - headH * 0.44;
+  if (look.cap) {
+    shape(x, [[cx - W * 0.11, hy + headH * 0.1], [cx - W * 0.085, hy - headH * 0.42],
+              [cx + W * 0.085, hy - headH * 0.42], [cx + W * 0.11, hy + headH * 0.1]], '#EFE7D5', rnd, 1.5);
+  } else if (look.hat === 'tricorne') {
+    shape(x, [[cx - W * 0.20, hy + headH * 0.05], [cx - W * 0.06, hy - headH * 0.52],
+              [cx + W * 0.06, hy - headH * 0.52], [cx + W * 0.20, hy + headH * 0.05],
+              [cx, hy + headH * 0.18]], '#2E2419', rnd, 1.7);
+  } else if (look.hat === 'round') {
+    shape(x, [[cx - W * 0.155, hy + headH * 0.06], [cx + W * 0.155, hy + headH * 0.06],
+              [cx + W * 0.10, hy - headH * 0.5], [cx - W * 0.10, hy - headH * 0.5]], '#4A3B2C', rnd, 1.6);
+    pen(x, [[cx - W * 0.175, hy + headH * 0.06], [cx + W * 0.175, hy + headH * 0.06]], rnd, 1.8);
+  }
+
+  return c;
+}
+
+/** Lighten or darken a hex colour. Local to the figure drawing. */
+function shadeOf(hex: string, k: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v: number) => Math.max(0, Math.min(255, Math.round(v + 255 * k)));
+  return `#${[f((n >> 16) & 255), f((n >> 8) & 255), f(n & 255)]
+    .map((v) => v.toString(16).padStart(2, '0'))
+    .join('')}`;
+}

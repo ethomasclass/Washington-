@@ -252,6 +252,7 @@ export const CB03: Scene = {
         {
           id: 'charlestown',
           at: 0.14,
+          y: 0.35,
           bearing: 'directly across the water',
           name: 'Charlestown',
           text:
@@ -263,6 +264,7 @@ export const CB03: Scene = {
         {
           id: 'bunker',
           at: 0.11,
+          y: 0.24,
           bearing: 'the high ground behind it',
           name: "Bunker's Hill",
           text:
@@ -274,6 +276,7 @@ export const CB03: Scene = {
         {
           id: 'copps',
           at: 0.52,
+          y: 0.31,
           bearing: 'the north point of the town',
           name: "Copp's Hill battery",
           text:
@@ -283,7 +286,8 @@ export const CB03: Scene = {
         },
         {
           id: 'north_church',
-          at: 0.47,
+          at: 0.44,
+          y: 0.21,
           bearing: 'the tallest spire in the north end',
           name: 'Christ Church',
           text:
@@ -294,7 +298,8 @@ export const CB03: Scene = {
         },
         {
           id: 'beacon',
-          at: 0.56,
+          at: 0.60,
+          y: 0.27,
           bearing: 'the hill above the town',
           name: 'Beacon Hill',
           text:
@@ -305,7 +310,8 @@ export const CB03: Scene = {
         },
         {
           id: 'ferry',
-          at: 0.24,
+          at: 0.26,
+          y: 0.41,
           bearing: 'the near shore, below the ruins',
           name: 'the Charlestown ferry ways',
           text:
@@ -315,7 +321,8 @@ export const CB03: Scene = {
         },
         {
           id: 'shipping',
-          at: 0.78,
+          at: 0.80,
+          y: 0.43,
           bearing: 'the anchorage beyond',
           name: 'the men-of-war',
           text:

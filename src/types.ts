@@ -64,9 +64,19 @@ export interface Interactable {
 
 export interface SurveyTarget {
   id: string;
-  /** Where across the frame it lies, 0..1. The glass swings to it. */
+  /**
+   * Where the position lies in the view, as fractions of the frame, 0..1.
+   *
+   * `at` is the horizontal, `y` the vertical. The player aims the glass across
+   * the darkened panorama and holds it here to make the position out; a hidden
+   * ring sits at (`at`, `y`) and blooms when the glass centres on it. `y` is
+   * optional and defaults to the horizon band — the only place the old
+   * single-axis targets ever sat — so a target authored before the glass could
+   * be aimed keeps working, it simply lives on the skyline.
+   */
   at: number;
-  /** What the player sees in the list before naming it. */
+  y?: number;
+  /** What the player sees named on the bearing list once it has been made out. */
   bearing: string;
   /** What it turns out to be. */
   name: string;

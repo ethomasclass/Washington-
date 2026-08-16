@@ -442,6 +442,7 @@ function interact(): void {
       const rows = it.survey!.map((t) => ({
         id: t.id,
         at: t.at,
+        y: t.y ?? 0.3,
         bearing: t.bearing,
         name: t.name,
         done: state.knowledge.has(t.grants),

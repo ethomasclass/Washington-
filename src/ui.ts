@@ -66,45 +66,41 @@ export const CSS = `
 .journal .objectives { margin: 0 0 14px; padding-left: 20px; }
 .journal .objectives li { margin-bottom: 4px; }
 
-/* The spyglass. Everything goes dark but the circle. */
+/*
+ * The spyglass. Everything goes dark but the circle you are holding.
+ *
+ * This used to be a menu: a fixed eyepiece in the middle of the screen and a
+ * list of seven buttons under it, and the "looking" was choosing a row. It is
+ * now an instrument the player aims. The whole thing — the darkened panorama,
+ * the seven rings hidden in it, the glow that gathers when the glass settles on
+ * a position, the brass rim of the eyepiece itself — is drawn on ONE canvas,
+ * because 02 §8.1 forbids a circle made of the CSS box model and a glow made of
+ * a drop shadow. A ring here is ink and light on a surface, not chrome.
+ */
 .glass {
   /* pointer-events: auto, because the overlay root disables them so the game
      can be clicked through everywhere else. */
   position: fixed; inset: 0; z-index: 60; pointer-events: auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; background: rgba(12, 9, 6, 0.9);
+  background: rgba(9, 7, 5, 0.94);
+  /* The system cursor is hidden: the glass IS the pointer. */
+  cursor: none;
 }
-/* The two rings are the instrument — the barrel and its brass collar, drawn as
-   an object. The soft drop shadow that used to sit under them was not, and is
-   gone. */
-.glass .eye {
-  border-radius: 50%;
-  box-shadow: 0 0 0 7px #23180F, 0 0 0 10px #4A3A24;
-}
+/* The field fills the screen. Everything the instrument shows is painted here. */
+.glass .field { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The two lines of text sit over the field, out of the way at top and bottom.
+   They are the only DOM the glass keeps — a count and a key hint — because they
+   are words, not objects, and words are the one thing the canvas is worse at. */
 .glass .eyecap {
-  font-variant: small-caps; letter-spacing: 0.10em; font-size: 13px;
-  color: #D8CDB6; opacity: 0.85;
+  position: absolute; top: 3.2vh; left: 50%; transform: translateX(-50%);
+  font-variant: small-caps; letter-spacing: 0.12em; font-size: 14px;
+  color: #D8CDB6; opacity: 0.85; pointer-events: none; white-space: nowrap;
 }
-.glass .bearings {
-  display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
-  max-width: min(880px, 92vw);
+.glass .instr {
+  position: absolute; bottom: 3vh; left: 50%; transform: translateX(-50%);
+  font-size: 13px; letter-spacing: 0.04em; color: #C3B79B; opacity: 0.6;
+  pointer-events: none; white-space: nowrap; text-align: center;
 }
-.glass .continue { color: #C3B79B; opacity: 0.62; }
-
-/* The spyglass list: bearing on the left, what it proved to be on the right. */
-.survey { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
-/* The bearing list is in-world UI — it is what the glass shows — so it obeys
-   the same discipline as everything else: square corners, a full-opacity ink
-   line, and no half-transparent fill. */
-.sopt {
-  display: flex; justify-content: space-between; gap: 14px;
-  font: inherit; text-align: left; cursor: pointer;
-  padding: 8px 12px; color: #3B2E22;
-}
-.sopt:hover { background-color: #FFFDF6; }
-.sopt.seen { cursor: default; opacity: 0.72; border-style: dashed; }
-.sopt .bear { font-style: italic; }
-.sopt .named { font-variant: small-caps; letter-spacing: 0.04em; }
+.glass .instr b { color: #E9DEC6; font-weight: 600; }
 
 /*
  * THE THEATRE MAP — the page that opens an act.
@@ -259,7 +255,7 @@ export const CSS = `
    * degrades to plain paper rather than to a broken url().
    */
   .journal, .reckoning, .panel, .bubble, .return, .codebar, .prompt,
-  .plate-title, .intent, .hint, .sopt {
+  .plate-title, .intent, .hint {
     background-color: ${PAPER.BRIGHT};
     background-image:
       repeating-linear-gradient(90deg, rgba(110,97,82,.05) 0 1px, transparent 1px 96px),
@@ -599,6 +595,13 @@ export class Overlay {
   private panel: HTMLElement | null = null;
   private thought: HTMLElement | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  /**
+   * A panel that owns more than its DOM — a running animation frame, a window
+   * listener — registers how to release it here, and `detach()` runs it when the
+   * panel is torn down. The spyglass is the one that needs this: it keeps a
+   * requestAnimationFrame loop and a resize handler alive for as long as it is up.
+   */
+  private panelCleanup: (() => void) | null = null;
 
   constructor(root: HTMLElement, head: SceneHead) {
     this.root = root;
@@ -991,6 +994,10 @@ export class Overlay {
   private detach(): void {
     if (this.keyHandler) removeEventListener('keydown', this.keyHandler);
     this.keyHandler = null;
+    if (this.panelCleanup) {
+      this.panelCleanup();
+      this.panelCleanup = null;
+    }
   }
 
   private clearPanel(): void {
@@ -1088,26 +1095,34 @@ export class Overlay {
   /**
    * The spyglass.
    *
-   * Not a list with a picture beside it — a view through the instrument. The
-   * screen goes dark except for one circle, and inside that circle is a
-   * magnified crop of the actual scene taken off the game canvas, swung to
-   * whichever bearing is being looked at. Sweeping between bearings pans the
-   * glass across the water.
+   * Not a list with a picture beside it, and no longer a fixed circle you swing
+   * with a menu — a view through an instrument you AIM. The screen goes dark and
+   * hazy, the way a far shore is to the naked eye, and the glass becomes the
+   * pointer: a magnifying circle the player moves across the panorama, holding
+   * it on a position until the position resolves and names itself.
    *
-   * The crop is a still, grabbed once when the glass is raised. That is not a
-   * shortcut, it is the right behaviour: a man with his eye to a glass is
-   * holding still, and the whole frame going quiet is most of what makes it
-   * feel like an instrument rather than a menu.
+   * Seven positions are hidden in the view. Each is marked by a faint shimmer so
+   * nobody is ever hunting a blank field, but the shimmer only blooms into a
+   * bright ring — and the name — when the glass settles on it and is held there.
+   * That is the difference between a looking assignment and a reading one (07):
+   * the reward for putting the glass on Bunker's Hill and keeping it there is
+   * that Bunker's Hill is now a thing you found, not a row you clicked.
    *
-   * The circle is drawn with the eyepiece's own faults — the image falls off
-   * toward the rim, and there is a fringe of colour at the edge where cheap
-   * eighteenth-century glass could not bring every wavelength to the same
-   * focus. Both are period-correct and both are what the eye reads as "lens".
+   * Everything is painted on one canvas. The darkened scene, the rings, the
+   * glow that gathers under the glass, the brass rim of the eyepiece and the
+   * lens's own faults — the fall-off toward the edge and the fringe of colour a
+   * cheap eighteenth-century glass leaves — are all ink and light on a surface.
+   * 02 §8.1 forbids the alternative: a circle made of border-radius and a glow
+   * made of a drop shadow is a web element pretending to be an instrument.
+   *
+   * The scene behind the glass is a still, grabbed once when the glass is
+   * raised. A man with his eye to a glass is holding still, and the whole frame
+   * going quiet is most of what makes this an instrument and not a menu.
    */
   showSurvey(
     label: string,
     source: HTMLCanvasElement,
-    targets: { id: string; at: number; bearing: string; name: string; done: boolean }[],
+    targets: { id: string; at: number; y: number; bearing: string; name: string; done: boolean }[],
     onPick: (id: string) => void,
     onDone: () => void,
   ): void {
@@ -1115,99 +1130,288 @@ export class Overlay {
     const wrap = document.createElement('div');
     wrap.className = 'glass';
 
-    const D = Math.round(Math.min(innerWidth, innerHeight) * 0.56);
-    const eye = document.createElement('canvas');
-    eye.className = 'eye';
-    eye.width = D;
-    eye.height = D;
-    const g = eye.getContext('2d')!;
+    const field = document.createElement('canvas');
+    field.className = 'field';
+    const caption = document.createElement('div');
+    caption.className = 'eyecap';
+    const hint = document.createElement('div');
+    hint.className = 'instr';
+    hint.innerHTML =
+      'move the glass · hold it on a position to make it out · ' +
+      'press <b>Space</b> to lower the glass';
+    wrap.append(field, caption, hint);
+    this.root.append(wrap);
+    this.panel = wrap;
 
-    /** Swing the glass to a bearing and redraw what is in it. */
-    const look = (at: number): void => {
-      const ZOOM = 3.4;
-      const sw = source.width / ZOOM;
-      const sh = source.height / ZOOM;
-      // Clamped so the glass cannot swing off the edge of the world.
-      const sx = Math.max(0, Math.min(source.width - sw, at * source.width - sw / 2));
-      // Held on the horizon, which is the only band with anything in it.
-      const sy = Math.max(0, Math.min(source.height - sh, source.height * 0.30 - sh / 2));
+    const g = field.getContext('2d')!;
+    const TAU = Math.PI * 2;
+    const ZOOM = 3.4; // magnification of the glass over the naked-eye backdrop
+    const HOLD = 520; // ms the glass must rest on a position before it resolves
+
+    // Screen and buffer sizing. The canvas is drawn in CSS pixels; the backing
+    // store is scaled by the device ratio so the rim and the type stay crisp.
+    let W = 0;
+    let H = 0;
+    let dpr = 1;
+    let D = 0; // glass diameter, on screen
+    // The cover transform from the snapshot to the screen — the same arithmetic
+    // as `object-fit: cover`, so a target's (at, y) lands in the right place and
+    // the magnified crop is taken from the matching spot in the source.
+    let scale = 1;
+    let ox = 0;
+    let oy = 0;
+    // The darkened panorama, painted once and blitted every frame.
+    const bg = document.createElement('canvas');
+    const bgx = bg.getContext('2d')!;
+
+    const layout = (): void => {
+      dpr = Math.min(2, devicePixelRatio || 1);
+      W = innerWidth;
+      H = innerHeight;
+      D = Math.round(Math.min(W, H) * 0.42);
+      field.width = Math.round(W * dpr);
+      field.height = Math.round(H * dpr);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      scale = Math.max(W / source.width, H / source.height);
+      ox = (W - source.width * scale) / 2;
+      oy = (H - source.height * scale) / 2;
+
+      // Paint the backdrop: the scene, covered to the screen, then pushed back
+      // into dusk so the naked eye cannot pick a battery out of the far shore.
+      bg.width = field.width;
+      bg.height = field.height;
+      bgx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      bgx.clearRect(0, 0, W, H);
+      bgx.drawImage(source, 0, 0, source.width, source.height, ox, oy, source.width * scale, source.height * scale);
+      // A cool wash over everything — distance, and the light going.
+      bgx.fillStyle = 'rgba(14, 18, 26, 0.44)';
+      bgx.fillRect(0, 0, W, H);
+      bgx.fillStyle = 'rgba(9, 7, 5, 0.42)';
+      bgx.fillRect(0, 0, W, H);
+    };
+
+    // Where each target sits on screen, through the same cover transform.
+    const sxOf = (t: { at: number }): number => ox + t.at * source.width * scale;
+    const syOf = (t: { y: number }): number => oy + t.y * source.height * scale;
+
+    // The glass follows the pointer; arrow keys nudge it for the keyboard. It
+    // starts in the middle, glass lowered onto the centre of the water.
+    const pos = { x: 0, y: 0 };
+    let placed = false;
+    const clamp = (): void => {
+      pos.x = Math.max(6, Math.min(W - 6, pos.x));
+      pos.y = Math.max(6, Math.min(H - 6, pos.y));
+    };
+
+    // Focus accumulates while the glass rests near an un-made-out position, and
+    // bleeds away when it moves off. `locked` guards the hand-off so a position
+    // resolves exactly once even though the loop is still running the frame it
+    // crosses the line.
+    let focusId: string | null = null;
+    let focusMs = 0;
+    let locked = false;
+
+    const nearestOpen = (): { t: typeof targets[number]; d: number } | null => {
+      let best: { t: typeof targets[number]; d: number } | null = null;
+      for (const t of targets) {
+        if (t.done) continue;
+        const d = Math.hypot(pos.x - sxOf(t), pos.y - syOf(t));
+        if (!best || d < best.d) best = { t, d };
+      }
+      return best;
+    };
+
+    /** One ring on the far shore — a soft glow and a crisp arc of ink-light. */
+    const ring = (x: number, y: number, r: number, glow: number, solid: number): void => {
+      if (glow > 0) {
+        const grad = g.createRadialGradient(x, y, 0, x, y, r * 2.2);
+        grad.addColorStop(0, `rgba(243, 183, 91, ${0.28 * glow})`);
+        grad.addColorStop(0.5, `rgba(243, 183, 91, ${0.12 * glow})`);
+        grad.addColorStop(1, 'rgba(243, 183, 91, 0)');
+        g.fillStyle = grad;
+        g.beginPath();
+        g.arc(x, y, r * 2.2, 0, TAU);
+        g.fill();
+      }
+      g.strokeStyle = `rgba(245, 196, 110, ${solid})`;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(x, y, r, 0, TAU);
+      g.stroke();
+    };
+
+    /** The eyepiece: the magnified crop, its faults, the reticle and the brass. */
+    const eyepiece = (cx: number, cy: number): void => {
+      const span = D / (scale * ZOOM); // source pixels shown across the glass
+      const sx = (cx - ox) / scale - span / 2;
+      const sy = (cy - oy) / scale - span / 2;
 
       g.save();
-      g.clearRect(0, 0, D, D);
       g.beginPath();
-      g.arc(D / 2, D / 2, D / 2 - 2, 0, Math.PI * 2);
+      g.arc(cx, cy, D / 2, 0, TAU);
       g.clip();
-      g.drawImage(source, sx, sy, sw, sh, 0, 0, D, D);
-
-      // Chromatic fringe: the same crop offset a whisker and tinted, which is
-      // what an uncorrected lens does at the edges.
+      // Black behind, in case the crop runs off the edge of the world.
+      g.fillStyle = '#0a0806';
+      g.fillRect(cx - D / 2, cy - D / 2, D, D);
+      g.drawImage(source, sx, sy, span, span, cx - D / 2, cy - D / 2, D, D);
+      // Chromatic fringe: the crop again, offset a whisker and added on the red
+      // side, which is what an uncorrected lens does at its edges.
       g.globalCompositeOperation = 'lighter';
-      g.globalAlpha = 0.16;
-      g.drawImage(source, sx, sy, sw, sh, -3, 0, D + 6, D);
+      g.globalAlpha = 0.14;
+      g.drawImage(source, sx, sy, span, span, cx - D / 2 - 3, cy - D / 2, D + 6, D);
       g.globalCompositeOperation = 'source-over';
       g.globalAlpha = 1;
-
       // Fall-off toward the rim.
-      const vig = g.createRadialGradient(D / 2, D / 2, D * 0.20, D / 2, D / 2, D / 2);
+      const vig = g.createRadialGradient(cx, cy, D * 0.2, cx, cy, D / 2);
       vig.addColorStop(0, 'rgba(0,0,0,0)');
       vig.addColorStop(0.62, 'rgba(20,16,10,0.10)');
       vig.addColorStop(1, 'rgba(14,11,7,0.82)');
       g.fillStyle = vig;
-      g.fillRect(0, 0, D, D);
-
+      g.fillRect(cx - D / 2, cy - D / 2, D, D);
       // A hair of a reticle. Two short strokes, not a rifle sight.
       g.strokeStyle = 'rgba(38,30,20,0.5)';
       g.lineWidth = 1;
       g.beginPath();
-      g.moveTo(D / 2 - 16, D / 2);
-      g.lineTo(D / 2 + 16, D / 2);
-      g.moveTo(D / 2, D / 2 - 16);
-      g.lineTo(D / 2, D / 2 + 16);
+      g.moveTo(cx - 16, cy);
+      g.lineTo(cx + 16, cy);
+      g.moveTo(cx, cy - 16);
+      g.lineTo(cx, cy + 16);
       g.stroke();
       g.restore();
+
+      // The brass — the barrel and its collar, drawn as two rings of the object,
+      // not as a shadow cast by a floating pane.
+      g.strokeStyle = '#23180F';
+      g.lineWidth = 7;
+      g.beginPath();
+      g.arc(cx, cy, D / 2 + 3.5, 0, TAU);
+      g.stroke();
+      g.strokeStyle = '#4A3A24';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.arc(cx, cy, D / 2 + 8.5, 0, TAU);
+      g.stroke();
     };
 
-    const caption = document.createElement('div');
-    caption.className = 'eyecap';
+    let alive = true;
+    let last = 0;
+    const frame = (t: number): void => {
+      if (!alive || this.panel !== wrap) return;
+      const dt = last ? Math.min(64, t - last) : 16;
+      last = t;
 
-    const list = document.createElement('div');
-    list.className = 'bearings';
+      // Advance or bleed the focus on the nearest open position.
+      const near = nearestOpen();
+      const FOCUS_R = D * 0.16;
+      if (near && near.d < FOCUS_R) {
+        if (focusId !== near.t.id) {
+          focusId = near.t.id;
+          focusMs = 0;
+        }
+        focusMs += dt;
+        if (focusMs >= HOLD && !locked) {
+          locked = true;
+          alive = false;
+          onPick(near.t.id); // shows the position's entry, then re-raises the glass
+          return;
+        }
+      } else {
+        focusId = null;
+        focusMs = Math.max(0, focusMs - dt * 1.6);
+      }
+
+      g.clearRect(0, 0, W, H);
+      g.drawImage(bg, 0, 0, W, H);
+
+      // The rings on the far shore. Found positions hold a steady ring and their
+      // name; open ones shimmer faintly, and brighten as the glass gathers on
+      // them.
+      const pulse = 0.5 + 0.5 * Math.sin(t / 620);
+      for (const tg of targets) {
+        const x = sxOf(tg);
+        const y = syOf(tg);
+        if (tg.done) {
+          ring(x, y, 15, 0.5, 0.85);
+          g.fillStyle = 'rgba(243, 214, 173, 0.92)';
+          g.font = '600 12px Georgia, "Times New Roman", serif';
+          g.textAlign = 'center';
+          g.fillText(tg.name.toUpperCase(), x, y + 30);
+        } else {
+          const focusing = focusId === tg.id ? focusMs / HOLD : 0;
+          const glow = 0.18 + 0.14 * pulse + 0.8 * focusing;
+          ring(x, y, 13 + 3 * focusing, glow, 0.3 + 0.5 * focusing);
+          // The gathering arc: a ring filling clockwise as the glass is held.
+          if (focusing > 0) {
+            g.strokeStyle = 'rgba(245, 205, 130, 0.95)';
+            g.lineWidth = 2.5;
+            g.beginPath();
+            g.arc(x, y, 20, -Math.PI / 2, -Math.PI / 2 + TAU * focusing);
+            g.stroke();
+          }
+        }
+      }
+
+      eyepiece(pos.x, pos.y);
+      requestAnimationFrame(frame);
+    };
 
     const render = (): void => {
       const left = targets.filter((t) => !t.done).length;
       caption.textContent = left
-        ? `${label} · ${left} bearing${left === 1 ? '' : 's'} not yet made out`
+        ? `${label} · ${left} of ${targets.length} still to make out`
         : `${label} · all of it named`;
-      list.innerHTML = targets
-        .map(
-          (t, i) =>
-            `<button class="sopt${t.done ? ' seen' : ''}" data-i="${i}">` +
-            `<span class="bear">${t.bearing}</span>` +
-            `<span class="named">${t.done ? t.name : '—'}</span></button>`,
-        )
-        .join('');
-      for (const b of Array.from(list.querySelectorAll<HTMLButtonElement>('.sopt'))) {
-        const t = targets[Number(b.dataset.i)];
-        // Hovering swings the glass, which makes the list feel like an
-        // instrument being aimed rather than a set of buttons.
-        b.onmouseenter = () => look(t.at);
-        b.onclick = () => {
-          look(t.at);
-          if (!t.done) onPick(t.id);
-        };
-      }
     };
 
-    const hint = document.createElement('div');
-    hint.className = 'continue';
-    hint.innerHTML = 'press <b>Space</b> to lower the glass';
+    const onResize = (): void => {
+      layout();
+      if (!placed) {
+        pos.x = W / 2;
+        pos.y = H / 2;
+        placed = true;
+      }
+      clamp();
+    };
 
-    wrap.append(eye, caption, list, hint);
-    this.root.append(wrap);
-    this.panel = wrap;
+    wrap.addEventListener('pointermove', (e) => {
+      pos.x = e.clientX;
+      pos.y = e.clientY;
+      placed = true;
+      clamp();
+    });
+
+    // The keyboard: arrows aim, Space lowers the glass. Held directly rather
+    // than through waitForDismiss because the arrows have to be caught too.
+    this.keyHandler = (e: KeyboardEvent) => {
+      const STEP = 26;
+      if (e.key === 'ArrowLeft') pos.x -= STEP;
+      else if (e.key === 'ArrowRight') pos.x += STEP;
+      else if (e.key === 'ArrowUp') pos.y -= STEP;
+      else if (e.key === 'ArrowDown') pos.y += STEP;
+      else if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape' || e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        alive = false;
+        this.clearPanel();
+        onDone();
+        return;
+      } else return;
+      e.preventDefault();
+      placed = true;
+      clamp();
+    };
+    addEventListener('keydown', this.keyHandler);
+    addEventListener('resize', onResize);
+    // Torn down when the panel is cleared — by Space here, or by the examine
+    // overlay that opens when a position resolves — so neither the loop nor the
+    // resize listener outlives the glass.
+    this.panelCleanup = () => {
+      alive = false;
+      removeEventListener('resize', onResize);
+    };
+
+    onResize();
     render();
-    look(targets.find((t) => !t.done)?.at ?? 0.5);
-    this.waitForDismiss(onDone);
+    requestAnimationFrame(frame);
   }
 
   /**

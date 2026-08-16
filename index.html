@@ -126,10 +126,14 @@
           );
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-          var raw = document.querySelector('script[src$=".ts"], script[src*=".ts?"]');
-          if (raw) sourceNotBuild(raw.getAttribute('src'));
-        });
+        /*
+         * Deliberately NOT checked eagerly. In development Vite serves
+         * /src/main.ts as a real module and the game runs perfectly, so the mere
+         * presence of a .ts script proves nothing — an eager check accused the
+         * dev server of the very bug it was written to catch. What matters is a
+         * .ts script that FAILED, which the capture handler above already
+         * catches, or one that never drew anything, which is tested below.
+         */
         window.addEventListener('unhandledrejection', function (e) {
           show(
             'The prototype could not start.',
@@ -152,12 +156,18 @@
         // Nothing thrown, nothing painted: say so rather than sit blank.
         setTimeout(function () {
           var o = document.getElementById('overlay');
-          if (o && o.children.length === 0) {
-            show(
-              'The prototype did not finish loading.',
-              'No error was reported, but nothing has been drawn. That is nearly always a stale cached page or a part-loaded file: reload with a hard refresh (Ctrl+Shift+R, or Cmd+Shift+R on a Mac). If it keeps happening, the single-file build runs with no server at all.'
-            );
+          if (!o || o.children.length > 0) return;
+          // Nothing drawn AND the page is asking for TypeScript: now the .ts is
+          // evidence, because a working dev server would have painted by now.
+          var raw = document.querySelector('script[src$=".ts"], script[src*=".ts?"]');
+          if (raw) {
+            sourceNotBuild(raw.getAttribute('src'));
+            return;
           }
+          show(
+            'The prototype did not finish loading.',
+            'No error was reported, but nothing has been drawn. That is nearly always a stale cached page or a part-loaded file: reload with a hard refresh (Ctrl+Shift+R, or Cmd+Shift+R on a Mac). If it keeps happening, the single-file build runs with no server at all.'
+          );
         }, 9000);
       })();
     </script>

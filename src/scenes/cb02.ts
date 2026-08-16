@@ -73,6 +73,14 @@ export const CB02: Scene = {
     'Read what Congress troubled to send you, and mark what it does not say.',
   ],
 
+  arrival: [
+    'The Head Quarters at Cambridge, in the House of Mr Vassall, November 1775.',
+    'The camp is four months colder and no better armed. Up the lane stands the ' +
+      'finest house in Cambridge, left in a hurry by a Loyalist who did not wait to ' +
+      'be asked, and the war is run from its parlour.',
+    'It is the only room for miles with a door that shuts.',
+  ],
+
   opening: [
     'A good carpet, a good fire laid but not lit, and on the wall a family that used to live here, ' +
       'turned to face it.',

@@ -379,6 +379,17 @@ export interface Scene {
 
   /** The two lines of atmosphere, which now come after the facts. */
   opening: string[];
+
+  /**
+   * The legend under the engraved plate that announces this scene.
+   *
+   * Two or three sentences, written the way a print's caption was written in
+   * 1775: what this place is, and what has brought him to it. It is read before
+   * the scene is walked, so it carries the change since the last one — a season,
+   * a march, a defeat — which is the job the briefing cannot do because the
+   * briefing is already inside the scene.
+   */
+  arrival?: string[];
   business: Business[];
   /** Interactable that ends the scene. */
   exit: string;

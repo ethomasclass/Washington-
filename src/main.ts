@@ -644,15 +644,32 @@ function closeAct(act: number, onward: string | undefined): void {
  * interior voices have spoken. What persists is the state — the stats, the
  * knowledge, the decisions — which is the whole point of the passport.
  */
+/**
+ * Move to another scene, announced by its engraved plate.
+ *
+ * The plate comes first and the transition second, so the player reads where
+ * they are going while the old place is still the last thing they saw — and the
+ * fade or cut then lands them in it. A scene with no legend authored yet goes
+ * straight through rather than showing an empty card.
+ */
 function enterScene(id: string): void {
   const from = scene;
   const to = SCENES[id];
-  if (to && from !== to && timePasses(from, to)) {
+  const go = (): void => {
+    if (to && from !== to && timePasses(from, to)) {
+      busy = true;
+      overlay.fadeThrough(() => loadScene(id), () => {});
+      return;
+    }
+    loadScene(id);
+  };
+
+  if (to && to !== from && to.arrival?.length) {
     busy = true;
-    overlay.fadeThrough(() => loadScene(id), () => {});
+    overlay.showPlate(to.plates, `${to.title} · ${to.subtitle}`, to.arrival, go);
     return;
   }
-  loadScene(id);
+  go();
 }
 
 function loadScene(id: string): void {

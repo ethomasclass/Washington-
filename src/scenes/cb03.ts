@@ -126,6 +126,14 @@ export const CB03: Scene = {
     'Get the trenches ready before winter.',
   ],
 
+  arrival: [
+    'A Prospect of Boston from the Lines above Charlestown, November 1775.',
+    'Down from the parlour to the works, where the paperwork turns back into ground. ' +
+      'Half a mile of earth thrown up by men who were not paid to dig, and beyond it a ' +
+      'mile of water you cannot cross.',
+    'On the far shore, the only thing in this country that already looks like an army.',
+  ],
+
   opening: [
     'The works run along the crown of the hill for half a mile, and every yard of them was dug ' +
       'by men who were not paid to dig.',

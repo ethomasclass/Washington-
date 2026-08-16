@@ -130,6 +130,13 @@ export const MV01: Scene = {
     'Put the estate in order before you leave. You do not know for how long.',
   ],
 
+  arrival: [
+    'A View of Mount Vernon, the Seat of Colonel Washington, in Virginia, May 1775.',
+    'A rider came up from the ferry this morning with a letter from Philadelphia, and ' +
+      'the house has been quiet in a particular way ever since.',
+    'Everything you own is here. You are expected in Philadelphia on the tenth.',
+  ],
+
   /** Two lines of atmosphere, after the facts. */
   opening: [
     'You have been home since the autumn, and you have not been still for a day of it.',

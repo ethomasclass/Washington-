@@ -82,6 +82,14 @@ export const CB01: Scene = {
     'Issue your first general orders. One army, one set of rules, starting today.',
   ],
 
+  arrival: [
+    'A View of the Encampment before Boston, taken in the Month of July, 1775.',
+    'Two weeks on the road from Virginia, and at the end of it the army Congress ' +
+      'gave you: sixteen thousand men from four colonies, camped where they liked, ' +
+      'obeying whom they chose.',
+    'You are to make one army of it before their enlistments run out at the New Year.',
+  ],
+
   opening: [
     'Sixteen thousand men are sitting in front of Boston, and every one of them ' +
       'believes he is already a soldier.',

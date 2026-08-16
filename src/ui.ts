@@ -21,6 +21,7 @@
 import { INK, PAPER, VOICE_INK, type VoiceId } from './palette';
 import { EMBLEM, LOCK_GLYPH } from './emblems';
 import { grainTile, portraitPlate } from './art';
+import { engraving } from './engraving';
 import { cellStyle, portraitFor } from './portraits';
 import type { LedgerLine, Reckoning } from './ledger';
 import {
@@ -101,6 +102,42 @@ export const CSS = `
   pointer-events: none; white-space: nowrap; text-align: center;
 }
 .glass .instr b { color: #E9DEC6; font-weight: 600; }
+
+/*
+ * THE ENGRAVED PLATE — the card that announces a scene.
+ *
+ * A print, laid on the dark, with its legend under it. It is deliberately not
+ * in the game's own medium: the scenes are oil, and a painted card between
+ * painted scenes is a pause rather than a beat. An engraving is the form the
+ * eighteenth century actually used to carry news of a place to people who could
+ * not go there, which is exactly this card's job — and Doolittle's plates, the
+ * findable object on the lines, are the same medium doing the same work.
+ *
+ * The image is canvas, because it is ink. Only the legend is DOM, because it is
+ * words.
+ */
+.plate {
+  position: fixed; inset: 0; z-index: 75; pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 3vh 4vw;
+  background: #14100B;
+}
+.plate .sheet { display: block; max-width: min(1100px, 92vw); max-height: 62vh; height: auto; width: auto; }
+.plate .legend {
+  max-width: min(760px, 88vw);
+  color: ${PAPER.WARM}; text-align: center;
+}
+.plate .legend .head {
+  font-variant: small-caps; letter-spacing: .13em; font-size: 15px;
+  color: #E2C489; margin-bottom: 9px;
+}
+.plate .legend .line { font-size: 17px; line-height: 1.55; margin-bottom: 8px; }
+.plate .legend .line:last-of-type { margin-bottom: 0; }
+.plate .go {
+  margin-top: 4px; font: 12px/1 ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .10em; color: #A2937A;
+}
+.plate .go b { color: #E2C489; font-weight: 600; }
 
 /*
  * THE THEATRE MAP — the page that opens an act.
@@ -1089,6 +1126,43 @@ export class Overlay {
         .map((para, i) => `<div class="line"${i ? ' style="margin-top:12px"' : ''}>${para}</div>`)
         .join('') +
       `<div class="continue">press <b>Space</b> to continue</div></div>`;
+    this.waitForDismiss(onDone);
+  }
+
+  /**
+   * The engraved plate that announces a scene.
+   *
+   * Shown on the way into a scene, before the plates are built, so the player
+   * arrives having been told where they are and what has changed since they
+   * were last anywhere. The image is pulled from the scene's own subject, so
+   * adding a scene never means wiring a picture up separately.
+   */
+  showPlate(
+    subject: string,
+    head: string,
+    lines: string[],
+    onDone: () => void,
+  ): void {
+    this.clearPanel();
+    const el = document.createElement('div');
+    el.className = 'plate';
+
+    const sheet = engraving(subject, [...subject].reduce((a, c) => a + c.charCodeAt(0), 3));
+    sheet.className = 'sheet';
+
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML =
+      `<div class="head">${head}</div>` +
+      lines.map((l) => `<div class="line">${l}</div>`).join('');
+
+    const go = document.createElement('div');
+    go.className = 'go';
+    go.innerHTML = 'press <b>Space</b>';
+
+    el.append(sheet, legend, go);
+    this.root.appendChild(el);
+    this.panel = el;
     this.waitForDismiss(onDone);
   }
 

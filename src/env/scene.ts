@@ -20,6 +20,7 @@ import { Weather, type WeatherKind } from './weather';
 import { treeGeometry, rockGeometry, scatter } from './scatter';
 import { fbm } from './noise';
 import * as K from '../fp/kit';
+import { MOUNT_VERNON_1775 } from './vernon';
 
 // -- shared toon ramp for terrain + scatter --------------------------------
 function makeRamp(): THREE.Texture {
@@ -31,9 +32,6 @@ function makeRamp(): THREE.Texture {
 const RAMP = makeRamp();
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-const mix = (a: number, b: number, t: number) => a + (b - a) * t;
-const smooth = (t: number) => t * t * (3 - 2 * t);
-const dist = (x: number, z: number, px: number, pz: number) => Math.hypot(x - px, z - pz);
 
 export interface BuiltEnv {
   scene: THREE.Scene;
@@ -58,6 +56,10 @@ export interface SceneDef {
   snow?: number;
   water?: { level: number; extent: number; color: number; hi: number; pos: [number, number] };
   clearings?: Array<{ x: number; z: number; r: number }>; // keep scatter out of these
+  /** Scene-owned ground colouring (lanes, lawns, worn earth). Falls back to paintFor. */
+  paint?: (x: number, z: number, h: number, slope: number, out: THREE.Color) => void;
+  /** Cap on scattered forest trees (a tended estate is not a wilderness). */
+  treeCount?: number;
 }
 
 interface BuildCtx {
@@ -65,45 +67,13 @@ interface BuildCtx {
   height: (x: number, z: number) => number;
   slopeAt: (x: number, z: number) => number;
   place: (o: THREE.Object3D, x: number, z: number, yaw?: number) => void;
+  /** Register a per-frame animator (smoke, birds, laundry, a sloop riding). */
+  animate: (fn: (t: number, dt: number) => void) => void;
 }
 
 // ---------------------------------------------------------------------------
 // STRUCTURES
 // ---------------------------------------------------------------------------
-
-/** Mount Vernon: white Georgian block, red roof, cupola, front piazza colonnade. */
-function georgianHouse(): THREE.Group {
-  const g = new THREE.Group();
-  const white = 0xe8e4d6, roof = 0x7d4a3a, trim = 0xcfc8b6, chimney = 0x9a6a4e;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(14, 7, 8), K.mat(white));
-  body.position.y = 3.5; g.add(body);
-  // hipped roof
-  const rf = new THREE.Mesh(new THREE.ConeGeometry(9.2, 3.2, 4), K.mat(roof));
-  rf.position.y = 8.6; rf.rotation.y = Math.PI / 4; g.add(rf);
-  // cupola
-  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.6, 8), K.mat(white));
-  cup.position.y = 10.4; g.add(cup);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.95, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), K.mat(0xb5432f));
-  dome.position.y = 11.2; g.add(dome);
-  // front piazza colonnade (river side, +? we face -z)
-  for (let i = 0; i < 6; i++) {
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 6.2, 8), K.mat(trim));
-    col.position.set(-6 + i * 2.4, 3.1, 4.6); g.add(col);
-  }
-  const porch = new THREE.Mesh(new THREE.BoxGeometry(14, 0.4, 2), K.mat(roof));
-  porch.position.set(0, 6.3, 4.6); g.add(porch);
-  // chimneys
-  for (const sx of [-5.5, 5.5]) {
-    const ch = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1.4), K.mat(chimney));
-    ch.position.set(sx, 9, 0); g.add(ch);
-  }
-  // windows (dark panes)
-  for (let r = 0; r < 2; r++) for (let i = 0; i < 5; i++) {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.4), K.mat(0x3a4a52));
-    w.position.set(-5.2 + i * 2.6, 2.2 + r * 3, -4.01); w.rotation.y = Math.PI; g.add(w);
-  }
-  return g;
-}
 
 /** A Valley Forge log hut: stacked-log walls, board roof, stone chimney. */
 function logHut(): THREE.Group {
@@ -144,72 +114,6 @@ function logHut(): THREE.Group {
   }
   return g;
 }
-
-// ---------------------------------------------------------------------------
-// SCENE: MOUNT VERNON
-// ---------------------------------------------------------------------------
-
-const MOUNT_VERNON: SceneDef = {
-  id: 'mount-vernon',
-  name: 'Mount Vernon — May 1775',
-  bounds: 95,
-  defaultWeather: 'clear',
-  spawn: { x: 8, z: 28, yaw: Math.PI },
-  water: { level: -3.4, extent: 260, color: 0x4a6f86, hi: 0x9fc0cf, pos: [-72, 0] },
-  clearings: [
-    { x: 20, z: -8, r: 24 },  // house plateau
-    { x: 20, z: 22, r: 16 },  // the front lawn (the approach)
-    { x: 2, z: 8, r: 7 },     // pose c vantage
-    { x: -26, z: 6, r: 7 },   // pose b vantage on the bluff
-    { x: -58, z: 0, r: 12 },  // the dock
-  ],
-  elevation(x, z) {
-    let h = fbm(x * 0.012 + 10, z * 0.012 + 4, { seed: 7, octaves: 5 }) * 8 - 2;
-    const bank = -38, river = -66;
-    if (x < bank) { const t = clamp((bank - x) / (bank - river), 0, 1); h = mix(h, -3.6, smooth(t)); }
-    // mansion plateau near (20,-8)
-    const d = dist(x, z, 20, -8);
-    h = mix(h, 3.2, clamp(1 - d / 24, 0, 1) * 0.85);
-    return h;
-  },
-  sky: {
-    zenith: 0x4f86c6, horizon: 0xcfe0e6, sunColor: 0xfff3d0,
-    sunAzimuth: 2.4, sunElevation: 0.85, sunIntensity: 2.0, ambient: 0.9,
-    fogColor: 0xdbe6e8, fogNear: 70, fogFar: 240, haze: 0.6,
-  },
-  build({ scene, height, place }) {
-    // the mansion
-    const house = georgianHouse();
-    place(house, 20, -8, -0.1);
-    // outbuildings
-    for (const [ox, oz] of [[8, -18], [32, -16], [10, 2]] as const) {
-      const shed = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 3), K.mat(0xd8d2c0));
-      const rf = new THREE.Mesh(new THREE.ConeGeometry(3, 1.6, 4), K.mat(0x7d4a3a));
-      const g = new THREE.Group(); shed.position.y = 1.5; rf.position.y = 3.6; rf.rotation.y = Math.PI / 4;
-      g.add(shed, rf); place(g, ox, oz);
-    }
-    // a rail fence line along the lawn
-    for (let i = 0; i < 14; i++) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.1, 0.14), K.mat(0x6f5638));
-      place(post, -2 + i * 2.4, 18);
-      if (i < 13) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.08), K.mat(0x7a6040));
-        place(rail, -0.8 + i * 2.4, 18); rail.position.y += 0.7;
-      }
-    }
-    // Martha and a messenger on the lawn
-    place(K.figure({ coat: 0x6a2f3a }), 14, 12, 0.4);   // Martha (deep rose)
-    place(K.figure({ coat: K.C.coatBlue, musket: false }), 4, 16, -0.6);
-    // a dock at the river
-    const dock = new THREE.Group();
-    for (let i = 0; i < 8; i++) {
-      const pl = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 1.4), K.mat(0x6f4d2e));
-      pl.position.set(0, 0.1, i * 1.4); dock.add(pl);
-    }
-    dock.position.set(-58, -3.2, 0); scene.add(dock);
-    void height;
-  },
-};
 
 // ---------------------------------------------------------------------------
 // SCENE: VALLEY FORGE
@@ -260,7 +164,7 @@ const VALLEY_FORGE: SceneDef = {
 };
 
 export const SCENES: Record<string, SceneDef> = {
-  'mount-vernon': MOUNT_VERNON,
+  'mount-vernon': MOUNT_VERNON_1775,
   'valley-forge': VALLEY_FORGE,
 };
 
@@ -281,7 +185,7 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
 
   const terrain = new Terrain(
     { size: def.bounds * 2.4, segments: 200, elevation, snow: def.snow,
-      paint: (x, z, h, slope, out) => paintFor(def, x, z, h, slope, out) },
+      paint: def.paint ?? ((x, z, h, slope, out) => paintFor(def, x, z, h, slope, out)) },
     RAMP,
   );
   scene.add(terrain.mesh);
@@ -301,7 +205,7 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
   const winter = (def.snow ?? 0) > 0.4;
   const trees = treeGeometry(0x6b4f2e, winter ? 0x7a684a : 0x6f9a40, winter);
   const treeMesh = scatter(trees, RAMP, elevation, slopeAt, {
-    count: winter ? 90 : 150, area: def.bounds * 0.92, seed: 11, maxSlope: 0.5,
+    count: def.treeCount ?? (winter ? 90 : 150), area: def.bounds * 0.92, seed: 11, maxSlope: 0.5,
     minHeight: def.water ? def.water.level + 1.5 : -999, scaleMin: 0.9, scaleMax: 1.9,
     avoid: def.clearings,
   });
@@ -313,12 +217,13 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
   scene.add(rocks);
 
   // dressing
+  const animators: Array<(t: number, dt: number) => void> = [];
   const place = (o: THREE.Object3D, x: number, z: number, yaw = 0) => {
     o.position.set(x, elevation(x, z), z);
     o.rotation.y = yaw;
     scene.add(o);
   };
-  def.build({ scene, height: elevation, slopeAt, place });
+  def.build({ scene, height: elevation, slopeAt, place, animate: (fn) => animators.push(fn) });
 
   const weather = new Weather();
   weather.set(weatherKind, sky, scene);
@@ -328,7 +233,11 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
     height: elevation,
     spawn: def.spawn,
     bounds: def.bounds,
-    update: (dt, camera, t) => { weather.update(dt, camera); water?.update(t); },
+    update: (dt, camera, t) => {
+      weather.update(dt, camera);
+      water?.update(t);
+      for (const fn of animators) fn(t, dt);
+    },
   };
 }
 

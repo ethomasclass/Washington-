@@ -27,6 +27,22 @@ a shared drive, a USB stick or an LMS that accepts a single upload. Use it
 whenever hosting is wedged or the URL is not ours to pick — which `vite.config.ts`
 has assumed from the start.
 
+**THE 3D EXPLORATION — branch `claude/3d-voxel-vs-2d-engine-ux0fpt` only.**
+A first-person, low-poly, clean-toon direction is being explored in parallel
+with the print engine; nothing on `main` is touched. Three layers, each a
+standalone page: `fp.html` (CB-01's stations walked in first person),
+`env.html` (the environment engine: terrain, sky, weather, water, scatter —
+`src/env/`), and within it a research-grounded **Mount Vernon, May 1775**
+(`src/env/vernon.ts` + `vernon-kit.ts`): asymmetric mansion with the raw
+scaffolded south wing, slate-blue roof, NO piazza/cupola (both post-1775),
+angled dependencies, view-blocking walled gardens, the two-story House for
+Families, chariot departure, shearing, the herring-run fishery. The research
+brief (mountvernon.org, verified dates + a must-not-appear list) is recorded in
+`vernon.ts`'s header; the enslaved-population figure is marked unverified
+(V.1). One-file playable builds: `node scripts/build-fp-single.mjs` and the
+env equivalent inside it — output in `dist-single/`. The game logic is NOT
+wired into 3D; scenes are walkable dioramas so the direction can be judged.
+
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment
 clock through Acts 1–3, and the player-facing writing register. **Steps 1–3 of its

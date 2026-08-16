@@ -46,9 +46,10 @@ const POSES: Record<string, { x: number; z: number; yaw: number; pitch: number }
       c: { x: 18, z: 18, yaw: 0.7, pitch: 0.03 },    // the other end + the wagon
     }
   : {
-      a: { x: 20, z: 26, yaw: 0.0, pitch: 0.05 },               // lawn straight up to the house
-      b: { x: -26, z: 6, yaw: Math.PI / 2, pitch: -0.06 },      // bluff over the Potomac
-      c: { x: 2, z: 8, yaw: -0.85, pitch: 0.03 },               // house from an angle
+      a: { x: -42, z: 0, yaw: -Math.PI / 2, pitch: 0.02 },      // the west lane, walls either side
+      b: { x: -25, z: 2, yaw: -1.45, pitch: 0.03 },             // forecourt: house, chariot, dependencies
+      c: { x: 27, z: 7, yaw: 1.35, pitch: 0.02 },               // from the bluff edge, east front
+      d: { x: 38, z: 8, yaw: -1.75, pitch: -0.06 },             // down the track: wharf, sloop, fishery
     };
 if (SHOT) { const q = POSES[p.get('pose') ?? 'a']; fp.setPose(q.x, q.z, q.yaw); fp.pitch = q.pitch; }
 

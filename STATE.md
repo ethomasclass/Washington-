@@ -2,14 +2,30 @@
 
 Read this first. It is the handoff, not the design — the design is in `docs/`.
 
-**Branch:** `claude/washington-game-story-playability-xa9mh8` (previous work is on
-`claude/game-ideation-ucj49o`). Everything is committed and pushed.
+**Branch: `main`, and only `main`.** Everything was consolidated onto it on 16
+Aug 2026 — the old `claude/*` working branches are retired and no longer deploy.
+Work on `main`, push to `main`.
 
-**Deploys to GitHub Pages** — but only from the branches named in
-`.github/workflows/deploy.yml`, which is this one, the old one, and `main`. A
-push from any other branch builds nothing and publishes nothing, and the live
-URL will quietly go on showing whatever was deployed last. If the site does not
-look like your work, check that trigger list first.
+**Deploys to GitHub Pages** from `main`, via `.github/workflows/deploy.yml`.
+Two repository settings have to be right, and both have bitten this project:
+
+- **Settings → Pages → Source must be "GitHub Actions"**, not "Deploy from a
+  branch". On "branch" Pages serves the repo's own `index.html`, which points at
+  `/src/main.ts` — TypeScript the browser cannot execute — and the site
+  white-screens with a syntax error at `main.ts:1`. Nothing in the code can fix
+  this; it is a setting.
+- **Settings → Environments → `github-pages` → Deployment branches must include
+  `main`.** If it does not, the build job passes, the deploy job fails in about
+  a second with *"Branch main is not allowed to deploy to github-pages due to
+  environment protection rules"*, and the live URL silently keeps serving
+  whatever was published last.
+
+**`npm run build:single` is the escape hatch**, and the better answer for a
+classroom: it emits `dist-single/washington.html`, the entire game in one file
+with no assets beside it and no host to fetch from. Put it on a district server,
+a shared drive, a USB stick or an LMS that accepts a single upload. Use it
+whenever hosting is wedged or the URL is not ours to pick — which `vite.config.ts`
+has assumed from the start.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment

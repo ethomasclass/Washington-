@@ -19,6 +19,7 @@ import {
 } from './art';
 import type { Facing, LookOpts, PropKind } from './art';
 import { loadFigureSheet } from './figures';
+import { SCENERY, loadScenery } from './scenery';
 import { PAPER } from './palette';
 import {
   FIGURE_H, groundView, VIEW_H, VIEW_W,
@@ -258,6 +259,11 @@ export class DioramaRenderer {
   private groundOff = { x: 0, y: 0 };
   /** Size multiplier on all figures and props. 1 outdoors; larger in a room. */
   private figureScale = 1;
+  /*
+   * Bumped on every scene load, so a generated painting that arrives late can
+   * tell whether the player is still in the place it was fetched for.
+   */
+  private sceneToken = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -341,6 +347,8 @@ export class DioramaRenderer {
     // Depths come from the plate painter, which knows what it painted and where.
     const depths = PLATE_DEPTHS[plateSet] ?? PLATE_DEPTHS.vernon;
     build().forEach((plate, i) => {
+      // Held so a generated painting can replace the texture in place later,
+      // without rebuilding the geometry or disturbing the draw order.
       const geo = new THREE.PlaneGeometry(VIEW_W * 1.14, VIEW_H * 1.14);
       const mat = new THREE.MeshBasicMaterial({
         map: textureFrom(plate),
@@ -353,6 +361,32 @@ export class DioramaRenderer {
       this.scene.add(mesh);
       this.layers.push({ mesh, parallax: PARALLAX[i], depth: depths[i] ?? 1 });
     });
+
+    /*
+     * If a generated painting exists for this plate set, cut it and swap it over
+     * the procedural stack. Asynchronous and always optional, exactly like the
+     * figure sheet: the scene is built and walkable before the image has been
+     * fetched, and a missing or unreadable painting leaves the placeholder
+     * showing rather than an empty frame.
+     */
+    const spec = SCENERY[plateSet];
+    if (spec) {
+      const token = ++this.sceneToken;
+      void loadScenery(spec).then((cut) => {
+        // A scene change while the image was in flight: this painting is for a
+        // place the player has already left.
+        if (!cut || token !== this.sceneToken) return;
+        cut.forEach((plate, i) => {
+          const layer = this.layers[i];
+          if (!layer) return;
+          const m = layer.mesh.material as THREE.MeshBasicMaterial;
+          m.map?.dispose();
+          m.map = textureFrom(plate);
+          m.transparent = true;
+          m.needsUpdate = true;
+        });
+      });
+    }
 
     // Weather and insects belong to the open air. An interior plate set gets
     // none of it: no cloud strip, no cloud-shadows crossing the floor, no motes,

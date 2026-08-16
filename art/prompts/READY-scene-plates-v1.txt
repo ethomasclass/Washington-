@@ -1,0 +1,126 @@
+READY-scene-plates-v1.txt — one painting per scene, cut into the layer stack.
+Asset ids: gl_xx_bg_vernon_v01 / _camp_ / _lines_ / _parlour_
+
+Assembled in 03a's slot order:
+  [SUBJECT] [COMPOSITION] [LIGHT] [PALETTE] [TECHNICAL]
+  [style-anchor-oil-v1] [negative-oil-v1]
+
+03a §0 already says there is exactly one canonical generation per plate, and
+that L0–L5 are compositional zones inside that one image rather than six
+separate generations. src/scenery.ts is the other half of that instruction: it
+cuts the single painting into the bands the renderer parallaxes.
+
+============================================== WHAT THE CUT NEEDS FROM THE IMAGE
+
+Five composition rules. Everything else is 03a as written. Break any of these
+and the cut still runs — it just produces a scene the player cannot walk in.
+
+1. THE HORIZON SITS ONE THIRD DOWN, and it must be a clean, unbroken horizontal.
+   ground.ts locks HORIZON at 0.34 project-wide and every other number in the
+   game — figure scale, the walk plane, where a tent's ridge lands — is measured
+   from it. The cutter scales and shifts the painting to put the painted horizon
+   on the engine's, and `ScenerySpec.horizon` is where you tell it what fraction
+   of the source the horizon actually landed at. Get that number wrong and the
+   figures look like they are floating.
+
+2. THE GROUND BELOW THE HORIZON IS OPEN AND UNOBSTRUCTED. That band is where the
+   player walks. Nothing may stand in it that a person would have to walk round,
+   because nothing painted into a band can be walked behind. Objects the player
+   names and examines are props composited at runtime (03a §4.0.2), not paint.
+
+3. NO PEOPLE ANYWHERE IN THE WALKABLE BAND. Every figure in this game is a
+   billboarded cutout placed at runtime. A painted man in the middle distance is
+   a man who never moves, is always the same size, and cannot be spoken to. A
+   body of troops far enough away that individual men are not separable is one
+   FORM, not a hundred figures, and is allowed at the horizon only.
+
+4. A NEAR-FIELD OCCLUDER ACROSS THE BOTTOM EDGE — an earth bank, a cart, a
+   hedge, a table edge — cropped by the frame, at the heaviest ink weight and
+   with almost no colour in it. The cutter lifts the bottom 14% as the front
+   layer, so it passes in front of the player and gives the frame its depth. If
+   the painting has nothing there, that band lifts a strip of empty ground and
+   the scene reads flat.
+
+5. GENEROUS MARGIN ON ALL FOUR SIDES, nothing important within 8% of any edge.
+   The bands slide against each other as the player walks, and the edges are
+   what slide out of frame.
+
+Also, as ever: no lettering anywhere. Any writing shown is illegible strokes.
+
+Deliver 16:9. 2048 x 1152 or larger. The cut fits width and lets the top and
+bottom margins take up the slack.
+
+========================================================= THE CAMP — worked example
+
+Every other scene is this with a different SUBJECT and LIGHT. Take the subject
+lines from 05 §2.3 and change nothing else.
+
+SUBJECT:
+The American camp on the common outside Cambridge, Massachusetts, in July 1775.
+A shanty-town pretending to be an army: shelters of boards, of sailcloth, of
+board and sailcloth mixed, of stone and turf, of birch, of brush, pitched where
+their makers liked and facing every direction. Stage right, one regiment's
+proper canvas wedge tents stand in ordered rows — the single thing in the
+picture that looks like a military camp, and it makes everything around it look
+worse. A cooking fire, a washing line, a wood pile. Beyond the camp the ground
+falls to the water, and across the water lies Boston: a low grey town of roofs
+and steeples, with ships at anchor in the stream, small and precise and out of
+reach.
+
+COMPOSITION:
+A shallow elevated three-quarter view, the camera at the height of a standing
+man on slightly higher ground, looking level. The horizon runs unbroken across
+the frame exactly one third down from the top. Below it the open ground of the
+camp street runs from the bottom edge to the horizon, worn by feet, empty of
+people, and clear of any obstruction the whole way. The shelters stand to left
+and right of that open ground, none of them crossing it. In the immediate
+foreground, cropped by the bottom edge, a rutted bank of churned earth with a
+broken barrel and a length of fence, drawn at the heaviest ink weight and with
+almost no colour in it. The picture is flat and frontal, with no wide-angle
+distortion and no converging verticals.
+
+LIGHT:
+Flat overcast with no directional key and no visible sun. Shadows are soft,
+short and cool. Nothing in the frame is brightly lit and nothing is in deep
+shade. Mid-morning in high summer, the air heavy and still.
+
+PALETTE:
+The paper ground is a dirty grey-green. Earth-dominated and muted throughout —
+raw umber, olive, cold ochre, wet stone grey, unbleached linen. The only
+saturated colour permitted in this frame is the dull warm red of a regimental
+flag at the tent lines, occupying almost none of the picture. No blue in the
+uniforms: there are no uniforms. Nothing is pure black and nothing is pure
+white.
+
+TECHNICAL:
+Composed with generous empty margin on all four sides, with nothing important
+near any edge. Any writing shown is illegible: fine ink strokes suggesting
+cursive, not readable letterforms. No people anywhere in the picture. The open
+ground the figures will stand on is clear and unobstructed.
+
+[style-anchor-oil-v1 — verbatim]
+[negative-oil-v1 — verbatim]
+
+=============================================================== DROPPING IT IN
+
+1. Save as  public/plates/camp.jpg   (or .png). The names are the plate-set
+   names the scenes already carry: vernon, camp, lines, parlour.
+2. Reload. The scene builds on the procedural plates as always, and swaps the
+   painting in when it has been cut — so a missing or unreadable file simply
+   leaves the placeholder showing.
+3. Measure where the horizon actually landed, as a fraction of image height, and
+   set it in `SCENERY` in src/scenery.ts. If figures look like they are floating
+   above the ground or sunk into it, that number is wrong and nothing else is.
+
+================================================================== ACCEPTANCE
+
+The six from 09 §7, and four more that only matter because of the cut:
+
+7.  Is the horizon a clean unbroken horizontal, and is it one third down?
+8.  Walk the player from the front of the frame to the back. Does he pass
+    anything painted that he should have gone behind? If so, that object wants
+    to be a prop, not paint.
+9.  Walk him left and right. Does any seam between bands become visible as a
+    line, or open a gap? If it does, raise the `bleed` on the band above it.
+10. Squint. Is there a foreground mass across the bottom edge, dark and almost
+    colourless? Without it the frame has no depth for the parallax to show.

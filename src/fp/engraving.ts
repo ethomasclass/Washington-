@@ -67,6 +67,12 @@ const COMPOSITE_FRAG = /* glsl */`
     edge *= mix(1.0, 1.4, clamp(1.0 - dC/20.0, 0.0, 1.0));
     col = mix(col, uInkColor, edge);
 
+    // grade: gentle saturation lift and a soft S-curve, so the toon fills
+    // read vivid without repainting any material
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(vec3(lum), col, 1.12);
+    col = mix(col, col * col * (3.0 - 2.0 * col), 0.18);
+
     // --- laid-paper grain, multiplied over everything ---
     float fibre = mix(0.9, 1.0, hash(floor(vUv*uRes*0.5)));
     float laid  = 0.98 + 0.02*sin(vUv.y*uRes.y*0.7);

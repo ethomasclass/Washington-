@@ -528,79 +528,210 @@ export interface PersonSpec {
   skin?: number;
   pose?: 'stand' | 'hoe' | 'carry' | 'bend';
   hat?: 'tricorne' | 'straw' | 'cap' | 'none';
+  /** Distinguishes idle phases so a crowd never moves in unison. */
+  seed?: number;
 }
 
-/** A civilian figure. Same scale as the soldier; different clothes and work. */
-export function person(p: PersonSpec): THREE.Group {
+/**
+ * An articulated figure. Real proportions (~1.72 m, shoulders at 1.42), a
+ * jointed skeleton of pivot groups — torso, head, shoulder/elbow, hip/knee —
+ * and a per-frame animator: breath, weight shift, a wandering gaze, and a
+ * working cycle for the hoe. Capsule limbs, smooth-shaded, so the outline
+ * pass draws a clean human contour instead of a stack of boxes.
+ */
+export function person(p: PersonSpec): { group: THREE.Group; animate: Animated } {
   const g = new THREE.Group();
   const skin = p.skin ?? 0xc0906a;
-  const bend = p.pose === 'bend' || p.pose === 'hoe';
+  const stocking = 0xd8d0b8;
+  const phase = (p.seed ?? 0) * 1.7 + (p.color % 97) * 0.13;
 
-  if (p.dress === 'gown') {
-    const skirt = mesh(new THREE.CylinderGeometry(0.16, 0.42, 1.05, 8), p.color);
-    skirt.position.y = 0.55; g.add(skirt);
-    const bodice = mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.5, 8), p.color);
-    bodice.position.y = 1.28; g.add(bodice);
-    const apron = mesh(new THREE.BoxGeometry(0.3, 0.7, 0.04), V.linen);
-    apron.position.set(0, 0.85, 0.2); g.add(apron);
-  } else {
+  const smoothMesh = (geo: THREE.BufferGeometry, color: number) => {
+    const m = new THREE.Mesh(geo, mat(color, { flat: false }));
+    m.castShadow = true;
+    return m;
+  };
+  /** A limb segment hanging from its pivot: capsule of `len`, pivot at the top. */
+  const limb = (r: number, len: number, color: number): THREE.Mesh => {
+    const m = smoothMesh(new THREE.CapsuleGeometry(r, len, 3, 8), color);
+    m.position.y = -len / 2;
+    return m;
+  };
+
+  // ---- pelvis and legs ----
+  const hipsY = 0.92;
+  const hips = new THREE.Group();
+  hips.position.y = hipsY;
+  g.add(hips);
+
+  const knees: THREE.Group[] = [];
+  if (p.dress !== 'gown') {
     for (const sx of [-1, 1]) {
-      const leg = mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.85, 6), 0x8a7350);
-      leg.position.set(sx * 0.11, 0.45, 0); g.add(leg);
+      const hip = new THREE.Group();
+      hip.position.set(sx * 0.10, 0, 0);
+      const thigh = limb(0.075, 0.32, 0x8a7350); // breeches
+      hip.add(thigh);
+      const knee = new THREE.Group();
+      knee.position.y = -0.44;
+      const calf = limb(0.055, 0.30, stocking);  // stockings
+      knee.add(calf);
+      const shoe = smoothMesh(new THREE.BoxGeometry(0.11, 0.07, 0.24), 0x241c14);
+      shoe.position.set(0, -0.445, 0.05);
+      knee.add(shoe);
+      hip.add(knee);
+      hips.add(hip);
+      knees.push(hip);
     }
-    const shirtC = p.dress === 'shirt' ? p.color : p.color;
-    const torso = mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.62, 8), shirtC);
-    torso.position.y = 1.18;
-    if (bend) { torso.rotation.x = 0.5; torso.position.z = 0.12; torso.position.y = 1.08; }
-    g.add(torso);
   }
 
-  // arms
+  // ---- torso (a pivot, so bending is a joint not a lean) ----
+  const torso = new THREE.Group();
+  hips.add(torso);
+  if (p.dress === 'gown') {
+    const skirt = smoothMesh(new THREE.CylinderGeometry(0.155, 0.40, hipsY + 0.12, 10), p.color);
+    skirt.position.y = -(hipsY + 0.12) / 2 + 0.06;
+    hips.add(skirt);
+    const bodice = smoothMesh(new THREE.CapsuleGeometry(0.145, 0.28, 3, 10), p.color);
+    bodice.position.y = 0.28; bodice.scale.z = 0.8;
+    torso.add(bodice);
+    const apron = smoothMesh(new THREE.BoxGeometry(0.26, 0.5, 0.03), V.linen);
+    apron.position.set(0, -0.28, 0.17);
+    hips.add(apron);
+    const kerchief = smoothMesh(new THREE.ConeGeometry(0.16, 0.16, 8), V.linen);
+    kerchief.position.y = 0.42; torso.add(kerchief);
+  } else {
+    const chest = smoothMesh(new THREE.CapsuleGeometry(0.155, 0.30, 3, 10), p.color);
+    chest.position.y = 0.28; chest.scale.z = 0.78;
+    torso.add(chest);
+    if (p.dress === 'coat') {
+      const skirtC = smoothMesh(new THREE.CylinderGeometry(0.17, 0.26, 0.34, 10), p.color);
+      skirtC.position.y = -0.04;
+      torso.add(skirtC);
+      const waistcoat = smoothMesh(new THREE.BoxGeometry(0.16, 0.3, 0.05), V.cream);
+      waistcoat.position.set(0, 0.22, 0.14);
+      torso.add(waistcoat);
+    }
+  }
+
+  // ---- arms: shoulder → elbow chains ----
+  const shoulderY = 0.50;
+  const shoulders: THREE.Group[] = [];
+  const elbows: THREE.Group[] = [];
   for (const sx of [-1, 1]) {
-    const arm = mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.6, 5), p.color);
-    if (p.pose === 'hoe') {
-      arm.position.set(sx * 0.2, 1.06, 0.3); arm.rotation.x = -1.0;
-    } else if (p.pose === 'carry') {
-      arm.position.set(sx * 0.26, 1.06, 0.18); arm.rotation.x = -0.7;
-    } else if (p.pose === 'bend') {
-      arm.position.set(sx * 0.24, 1.0, 0.28); arm.rotation.x = -0.9;
-    } else {
-      arm.position.set(sx * 0.27, 1.12, 0); arm.rotation.z = sx * 0.15;
-    }
-    g.add(arm);
+    const shoulder = new THREE.Group();
+    shoulder.position.set(sx * 0.20, shoulderY, 0);
+    const upper = limb(0.055, 0.24, p.color);
+    shoulder.add(upper);
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.31;
+    const fore = limb(0.045, 0.22, p.dress === 'shirt' ? V.linen : p.color);
+    elbow.add(fore);
+    const hand = smoothMesh(new THREE.SphereGeometry(0.05, 6, 5), skin);
+    hand.position.y = -0.31;
+    elbow.add(hand);
+    shoulder.add(elbow);
+    torso.add(shoulder);
+    shoulders.push(shoulder);
+    elbows.push(elbow);
   }
 
-  // head
-  const headY = bend && p.dress !== 'gown' ? 1.52 : 1.62;
-  const headZ = bend && p.dress !== 'gown' ? 0.24 : 0;
-  const head = mesh(new THREE.SphereGeometry(0.15, 8, 7), skin);
-  head.position.set(0, headY, headZ); head.scale.y = 1.1; g.add(head);
+  // ---- head on a neck pivot ----
+  const neck = new THREE.Group();
+  neck.position.y = shoulderY + 0.16;
+  torso.add(neck);
+  const headG = new THREE.Group();
+  neck.add(headG);
+  const head = smoothMesh(new THREE.SphereGeometry(0.105, 10, 8), skin);
+  head.position.y = 0.09; head.scale.y = 1.15;
+  headG.add(head);
+  const nose = smoothMesh(new THREE.ConeGeometry(0.02, 0.05, 5), skin);
+  nose.rotation.x = Math.PI / 2; nose.position.set(0, 0.09, 0.105);
+  headG.add(nose);
+  const hairC = 0x4a3826;
+  const hair = smoothMesh(new THREE.SphereGeometry(0.108, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hairC);
+  hair.position.y = 0.10; hair.scale.y = 1.12;
+  headG.add(hair);
 
-  // hats
   if (p.hat === 'tricorne') {
-    const brim = mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 3), 0x211a12);
-    brim.position.set(0, headY + 0.12, headZ); brim.rotation.y = Math.PI / 6; g.add(brim);
+    const brim = smoothMesh(new THREE.CylinderGeometry(0.19, 0.19, 0.025, 3), 0x211a12);
+    brim.position.y = 0.20; brim.rotation.y = Math.PI / 6;
+    headG.add(brim);
+    const crown = smoothMesh(new THREE.SphereGeometry(0.09, 8, 6), 0x211a12);
+    crown.position.y = 0.19; crown.scale.y = 0.7;
+    headG.add(crown);
   } else if (p.hat === 'straw') {
-    const brim = mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 8), V.hay);
-    brim.position.set(0, headY + 0.1, headZ); g.add(brim);
-    const crown = mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.1, 8), V.hay);
-    crown.position.set(0, headY + 0.17, headZ); g.add(crown);
+    const brim = smoothMesh(new THREE.CylinderGeometry(0.24, 0.24, 0.02, 10), V.hay);
+    brim.position.y = 0.185;
+    headG.add(brim);
+    const crown = smoothMesh(new THREE.CylinderGeometry(0.1, 0.11, 0.08, 10), V.hay);
+    crown.position.y = 0.22;
+    headG.add(crown);
   } else if (p.hat === 'cap') {
-    const cap = mesh(new THREE.SphereGeometry(0.16, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), V.linen);
-    cap.position.set(0, headY + 0.05, headZ); g.add(cap);
+    const cap = smoothMesh(new THREE.SphereGeometry(0.115, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), V.linen);
+    cap.position.y = 0.13;
+    headG.add(cap);
   }
 
-  // tools
-  if (p.pose === 'hoe') {
-    const shaft = mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.7, 4), V.postWood);
-    shaft.position.set(0.1, 1.0, 0.5); shaft.rotation.x = 0.55; g.add(shaft);
-    const blade = mesh(new THREE.BoxGeometry(0.16, 0.16, 0.03), 0x3c3a37);
-    blade.position.set(0.1, 0.28, 0.95); g.add(blade);
-  } else if (p.pose === 'carry') {
-    const basket = mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.26, 7), V.hay);
-    basket.position.set(0, 1.05, 0.4); g.add(basket);
+  // ---- pose the joints ----
+  const pose = p.pose ?? 'stand';
+  let tool: THREE.Group | null = null;
+  if (pose === 'stand') {
+    shoulders[0].rotation.z = 0.10; shoulders[1].rotation.z = -0.10;
+    elbows[0].rotation.x = -0.25; elbows[1].rotation.x = -0.25;
+  } else if (pose === 'carry') {
+    for (const s of shoulders) s.rotation.x = -0.5;
+    for (const e of elbows) e.rotation.x = -1.0;
+    const basket = new THREE.Group();
+    const b = smoothMesh(new THREE.CylinderGeometry(0.19, 0.14, 0.2, 8), V.hay);
+    basket.add(b);
+    basket.position.set(0, 0.12, 0.34);
+    torso.add(basket);
+  } else if (pose === 'bend') {
+    torso.rotation.x = 0.85;
+    neck.rotation.x = -0.4;
+    for (const s of shoulders) s.rotation.x = -0.5;
+  } else if (pose === 'hoe') {
+    torso.rotation.x = 0.35;
+    shoulders[0].rotation.x = -0.9; shoulders[1].rotation.x = -0.9;
+    shoulders[0].rotation.z = 0.15; shoulders[1].rotation.z = -0.15;
+    elbows[0].rotation.x = -0.4; elbows[1].rotation.x = -0.4;
+    tool = new THREE.Group();
+    const shaft = smoothMesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 5), V.postWood);
+    shaft.rotation.x = 0.9; shaft.position.set(0, -0.3, 0.45);
+    tool.add(shaft);
+    const blade = smoothMesh(new THREE.BoxGeometry(0.13, 0.13, 0.025), 0x3c3a37);
+    blade.position.set(0, -0.95, 0.95);
+    tool.add(blade);
+    tool.position.y = shoulderY;
+    torso.add(tool);
   }
-  return g;
+
+  // ---- life: breath, weight, gaze, and the work cycle ----
+  const baseTorsoX = torso.rotation.x;
+  const animate: Animated = (t) => {
+    const bt = t + phase * 10;
+    // breath
+    torso.position.y = Math.sin(bt * 1.9) * 0.008;
+    // weight shift
+    g.rotation.z = Math.sin(bt * 0.43) * 0.015;
+    hips.position.x = Math.sin(bt * 0.43) * 0.012;
+    if (pose === 'stand' || pose === 'carry') {
+      // a gaze that wanders like a person's, not a metronome's
+      headG.rotation.y = Math.sin(bt * 0.31) * 0.55 + Math.sin(bt * 0.11) * 0.25;
+      headG.rotation.x = Math.sin(bt * 0.23) * 0.06;
+      shoulders[0].rotation.x = (pose === 'carry' ? -0.5 : 0) + Math.sin(bt * 1.9) * 0.02;
+    } else if (pose === 'hoe') {
+      const swing = Math.sin(bt * 2.3);
+      torso.rotation.x = baseTorsoX + 0.22 + swing * 0.2;
+      shoulders[0].rotation.x = -0.9 - swing * 0.35;
+      shoulders[1].rotation.x = -0.9 - swing * 0.35;
+      if (tool) tool.rotation.x = -swing * 0.28;
+    } else if (pose === 'bend') {
+      torso.rotation.x = baseTorsoX + Math.sin(bt * 1.1) * 0.07;
+    }
+    void knees;
+  };
+
+  return { group: g, animate };
 }
 
 /**

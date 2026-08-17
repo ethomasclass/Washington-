@@ -88,6 +88,15 @@ export class Sky {
 
     this.sun = new THREE.DirectionalLight(cfg.sunColor, cfg.sunIntensity);
     this.sun.position.copy(this.sunDir).multiplyScalar(200);
+    // real cast shadows — the single biggest grounding cue the renderer has
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    const ext = 130;
+    this.sun.shadow.camera.left = -ext; this.sun.shadow.camera.right = ext;
+    this.sun.shadow.camera.top = ext; this.sun.shadow.camera.bottom = -ext;
+    this.sun.shadow.camera.near = 10; this.sun.shadow.camera.far = 500;
+    this.sun.shadow.bias = -0.0006;
+    this.sun.shadow.normalBias = 0.6;
     this.hemi = new THREE.HemisphereLight(cfg.zenith, cfg.horizon, cfg.ambient);
   }
 

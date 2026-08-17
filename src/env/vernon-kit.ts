@@ -110,16 +110,38 @@ export function sashWindow(w = 0.9, h = 1.5): THREE.Group {
   return g;
 }
 
-/** A panel door, optionally with a small triangular pediment. */
+/**
+ * A panel door. With `pediment` it becomes a full Georgian frontispiece —
+ * flanking pilasters, entablature, and a triangular pediment over the head,
+ * after the mansion's west-door surround.
+ */
 export function panelDoor(w = 1.1, h = 2.2, pediment = false): THREE.Group {
   const g = new THREE.Group();
   const frame = mesh(new THREE.BoxGeometry(w + 0.2, h + 0.15, 0.07), V.trim);
   frame.position.y = h / 2; g.add(frame);
   const door = mesh(new THREE.BoxGeometry(w, h, 0.06), V.door);
   door.position.set(0, h / 2, 0.02); g.add(door);
+  // raised panels — two columns of three
+  for (const sx of [-1, 1]) for (let r = 0; r < 3; r++) {
+    const p = mesh(new THREE.BoxGeometry(w * 0.34, h * 0.24, 0.03), 0x5a4530);
+    p.position.set(sx * w * 0.22, h * (0.2 + r * 0.3), 0.06);
+    g.add(p);
+  }
   if (pediment) {
-    const p = mesh(gableRoofGeo(w + 0.5, 0.3, 0.35), V.trim);
-    p.position.y = h + 0.12; g.add(p);
+    for (const sx of [-1, 1]) {
+      const pil = mesh(new THREE.BoxGeometry(0.22, h + 0.25, 0.1), V.trim);
+      pil.position.set(sx * (w / 2 + 0.28), (h + 0.25) / 2, 0.02);
+      g.add(pil);
+      const cap = mesh(new THREE.BoxGeometry(0.3, 0.1, 0.14), V.trim);
+      cap.position.set(sx * (w / 2 + 0.28), h + 0.2, 0.03);
+      g.add(cap);
+    }
+    const entab = mesh(new THREE.BoxGeometry(w + 1.05, 0.22, 0.14), V.trim);
+    entab.position.set(0, h + 0.36, 0.03);
+    g.add(entab);
+    const ped = mesh(gableRoofGeo(w + 1.05, 0.36, 0.42), V.trim);
+    ped.position.set(0, h + 0.47, 0.0);
+    g.add(ped);
   }
   return g;
 }
@@ -145,6 +167,10 @@ export interface BuildingSpec {
   chimneyColor?: number;
   shutters?: boolean;
   plinth?: number;                 // stone foundation height
+  /** Rusticated block coursing — thin shadow lines across the long faces. */
+  courses?: boolean;
+  /** A cornice band under the eaves. */
+  cornice?: boolean;
 }
 
 /** A Georgian-Virginia building. Origin at ground centre; faces ±z. */
@@ -160,6 +186,38 @@ export function building(s: BuildingSpec): THREE.Group {
   }
   const body = mesh(new THREE.BoxGeometry(s.w, H, s.d), s.wall);
   body.position.y = plinth + H / 2; g.add(body);
+
+  // rusticated coursing: shallow horizontal score lines, inked by the outline
+  // pass — the sand-painted "stone block" read without a texture. PERIMETER
+  // STRIPS, not sheets: a full-footprint box would slice through the interior.
+  if (s.courses) {
+    for (let y = plinth + 0.7; y < plinth + H - 0.4; y += 0.78) {
+      for (const sz of [-1, 1]) {
+        const line = mesh(new THREE.BoxGeometry(s.w + 0.03, 0.03, 0.05), V.cream);
+        line.position.set(0, y, sz * (s.d / 2 + 0.005));
+        g.add(line);
+      }
+      for (const sx of [-1, 1]) {
+        const line = mesh(new THREE.BoxGeometry(0.05, 0.03, s.d + 0.03), V.cream);
+        line.position.set(sx * (s.w / 2 + 0.005), y, 0);
+        g.add(line);
+      }
+    }
+  }
+  if (s.cornice) {
+    for (const [inset, h2, y] of [[0.4, 0.22, -0.06], [0.24, 0.12, -0.22]] as const) {
+      for (const sz of [-1, 1]) {
+        const c = mesh(new THREE.BoxGeometry(s.w + inset, h2, inset / 2), V.trim);
+        c.position.set(0, plinth + H + y, sz * (s.d / 2 + inset / 4));
+        g.add(c);
+      }
+      for (const sx of [-1, 1]) {
+        const c = mesh(new THREE.BoxGeometry(inset / 2, h2, s.d + inset), V.trim);
+        c.position.set(sx * (s.w / 2 + inset / 4), plinth + H + y, 0);
+        g.add(c);
+      }
+    }
+  }
 
   // roof
   const roofH = s.roofH ?? Math.min(2.6, s.d * 0.42);

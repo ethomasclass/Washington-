@@ -10,6 +10,14 @@
 import * as THREE from 'three';
 
 export interface Blocker { x: number; z: number; r: number; }
+/**
+ * An axis-aligned wall/furniture collider. Optional minY/maxY confine it to a
+ * height band, so a rail on an upper floor does not wall off the room below.
+ */
+export interface BoxBlocker {
+  minX: number; minZ: number; maxX: number; maxZ: number;
+  minY?: number; maxY?: number;
+}
 
 export class FirstPerson {
   yaw = 0;
@@ -27,6 +35,7 @@ export class FirstPerson {
     dom: HTMLElement,
     private blockers: Blocker[] = [],
     private bounds = 42,
+    private boxes: BoxBlocker[] = [],
   ) {
     dom.addEventListener('click', () => dom.requestPointerLock());
     document.addEventListener('pointerlockchange', () => {
@@ -53,6 +62,13 @@ export class FirstPerson {
   private blocked(x: number, z: number): boolean {
     for (const b of this.blockers) {
       if (Math.hypot(x - b.x, z - b.z) < b.r + 0.4) return true;
+    }
+    const R = 0.28; // body radius against walls
+    const footY = this.pos.y - this.eyeHeight;
+    for (const b of this.boxes) {
+      if (b.minY !== undefined && footY < b.minY) continue;
+      if (b.maxY !== undefined && footY > b.maxY) continue;
+      if (x > b.minX - R && x < b.maxX + R && z > b.minZ - R && z < b.maxZ + R) return true;
     }
     return false;
   }

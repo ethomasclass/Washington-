@@ -48,6 +48,7 @@ import { fbm } from './noise';
 import * as K from '../fp/kit';
 import * as E from './vernon-kit';
 import { V } from './vernon-kit';
+import { buildInterior } from './vernon-interior';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -175,14 +176,39 @@ export const MOUNT_VERNON_1775: SceneDef = {
     };
 
     // ---- THE MANSION (R.1–R.4) --------------------------------------------
+    // Facade per the house itself, filtered to 1775: rusticated coursing,
+    // dark-green shutters, cornice, the Georgian door surround. NO west
+    // pediment or oculus (that gable is 1778 work, like the cupola), no
+    // colonnades, no piazza.
     const mansion = E.building({
       w: 22, d: 9.5, stories: 2, storyH: 3.1,
       wall: V.white, roof: V.roofSlate, roofType: 'hip', roofH: 3.5, ridgeFrac: 0.6,
       windowsX: 7, door: { face: 's', bay: 2, pediment: true },
-      dormers: 4, chimneys: ['e', 'w'], shutters: false, plinth: 0.5,
+      dormers: 4, chimneys: ['e', 'w'], shutters: true, plinth: 0.5,
+      courses: true, cornice: true,
     });
     mansion.rotation.y = Math.PI / 2; // door face now looks west (−x)
     place(mansion, 0, 0, Math.PI / 2);
+
+    // The east door (the passage runs straight through the house) and stone
+    // steps at both thresholds.
+    const eastDoor = E.panelDoor(1.1, 2.15, false);
+    eastDoor.position.set(4.78, g2(0, 0) + 0.5, 3.14);
+    eastDoor.rotation.y = Math.PI / 2;
+    ctx.scene.add(eastDoor);
+    for (const [sx, dx] of [[-1, -5.15], [1, 5.15]] as const) {
+      void sx;
+      for (let s = 0; s < 2; s++) {
+        const step = new THREE.Mesh(new THREE.BoxGeometry(0.5 - s * 0.1, 0.24, 1.7), K.mat(V.stone));
+        step.position.set(dx + (dx > 0 ? -0.1 : 0.1) * s, g2(dx, 3.14) + 0.12 + s * 0.22, 3.14);
+        ctx.scene.add(step);
+      }
+    }
+
+    // ---- THE INTERIOR — two floors and the stair (walk in the west door) --
+    const interior = buildInterior({ groundY: g2(0, 0), box: ctx.box });
+    ctx.scene.add(interior.group);
+    ctx.setHeightOverride(interior.heightAt);
 
     // The raw south wing: tan cladding over the southern bays (R.4).
     for (const face of [-1, 1]) {
@@ -210,6 +236,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
         plinth: 0.25,
       });
       place(b, x, z, yaw);
+      ctx.box(x - w / 2 - 0.2, z - 2.3, x + w / 2 + 0.2, z + 2.3);
     };
     // north row: kitchen, wash house, dairy — walking distance, not porch furniture
     dep(6, true, -17, -13, -0.06);
@@ -258,6 +285,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
         cap.position.set(mx, g2(mx, mz) + 1.95, mz);
         cap.rotation.y = wall.rotation.y;
         ctx.scene.add(cap);
+        ctx.box(Math.min(ax, bx) - 0.2, Math.min(az, bz) - 0.2, Math.max(ax, bx) + 0.2, Math.max(az, bz) + 0.2);
       }
       if (sz < 0) {
         // upper garden: fruit-and-nut rows (the parterres are 1785+)
@@ -281,6 +309,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
       plinth: 0.25,
     });
     place(quarter, -52, -18, 0.08);
+    ctx.box(-58.4, -20.9, -45.6, -15.1);
     const qs = E.smokeColumn(0.7);
     place(qs.group, -57, -18); qs.group.position.y = g2(-52, -18) + 7.2;
     animate(qs.animate);
@@ -295,6 +324,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
       windowsX: 2, door: { face: 'n', bay: 0 }, chimneys: [], plinth: 0.2,
     });
     place(stable, -22, 38, -0.05);
+    ctx.box(-27.4, 34.9, -16.6, 41.1);
     place(E.horse(), -17, 34.5, 2.6);
     place(E.horse(0x6e5136), -26.5, 33.5, -2.0);
     putPerson({ dress: 'shirt', color: 0x8a7350, pose: 'stand', hat: 'straw', seed: 4 }, -18.5, 33.5, 2.2);

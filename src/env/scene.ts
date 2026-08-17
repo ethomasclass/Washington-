@@ -42,6 +42,8 @@ export interface BuiltEnv {
   spawn: { x: number; z: number; yaw: number };
   update: (dt: number, camera: THREE.Camera, t: number) => void;
   bounds: number;
+  boxes: Array<{ minX: number; minZ: number; maxX: number; maxZ: number; minY?: number; maxY?: number }>;
+  heightOverride: ((x: number, z: number, footY: number) => number | null) | null;
 }
 
 export interface SceneDef {
@@ -69,6 +71,15 @@ interface BuildCtx {
   place: (o: THREE.Object3D, x: number, z: number, yaw?: number) => void;
   /** Register a per-frame animator (smoke, birds, laundry, a sloop riding). */
   animate: (fn: (t: number, dt: number) => void) => void;
+  /** Register an axis-aligned wall/furniture collider, optionally bounded in height. */
+  box: (minX: number, minZ: number, maxX: number, maxZ: number, minY?: number, maxY?: number) => void;
+  /**
+   * Register a walkable-height override (interior floors, stairs). Returns an
+   * absolute floor height, or null where the terrain rules. `footY` is the
+   * player's current foot height, so a two-storey building can answer with
+   * whichever floor the player is actually on.
+   */
+  setHeightOverride: (fn: (x: number, z: number, footY: number) => number | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,12 +229,19 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
 
   // dressing
   const animators: Array<(t: number, dt: number) => void> = [];
+  const boxes: BuiltEnv['boxes'] = [];
+  let heightOverride: BuiltEnv['heightOverride'] = null;
   const place = (o: THREE.Object3D, x: number, z: number, yaw = 0) => {
     o.position.set(x, elevation(x, z), z);
     o.rotation.y = yaw;
     scene.add(o);
   };
-  def.build({ scene, height: elevation, slopeAt, place, animate: (fn) => animators.push(fn) });
+  def.build({
+    scene, height: elevation, slopeAt, place,
+    animate: (fn) => animators.push(fn),
+    box: (minX, minZ, maxX, maxZ, minY, maxY) => boxes.push({ minX, minZ, maxX, maxZ, minY, maxY }),
+    setHeightOverride: (fn) => { heightOverride = fn; },
+  });
 
   const weather = new Weather();
   weather.set(weatherKind, sky, scene);
@@ -233,6 +251,8 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
     height: elevation,
     spawn: def.spawn,
     bounds: def.bounds,
+    boxes,
+    heightOverride,
     update: (dt, camera, t) => {
       weather.update(dt, camera);
       water?.update(t);

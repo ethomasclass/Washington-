@@ -33,15 +33,23 @@ let W = innerWidth, H = innerHeight;
 renderer.setSize(W, H, false);
 
 const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 6000);
-const fp = new FirstPerson(camera, canvas, [], env.bounds);
+const fp = new FirstPerson(camera, canvas, [], env.bounds, env.boxes);
 fp.eyeHeight = 1.7;
 fp.setPose(env.spawn.x, env.spawn.z, env.spawn.yaw);
+
+// Terrain everywhere, except where a scene declares walkable architecture —
+// interior floors and stairs answer with an absolute height, chosen by the
+// player's current foot height so two storeys can share an (x, z).
+const groundFn = (x: number, z: number): number => {
+  const o = env.heightOverride?.(x, z, fp.pos.y - fp.eyeHeight);
+  return o ?? env.height(x, z);
+};
 
 const engraving = new EngravingPass(renderer, W * renderer.getPixelRatio(), H * renderer.getPixelRatio(), {
   ink: INK, paper: 0,
 });
 
-const POSES: Record<string, { x: number; z: number; yaw: number; pitch: number }> = SCENE === 'valley-forge'
+const POSES: Record<string, { x: number; z: number; yaw: number; pitch: number; up?: boolean }> = SCENE === 'valley-forge'
   ? {
       a: { x: 0, z: 28, yaw: 0.0, pitch: 0.02 },     // into the camp
       b: { x: -22, z: 16, yaw: -0.6, pitch: 0.03 },  // along the hut row
@@ -53,8 +61,17 @@ const POSES: Record<string, { x: number; z: number; yaw: number; pitch: number }
       c: { x: 27, z: 7, yaw: 1.35, pitch: 0.02 },               // from the bluff edge, east front
       d: { x: 38, z: 8, yaw: -1.75, pitch: -0.06 },             // down the track: wharf, sloop, fishery
       e: { x: -10.5, z: 5.5, yaw: -0.95, pitch: 0.0 },          // close: Martha, the chariot, the door
+      f: { x: -3.4, z: 3.14, yaw: -Math.PI / 2, pitch: 0.0 },   // inside: the passage, from the west door
+      g: { x: 1.8, z: 5.2, yaw: 1.92, pitch: 0.0 },             // inside: the study and the raw wing
+      h: { x: 4.35, z: 4.3, yaw: 0.45, pitch: -0.05, up: true },// upstairs: the hall from the stairhead
+      i: { x: 0.6, z: -5.0, yaw: 0.65, pitch: 0.0, up: true },  // upstairs: a bedchamber
     };
-if (SHOT) { const q = POSES[p.get('pose') ?? 'a']; fp.setPose(q.x, q.z, q.yaw); fp.pitch = q.pitch; }
+if (SHOT) {
+  const q = POSES[p.get('pose') ?? 'a'];
+  fp.setPose(q.x, q.z, q.yaw);
+  fp.pitch = q.pitch;
+  if (q.up) fp.pos.y = fp.eyeHeight + 20; // bias the floor-picker to the upper storey
+}
 
 addEventListener('resize', () => {
   W = innerWidth; H = innerHeight;
@@ -72,9 +89,9 @@ function loop(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   const t = now * 0.001;
-  if (!SHOT) fp.update(dt, env.height);
+  if (!SHOT) fp.update(dt, groundFn);
   else {
-    camera.position.set(fp.pos.x, fp.eyeHeight + env.height(fp.pos.x, fp.pos.z), fp.pos.z);
+    camera.position.set(fp.pos.x, fp.eyeHeight + groundFn(fp.pos.x, fp.pos.z), fp.pos.z);
     const dir = new THREE.Vector3(Math.cos(fp.pitch) * -Math.sin(fp.yaw), Math.sin(fp.pitch), Math.cos(fp.pitch) * -Math.cos(fp.yaw));
     camera.lookAt(camera.position.clone().add(dir));
   }
@@ -82,7 +99,7 @@ function loop(now: number) {
   engraving.render(env.scene, camera);
   env.weather.render(renderer, camera); // particles over the composite, never through it
   if (SHOT) hud.style.display = 'none';
-  else hud.style.opacity = fp.isLocked ? '0' : '1';
+  else hud.classList.toggle('hidden', fp.isLocked);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

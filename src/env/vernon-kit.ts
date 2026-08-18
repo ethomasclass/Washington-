@@ -18,9 +18,11 @@
  */
 
 import * as THREE from 'three';
-import { mat } from '../fp/kit';
+import { mat, texMat } from '../fp/kit';
+import { brickTex, plankTex, stoneTex } from './textures';
 
-export type Animated = (t: number, dt: number) => void;
+/** Per-frame animator. `cam` is the player's position, for proximity effects. */
+export type Animated = (t: number, dt: number, cam?: THREE.Vector3) => void;
 
 // Period palette — Virginia tidewater, painted wood and brick.
 export const V = {
@@ -79,6 +81,12 @@ export function hipRoofGeo(w: number, d: number, h: number, ridgeFrac = 0.45): T
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
   geo.computeVertexNormals();
+  // planar-ish UVs so shingle textures can lie on the slopes
+  const uvs: number[] = [];
+  for (let i = 0; i < verts.length; i += 3) {
+    uvs.push(verts[i] / 3, (verts[i + 2] + verts[i + 1]) / 3);
+  }
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   return geo;
 }
 
@@ -111,21 +119,46 @@ export function sashWindow(w = 0.9, h = 1.5): THREE.Group {
 }
 
 /**
+ * A hinged door leaf, matching the mansion's real west door: deep maroon-red,
+ * six raised panels, a brass box lock. ORIGIN AT THE HINGE EDGE (x = 0 is the
+ * hinge stile; the leaf extends +x), so rotating the group about Y swings it.
+ */
+export function doorLeaf(w = 1.1, h = 2.15): THREE.Group {
+  const g = new THREE.Group();
+  const maroon = 0x59262a;
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), texMat(maroon, plankTex(), { flat: false }));
+  leaf.castShadow = true;
+  leaf.position.set(w / 2, h / 2, 0);
+  g.add(leaf);
+  for (const s of [-1, 1]) {
+    for (const [ry, ph] of [[0.16, 0.20], [0.46, 0.26], [0.80, 0.20]] as const) {
+      for (const side of [0.045, -0.045]) {
+        const p = mesh(new THREE.BoxGeometry(w * 0.33, h * ph, 0.025), 0x47191d);
+        p.position.set(w / 2 + s * w * 0.21, h * ry + h * ph / 2, side);
+        g.add(p);
+      }
+    }
+  }
+  const lock = mesh(new THREE.BoxGeometry(0.13, 0.17, 0.09), 0x8a6f2e);
+  lock.position.set(w - 0.12, h * 0.44, 0);
+  g.add(lock);
+  return g;
+}
+
+/**
  * A panel door. With `pediment` it becomes a full Georgian frontispiece —
  * flanking pilasters, entablature, and a triangular pediment over the head,
- * after the mansion's west-door surround.
+ * after the mansion's west-door surround. `leafless` renders the surround
+ * only, for doorways that get a separately-hinged animated leaf.
  */
-export function panelDoor(w = 1.1, h = 2.2, pediment = false): THREE.Group {
+export function panelDoor(w = 1.1, h = 2.2, pediment = false, leafless = false): THREE.Group {
   const g = new THREE.Group();
   const frame = mesh(new THREE.BoxGeometry(w + 0.2, h + 0.15, 0.07), V.trim);
   frame.position.y = h / 2; g.add(frame);
-  const door = mesh(new THREE.BoxGeometry(w, h, 0.06), V.door);
-  door.position.set(0, h / 2, 0.02); g.add(door);
-  // raised panels — two columns of three
-  for (const sx of [-1, 1]) for (let r = 0; r < 3; r++) {
-    const p = mesh(new THREE.BoxGeometry(w * 0.34, h * 0.24, 0.03), 0x5a4530);
-    p.position.set(sx * w * 0.22, h * (0.2 + r * 0.3), 0.06);
-    g.add(p);
+  if (!leafless) {
+    const leaf = doorLeaf(w, h);
+    leaf.position.set(-w / 2, 0, 0.02);
+    g.add(leaf);
   }
   if (pediment) {
     for (const sx of [-1, 1]) {
@@ -161,7 +194,7 @@ export interface BuildingSpec {
   ridgeFrac?: number;
   windowsX: number;                // bays on the long (x) faces
   windowsZup?: boolean;            // windows on gable ends too
-  door?: { face: 'n' | 's'; bay?: number; pediment?: boolean };
+  door?: { face: 'n' | 's'; bay?: number; pediment?: boolean; leafless?: boolean };
   dormers?: number;
   chimneys?: Array<'e' | 'w' | 'c'>;
   chimneyColor?: number;
@@ -171,6 +204,9 @@ export interface BuildingSpec {
   courses?: boolean;
   /** A cornice band under the eaves. */
   cornice?: boolean;
+  /** Detail textures (low-contrast; see env/textures.ts). */
+  wallTex?: THREE.Texture;
+  roofTex?: THREE.Texture;
 }
 
 /** A Georgian-Virginia building. Origin at ground centre; faces ±z. */
@@ -181,10 +217,14 @@ export function building(s: BuildingSpec): THREE.Group {
   const plinth = s.plinth ?? 0.35;
 
   if (plinth > 0) {
-    const p = mesh(new THREE.BoxGeometry(s.w + 0.2, plinth, s.d + 0.2), V.stone);
+    const p = new THREE.Mesh(new THREE.BoxGeometry(s.w + 0.2, plinth, s.d + 0.2), texMat(V.stone, stoneTex()));
+    p.castShadow = p.receiveShadow = true;
     p.position.y = plinth / 2; g.add(p);
   }
-  const body = mesh(new THREE.BoxGeometry(s.w, H, s.d), s.wall);
+  const body = s.wallTex
+    ? new THREE.Mesh(new THREE.BoxGeometry(s.w, H, s.d), texMat(s.wall, s.wallTex))
+    : mesh(new THREE.BoxGeometry(s.w, H, s.d), s.wall);
+  body.castShadow = body.receiveShadow = true;
   body.position.y = plinth + H / 2; g.add(body);
 
   // rusticated coursing: shallow horizontal score lines, inked by the outline
@@ -224,7 +264,10 @@ export function building(s: BuildingSpec): THREE.Group {
   const roofGeo = s.roofType === 'hip'
     ? hipRoofGeo(s.w + 0.5, s.d + 0.5, roofH, s.ridgeFrac ?? 0.45)
     : gableRoofGeo(s.w + 0.3, s.d + 0.5, roofH);
-  const roof = mesh(roofGeo, s.roof);
+  const roof = s.roofTex
+    ? new THREE.Mesh(roofGeo, texMat(s.roof, s.roofTex))
+    : mesh(roofGeo, s.roof);
+  roof.castShadow = roof.receiveShadow = true;
   roof.position.y = plinth + H; g.add(roof);
 
   // windows on both long faces, every story
@@ -237,7 +280,7 @@ export function building(s: BuildingSpec): THREE.Group {
         const zz = (face === 's' ? 1 : -1) * (s.d / 2 + 0.04);
         const x = -s.w / 2 + bayW * (i + 0.5);
         if (doorHere && s.door!.face === face) {
-          const dr = panelDoor(1.1, 2.15, s.door!.pediment);
+          const dr = panelDoor(1.1, 2.15, s.door!.pediment, s.door!.leafless);
           dr.position.set(x, plinth, zz);
           if (face === 'n') dr.rotation.y = Math.PI;
           g.add(dr);
@@ -277,13 +320,16 @@ export function building(s: BuildingSpec): THREE.Group {
     }
   }
 
-  // chimneys, through the ridge
+  // chimneys, through the ridge — brick unless told otherwise
   for (const c of s.chimneys ?? []) {
     const x = c === 'c' ? 0 : (c === 'e' ? 1 : -1) * (s.w / 2 - 0.5);
-    const ch = mesh(new THREE.BoxGeometry(0.9, roofH + 1.6, 1.3), s.chimneyColor ?? V.brick);
+    const cc = s.chimneyColor ?? V.brick;
+    const cTex = cc === V.stone ? stoneTex() : brickTex();
+    const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, roofH + 1.6, 1.3), texMat(cc, cTex));
+    ch.castShadow = true;
     ch.position.set(x, plinth + H + (roofH + 1.6) / 2 - 0.3, 0);
     g.add(ch);
-    const cap = mesh(new THREE.BoxGeometry(1.1, 0.22, 1.5), s.chimneyColor ?? V.brick);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.22, 1.5), texMat(cc, cTex));
     cap.position.set(x, plinth + H + roofH + 1.35, 0);
     g.add(cap);
   }
@@ -586,6 +632,8 @@ export interface PersonSpec {
   skin?: number;
   pose?: 'stand' | 'hoe' | 'carry' | 'bend';
   hat?: 'tricorne' | 'straw' | 'cap' | 'none';
+  /** A musket shouldered on the left. */
+  musket?: boolean;
   /** Distinguishes idle phases so a crowd never moves in unison. */
   seed?: number;
 }
@@ -727,6 +775,18 @@ export function person(p: PersonSpec): { group: THREE.Group; animate: Animated }
     const cap = smoothMesh(new THREE.SphereGeometry(0.115, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), V.linen);
     cap.position.y = 0.13;
     headG.add(cap);
+  }
+
+  // ---- a shouldered musket ----
+  if (p.musket) {
+    const mus = new THREE.Group();
+    const barrel = smoothMesh(new THREE.CylinderGeometry(0.018, 0.02, 1.35, 5), 0x3c3a37);
+    barrel.position.y = 0.3; mus.add(barrel);
+    const stock = smoothMesh(new THREE.BoxGeometry(0.05, 0.5, 0.045), 0x4a3320);
+    stock.position.y = -0.35; mus.add(stock);
+    mus.position.set(-0.26, shoulderY + 0.18, -0.06);
+    mus.rotation.x = 0.1; mus.rotation.z = 0.08;
+    torso.add(mus);
   }
 
   // ---- pose the joints ----

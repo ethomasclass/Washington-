@@ -49,13 +49,26 @@ const engraving = new EngravingPass(renderer, W * renderer.getPixelRatio(), H * 
   ink: INK, paper: 0,
 });
 
-const POSES: Record<string, { x: number; z: number; yaw: number; pitch: number; up?: boolean }> = SCENE === 'valley-forge'
-  ? {
-      a: { x: 0, z: 28, yaw: 0.0, pitch: 0.02 },     // into the camp
-      b: { x: -22, z: 16, yaw: -0.6, pitch: 0.03 },  // along the hut row
-      c: { x: 18, z: 18, yaw: 0.7, pitch: 0.03 },    // the other end + the wagon
-    }
-  : {
+type Pose = { x: number; z: number; yaw: number; pitch: number; up?: boolean };
+const SCENE_POSES: Record<string, Record<string, Pose>> = {
+  'valley-forge': {
+    a: { x: 0, z: 28, yaw: 0.0, pitch: 0.02 },     // into the camp
+    b: { x: -22, z: 16, yaw: -0.6, pitch: 0.03 },  // along the hut row
+    c: { x: 18, z: 18, yaw: 0.7, pitch: 0.03 },    // the other end + the wagon
+  },
+  'cambridge': {
+    a: { x: -36, z: 2, yaw: -1.35, pitch: 0.0 },   // down the road into the camp
+    b: { x: 4, z: 22, yaw: 0.6, pitch: 0.0 },      // the shelter sprawl from the fires
+    c: { x: 10, z: -4, yaw: -2.5, pitch: 0.0 },    // the Rhode Island streets
+    d: { x: 44, z: 4, yaw: -1.55, pitch: -0.02 },  // the flats: Boston across the water
+  },
+  'lines': {
+    a: { x: -2, z: 6, yaw: -1.35, pitch: -0.02 },  // over the parapet: the whole vista
+    b: { x: -8, z: 20, yaw: -0.9, pitch: 0.0 },    // the unfinished work
+    c: { x: 2, z: -32, yaw: -1.2, pitch: 0.0 },    // along the line from the traverse
+    d: { x: -20, z: 26, yaw: -0.5, pitch: 0.0 },   // the graves, the huts beyond
+  },
+  'mount-vernon': {
       a: { x: -66, z: 0, yaw: -Math.PI / 2, pitch: 0.02 },      // the west lane, walls either side
       b: { x: -32, z: 4, yaw: -1.42, pitch: 0.03 },             // forecourt: house, chariot, service rows
       c: { x: 27, z: 7, yaw: 1.35, pitch: 0.02 },               // from the bluff edge, east front
@@ -65,9 +78,11 @@ const POSES: Record<string, { x: number; z: number; yaw: number; pitch: number; 
       g: { x: 1.8, z: 5.2, yaw: 1.92, pitch: 0.0 },             // inside: the study and the raw wing
       h: { x: 4.35, z: 4.3, yaw: 0.45, pitch: -0.05, up: true },// upstairs: the hall from the stairhead
       i: { x: 0.6, z: -5.0, yaw: 0.65, pitch: 0.0, up: true },  // upstairs: a bedchamber
-    };
+    },
+};
+const POSES = SCENE_POSES[SCENE] ?? SCENE_POSES['mount-vernon'];
 if (SHOT) {
-  const q = POSES[p.get('pose') ?? 'a'];
+  const q = POSES[p.get('pose') ?? 'a'] ?? POSES['a'];
   fp.setPose(q.x, q.z, q.yaw);
   fp.pitch = q.pitch;
   if (q.up) fp.pos.y = fp.eyeHeight + 20; // bias the floor-picker to the upper storey

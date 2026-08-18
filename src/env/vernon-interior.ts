@@ -70,7 +70,10 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
     let material: THREE.Material;
     if (em > 0) {
       const m2 = new THREE.MeshToonMaterial({ color });
-      m2.emissive = new THREE.Color(color);
+      // warm-shifted emissive: the hemisphere light is sky-blue, and without a
+      // counterweight every interior surface reads cold. This is candlelight
+      // colour baked into the walls.
+      m2.emissive = new THREE.Color(color).lerp(new THREE.Color(0xffdca4), 0.45);
       m2.emissiveIntensity = em;
       material = m2;
     } else {
@@ -85,26 +88,28 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
 
   // ---- floors -------------------------------------------------------------
   // ground floor boards
-  solid((X0 + X1) / 2, floorY - 0.05, (Z0 + Z1) / 2, X1 - X0, 0.1, Z1 - Z0, 0xa8875a, 0.12);
+  solid((X0 + X1) / 2, floorY - 0.05, (Z0 + Z1) / 2, X1 - X0, 0.1, Z1 - Z0, 0xa8875a, 0.4);
   // board seams — thin darker strips, the cheap plank read
   for (let z = Z0 + 0.9; z < Z1; z += 0.9) {
     solid((X0 + X1) / 2, floorY + 0.002, z, X1 - X0, 0.004, 0.03, 0x82653e, 0.08);
   }
   // second floor slab, with the stairwell left open (x 2.0..X1, z stair strip)
   const slabY = floor2Y - SLAB / 2;
+  // slabs inset from the shell so their edges never z-fight the facade
+  const IN = 0.06;
   const slabPieces: Array<[number, number, number, number]> = [
-    [(X0 + X1) / 2, (Z0 + PASSAGE_N) / 2, X1 - X0, PASSAGE_N - Z0],
-    [(X0 + X1) / 2, (3.0 + Z1) / 2, X1 - X0, Z1 - 3.0],
-    [(X0 + 2.0) / 2, (PASSAGE_N + 3.0) / 2, 2.0 - X0, 3.0 - PASSAGE_N],
+    [(X0 + X1) / 2, (Z0 + IN + PASSAGE_N) / 2, X1 - X0 - IN * 2, PASSAGE_N - Z0 - IN],
+    [(X0 + X1) / 2, (3.0 + Z1 - IN) / 2, X1 - X0 - IN * 2, Z1 - 3.0 - IN],
+    [(X0 + IN + 2.0) / 2, (PASSAGE_N + 3.0) / 2, 2.0 - X0 - IN, 3.0 - PASSAGE_N],
   ];
   for (const [cx, cz, sx, sz] of slabPieces) {
-    solid(cx, slabY, cz, sx, SLAB, sz, 0x9c7c50, 0.12);
+    solid(cx, slabY, cz, sx, SLAB, sz, 0x9c7c50, 0.2);
     // plastered ceiling skin under each piece
-    solid(cx, slabY - SLAB / 2 - 0.02, cz, sx, 0.03, sz, 0xf4f0e2, 0.2);
+    solid(cx, slabY - SLAB / 2 - 0.02, cz, sx, 0.03, sz, 0xf4f0e2, 0.36);
   }
   // garret ceiling, plastered below
   solid((X0 + X1) / 2, floor2Y + STORY, (Z0 + Z1) / 2, X1 - X0, SLAB, Z1 - Z0, plaster);
-  solid((X0 + X1) / 2, floor2Y + STORY - SLAB / 2 - 0.02, (Z0 + Z1) / 2, X1 - X0, 0.03, Z1 - Z0, 0xf4f0e2, 0.2);
+  solid((X0 + X1) / 2, floor2Y + STORY - SLAB / 2 - 0.02, (Z0 + Z1) / 2, X1 - X0, 0.03, Z1 - Z0, 0xf4f0e2, 0.36);
 
   // ---- a partition wall with a doorway, plus its collision ----------------
   const partition = (
@@ -121,7 +126,7 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
           solid(x, yC, zLine, 0.09, STORY - 0.2, 0.09, rawWood);
         }
       } else {
-        solid((xa + xb) / 2, yC, zLine, xb - xa, STORY, WALL_T, plaster, 0.2);
+        solid((xa + xb) / 2, yC, zLine, xb - xa, STORY, WALL_T, plaster, 0.34);
         // baseboard
         solid((xa + xb) / 2, baseY + 0.09, zLine, xb - xa, 0.18, WALL_T + 0.04, 0x8d6f46, 0.08);
       }
@@ -164,7 +169,7 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
       (STAIR_Z0 + STAIR_Z1) / 2, stepW + 0.02, 0.09, STAIR_Z1 - STAIR_Z0, floorWood2, 0.1);
     // risers, closed — a paneled period flight, not an open stringer
     solid(x + stepW / 2, floorY + rise * t0 * 0.5 + 0.02,
-      (STAIR_Z0 + STAIR_Z1) / 2, stepW + 0.02, rise * t0 + 0.04, STAIR_Z1 - STAIR_Z0 - 0.06, plaster, 0.16);
+      (STAIR_Z0 + STAIR_Z1) / 2, stepW + 0.02, rise * t0 + 0.04, STAIR_Z1 - STAIR_Z0 - 0.06, plaster, 0.3);
   }
   // handrail along the open (south) side
   const railA = new THREE.Vector3(STAIR_X0, floorY + 0.9, STAIR_Z1);
@@ -199,7 +204,7 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
   const lining = (
     cx: number, cz: number, sx: number, sz: number, baseY: number,
   ) => {
-    solid(cx, baseY + STORY / 2, cz, sx, STORY, sz, plaster, 0.22);
+    solid(cx, baseY + STORY / 2, cz, sx, STORY, sz, plaster, 0.4);
   };
   for (const baseY of [floorY, floor2Y]) {
     // west wall, split at the door on the ground floor

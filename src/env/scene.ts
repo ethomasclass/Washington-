@@ -21,6 +21,8 @@ import { treeGeometry, rockGeometry, scatter } from './scatter';
 import { fbm } from './noise';
 import * as K from '../fp/kit';
 import { MOUNT_VERNON_1775 } from './vernon';
+import { CAMBRIDGE_CAMP } from './cambridge';
+import { THE_LINES } from './lines';
 
 // -- shared toon ramp for terrain + scatter --------------------------------
 function makeRamp(): THREE.Texture {
@@ -69,8 +71,8 @@ interface BuildCtx {
   height: (x: number, z: number) => number;
   slopeAt: (x: number, z: number) => number;
   place: (o: THREE.Object3D, x: number, z: number, yaw?: number) => void;
-  /** Register a per-frame animator (smoke, birds, laundry, a sloop riding). */
-  animate: (fn: (t: number, dt: number) => void) => void;
+  /** Register a per-frame animator (smoke, birds, laundry, doors that open). */
+  animate: (fn: (t: number, dt: number, cam?: THREE.Vector3) => void) => void;
   /** Register an axis-aligned wall/furniture collider, optionally bounded in height. */
   box: (minX: number, minZ: number, maxX: number, maxZ: number, minY?: number, maxY?: number) => void;
   /**
@@ -176,6 +178,8 @@ const VALLEY_FORGE: SceneDef = {
 
 export const SCENES: Record<string, SceneDef> = {
   'mount-vernon': MOUNT_VERNON_1775,
+  'cambridge': CAMBRIDGE_CAMP,
+  'lines': THE_LINES,
   'valley-forge': VALLEY_FORGE,
 };
 
@@ -228,7 +232,7 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
   scene.add(rocks);
 
   // dressing
-  const animators: Array<(t: number, dt: number) => void> = [];
+  const animators: Array<(t: number, dt: number, cam?: THREE.Vector3) => void> = [];
   const boxes: BuiltEnv['boxes'] = [];
   let heightOverride: BuiltEnv['heightOverride'] = null;
   const place = (o: THREE.Object3D, x: number, z: number, yaw = 0) => {
@@ -256,7 +260,9 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
     update: (dt, camera, t) => {
       weather.update(dt, camera);
       water?.update(t);
-      for (const fn of animators) fn(t, dt);
+      for (const fn of animators) {
+        fn(t, dt, (camera as THREE.Camera & { position: THREE.Vector3 }).position);
+      }
     },
   };
 }

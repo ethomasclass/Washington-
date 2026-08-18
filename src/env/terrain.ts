@@ -11,6 +11,7 @@
  */
 
 import * as THREE from 'three';
+import { groundTex } from './textures';
 
 export interface TerrainConfig {
   size: number;           // metres across
@@ -60,7 +61,7 @@ export class Terrain {
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-    const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: ramp });
+    const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: ramp, map: groundTex() });
     (mat as unknown as { flatShading: boolean }).flatShading = false;
     this.mesh = new THREE.Mesh(geo, mat);
     this.mesh.receiveShadow = true;

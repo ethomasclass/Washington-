@@ -53,6 +53,23 @@ const ramp = (() => {
   return t;
 })();
 
+/**
+ * Toon material with a detail texture. The map is near-white and low-contrast
+ * (see env/textures.ts), so the colour still carries the hue and the cel bands
+ * still read — the texture only supplies material grain. Cached per colour+map.
+ */
+const TEXMAT_CACHE = new Map<string, THREE.MeshToonMaterial>();
+export function texMat(color: number, map: THREE.Texture, opts: { flat?: boolean; em?: number } = {}): THREE.MeshToonMaterial {
+  const key = `${color}:${map.uuid}:${opts.flat ?? true}:${opts.em ?? 0}`;
+  const hit = TEXMAT_CACHE.get(key);
+  if (hit) return hit;
+  const m = new THREE.MeshToonMaterial({ color, map });
+  (m as unknown as { flatShading: boolean }).flatShading = opts.flat ?? true;
+  if (opts.em) { m.emissive = new THREE.Color(color); m.emissiveIntensity = opts.em; }
+  TEXMAT_CACHE.set(key, m);
+  return m;
+}
+
 /** Toon material, cached by colour. Flat-shaded so facets read as creases. */
 export function mat(color: number, opts: { flat?: boolean; emissive?: number } = {}): THREE.MeshToonMaterial {
   if (opts.emissive === undefined && MAT_CACHE.has(color)) return MAT_CACHE.get(color)!;
@@ -76,14 +93,14 @@ function mesh(geo: THREE.BufferGeometry, color: number, flat = true): THREE.Mesh
 // ---------------------------------------------------------------------------
 
 /** A ridge (wedge) tent: canvas body, gable ends, ridge pole, guy lines, stakes. */
-export function ridgeTent(len = 4, span = 3, h = 2.2): THREE.Group {
+export function ridgeTent(len = 4, span = 3, h = 2.2, tex?: THREE.Texture): THREE.Group {
   const g = new THREE.Group();
   // canvas body — triangular prism (extruded triangle)
   const sh = new THREE.Shape();
   sh.moveTo(-span / 2, 0); sh.lineTo(span / 2, 0); sh.lineTo(0, h); sh.lineTo(-span / 2, 0);
   const body = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false });
   body.translate(0, 0, -len / 2);
-  g.add(mesh(body, C.canvas));
+  g.add(tex ? new THREE.Mesh(body, texMat(C.canvas, tex)) : mesh(body, C.canvas));
   // a darker door slit on the near gable
   const door = mesh(new THREE.PlaneGeometry(span * 0.28, h * 0.7), C.woodDark);
   door.position.set(0, h * 0.35, len / 2 + 0.01);

@@ -49,6 +49,8 @@ import * as K from '../fp/kit';
 import * as E from './vernon-kit';
 import { V } from './vernon-kit';
 import { buildInterior } from './vernon-interior';
+import { shingleTex, brickTex, clapboardTex } from './textures';
+import { texMat } from '../fp/kit';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -183,19 +185,41 @@ export const MOUNT_VERNON_1775: SceneDef = {
     const mansion = E.building({
       w: 22, d: 9.5, stories: 2, storyH: 3.1,
       wall: V.white, roof: V.roofSlate, roofType: 'hip', roofH: 3.5, ridgeFrac: 0.6,
-      windowsX: 7, door: { face: 's', bay: 2, pediment: true },
+      windowsX: 7, door: { face: 's', bay: 2, pediment: true, leafless: true },
       dormers: 4, chimneys: ['e', 'w'], shutters: true, plinth: 0.5,
-      courses: true, cornice: true,
+      courses: true, cornice: true, roofTex: shingleTex(),
     });
     mansion.rotation.y = Math.PI / 2; // door face now looks west (−x)
     place(mansion, 0, 0, Math.PI / 2);
 
-    // The east door (the passage runs straight through the house) and stone
-    // steps at both thresholds.
-    const eastDoor = E.panelDoor(1.1, 2.15, false);
+    // The east door surround (the passage runs straight through the house)
+    // and stone steps at both thresholds.
+    const eastDoor = E.panelDoor(1.1, 2.15, false, true);
     eastDoor.position.set(4.78, g2(0, 0) + 0.5, 3.14);
     eastDoor.rotation.y = Math.PI / 2;
     ctx.scene.add(eastDoor);
+
+    // THE REAL DOORS: hinged maroon six-panel leaves that swing inward as the
+    // player approaches, and close again behind them. Hinge on the north jamb.
+    const doorBase = g2(0, 0) + 0.52;
+    const mkDoor = (hx: number, openSign: number) => {
+      const hinge = new THREE.Group();
+      const leaf = E.doorLeaf(1.06, 2.12);
+      // leaf extends +x from its hinge stile; aim it along +z (south, across the gap)
+      leaf.rotation.y = -Math.PI / 2;
+      hinge.add(leaf);
+      hinge.position.set(hx, doorBase, 2.62);
+      ctx.scene.add(hinge);
+      let angle = 0;
+      animate((_t, dt, cam) => {
+        const near = cam ? Math.hypot(cam.x - hx, cam.z - 3.14) < 3.6 : false;
+        const target = near ? openSign * 1.85 : 0;
+        angle += (target - angle) * (1 - Math.exp(-dt / 0.22));
+        hinge.rotation.y = angle;
+      });
+    };
+    mkDoor(-4.72, 1);   // west door opens inward, east
+    mkDoor(4.72, -1);   // east door opens inward, west
     for (const [sx, dx] of [[-1, -5.15], [1, 5.15]] as const) {
       void sx;
       for (let s = 0; s < 2; s++) {
@@ -233,7 +257,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
         w, d: 4.2, stories: 1, storyH: 2.6,
         wall: V.clapboard, roof: V.roofWood, roofType: 'gable', roofH: 1.8,
         windowsX: 2, door: { face: z < 0 ? 's' : 'n', bay: 0 }, chimneys: chim ? ['e'] : [],
-        plinth: 0.25,
+        plinth: 0.25, wallTex: clapboardTex(), roofTex: shingleTex(),
       });
       place(b, x, z, yaw);
       ctx.box(x - w / 2 - 0.2, z - 2.3, x + w / 2 + 0.2, z + 2.3);
@@ -276,7 +300,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
       ];
       for (const [ax, az, bx, bz] of walls) {
         const len = Math.hypot(bx - ax, bz - az);
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(len + 0.3, 1.9, 0.32), K.mat(V.brick));
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(len + 0.3, 1.9, 0.32), texMat(V.brick, brickTex()));
         const mx = (ax + bx) / 2, mz = (az + bz) / 2;
         wall.position.set(mx, g2(mx, mz) + 0.95, mz);
         wall.rotation.y = -Math.atan2(bz - az, bx - ax);
@@ -306,7 +330,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
       w: 12, d: 5.2, stories: 2, storyH: 2.55,
       wall: V.clapboard2, roof: V.roofWood, roofType: 'gable', roofH: 2.1,
       windowsX: 3, door: { face: 's', bay: 1 }, chimneys: ['w'], chimneyColor: V.stone,
-      plinth: 0.25,
+      plinth: 0.25, wallTex: clapboardTex(), roofTex: shingleTex(),
     });
     place(quarter, -52, -18, 0.08);
     ctx.box(-58.4, -20.9, -45.6, -15.1);
@@ -322,6 +346,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
       w: 10, d: 5.5, stories: 1, storyH: 3.0,
       wall: V.clapboard, roof: V.roofWood, roofType: 'gable', roofH: 2.3,
       windowsX: 2, door: { face: 'n', bay: 0 }, chimneys: [], plinth: 0.2,
+      wallTex: clapboardTex(), roofTex: shingleTex(),
     });
     place(stable, -22, 38, -0.05);
     ctx.box(-27.4, 34.9, -16.6, 41.1);

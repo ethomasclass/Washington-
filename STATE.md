@@ -39,9 +39,14 @@ angled dependencies, view-blocking walled gardens, the two-story House for
 Families, chariot departure, shearing, the herring-run fishery. The research
 brief (mountvernon.org, verified dates + a must-not-appear list) is recorded in
 `vernon.ts`'s header; the enslaved-population figure is marked unverified
-(V.1). One-file playable builds: `node scripts/build-fp-single.mjs` and the
-env equivalent inside it — output in `dist-single/`. The game logic is NOT
-wired into 3D; scenes are walkable dioramas so the direction can be judged.
+(V.1). The mansion interior is walkable (two floors, a stair, animated front
+doors); `cambridge.ts` and `lines.ts` add CB-01 and CB-03 as researched
+environments (Emerson's shelter menagerie, the Appeal to Heaven flag, burned
+Charlestown's chimneys, empty embrasures — sources in each header; low-contrast
+procedural textures in `textures.ts` under the cel shading). One-file playable
+builds: `node scripts/build-fp-single.mjs` and the env equivalent inside it —
+output in `dist-single/`. The game logic is NOT wired into 3D; scenes are
+walkable dioramas so the direction can be judged.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment

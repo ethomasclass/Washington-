@@ -293,15 +293,21 @@ export function musketStack(n = 4): THREE.Group {
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
     const m = new THREE.Group();
-    const barrel_ = mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.5, 5), C.iron);
-    barrel_.position.y = 0.75; m.add(barrel_);
-    const stock = mesh(new THREE.BoxGeometry(0.07, 0.55, 0.05), C.woodDark);
-    stock.position.y = 0.28; m.add(stock);
-    const bayonet = mesh(new THREE.ConeGeometry(0.02, 0.35, 4), C.iron);
-    bayonet.position.y = 1.65; m.add(bayonet);
-    m.position.set(Math.cos(a) * 0.28, 0, Math.sin(a) * 0.28);
-    m.rotation.z = Math.cos(a) * 0.22;
-    m.rotation.x = -Math.sin(a) * 0.22;
+    // full-length walnut stock with the barrel lying along it — reads as a
+    // firelock at arm's length instead of a bare pole
+    const stock = mesh(new THREE.BoxGeometry(0.075, 1.25, 0.06), C.woodDark);
+    stock.position.y = 0.62; m.add(stock);
+    const barrel_ = mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.45, 5), C.iron);
+    barrel_.position.set(0, 0.85, 0.035); m.add(barrel_);
+    const lock = mesh(new THREE.BoxGeometry(0.05, 0.14, 0.09), C.iron);
+    lock.position.set(0, 0.72, 0.02); m.add(lock);
+    const butt = mesh(new THREE.BoxGeometry(0.09, 0.34, 0.11), C.woodDark);
+    butt.position.set(0, 0.16, 0); m.add(butt);
+    const bayonet = mesh(new THREE.ConeGeometry(0.018, 0.35, 4), C.iron);
+    bayonet.position.set(0, 1.72, 0.035); m.add(bayonet);
+    m.position.set(Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3);
+    m.rotation.z = Math.cos(a) * 0.24;
+    m.rotation.x = -Math.sin(a) * 0.24;
     g.add(m);
   }
   return g;

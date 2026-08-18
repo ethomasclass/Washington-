@@ -185,7 +185,9 @@ export const MOUNT_VERNON_1775: SceneDef = {
     const mansion = E.building({
       w: 22, d: 9.5, stories: 2, storyH: 3.1,
       wall: V.white, roof: V.roofSlate, roofType: 'hip', roofH: 3.5, ridgeFrac: 0.6,
-      windowsX: 7, door: { face: 's', bay: 2, pediment: true, leafless: true },
+      // face 'n' lands on the WEST front after the 90° rotation — face 's' put
+      // the surround on the east and left a window where the front door goes
+      windowsX: 7, door: { face: 'n', bay: 2, pediment: true, leafless: true },
       dormers: 4, chimneys: ['e', 'w'], shutters: true, plinth: 0.5,
       courses: true, cornice: true, roofTex: shingleTex(),
     });

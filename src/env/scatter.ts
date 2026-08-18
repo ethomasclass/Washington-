@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { prng } from './noise';
+import { prng, fbm } from './noise';
 
 function colored(geo: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
   // mergeGeometries requires every part indexed or every part non-indexed;
@@ -22,17 +22,29 @@ function colored(geo: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
   return g;
 }
 
-/** A conifer/broadleaf tree merged into one geometry. `bare` = winter. */
-export function treeGeometry(trunk: number, leaf: number, bare = false): THREE.BufferGeometry {
+/** A broadleaf/poplar tree merged into one geometry. `bare` = winter. */
+export function treeGeometry(
+  trunk: number, leaf: number, bare = false, form: 'broad' | 'tall' = 'broad',
+): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const t = colored(new THREE.CylinderGeometry(0.12, 0.2, 2.4, 6), trunk);
-  t.translate(0, 1.2, 0); parts.push(t);
+  const trunkH = form === 'tall' ? 3.4 : 2.4;
+  const t = colored(new THREE.CylinderGeometry(0.11, 0.2, trunkH, 6), trunk);
+  t.translate(0, trunkH / 2, 0); parts.push(t);
   if (bare) {
-    for (let i = 0; i < 5; i++) {
-      const b = colored(new THREE.CylinderGeometry(0.03, 0.06, 1.4, 4), trunk);
-      b.rotateZ((Math.random() - 0.5) * 1.2); b.rotateX((Math.random() - 0.5) * 1.2);
-      b.translate((Math.random() - 0.5) * 0.6, 2.3 + i * 0.25, (Math.random() - 0.5) * 0.6);
+    const n = form === 'tall' ? 6 : 5;
+    for (let i = 0; i < n; i++) {
+      const b = colored(new THREE.CylinderGeometry(0.03, 0.06, form === 'tall' ? 1.7 : 1.4, 4), trunk);
+      b.rotateZ((Math.random() - 0.5) * (form === 'tall' ? 0.7 : 1.2));
+      b.rotateX((Math.random() - 0.5) * (form === 'tall' ? 0.7 : 1.2));
+      b.translate((Math.random() - 0.5) * 0.5, trunkH - 0.2 + i * 0.3, (Math.random() - 0.5) * 0.5);
       parts.push(b);
+    }
+  } else if (form === 'tall') {
+    // poplar: narrow stacked crowns
+    for (let i = 0; i < 4; i++) {
+      const c = colored(new THREE.IcosahedronGeometry(1.0 - i * 0.16, 0), leaf);
+      c.scale(0.8, 1.15, 0.8); c.translate(0, trunkH + 0.5 + i * 1.15, 0);
+      parts.push(c);
     }
   } else {
     for (let i = 0; i < 3; i++) {
@@ -42,6 +54,28 @@ export function treeGeometry(trunk: number, leaf: number, bare = false): THREE.B
     }
   }
   return mergeGeometries(parts, false)!;
+}
+
+/** A clump of grass blades — the ground-clutter workhorse. */
+export function tuftGeometry(color: number): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.4;
+    const blade = colored(new THREE.ConeGeometry(0.045, 0.34 + (i % 2) * 0.14, 3), color);
+    blade.rotateX((i % 2 ? 1 : -1) * 0.28);
+    blade.rotateY(a);
+    blade.translate(Math.cos(a) * 0.07, 0.16, Math.sin(a) * 0.07);
+    parts.push(blade);
+  }
+  return mergeGeometries(parts, false)!;
+}
+
+/** A fallen stick. */
+export function stickGeometry(color: number): THREE.BufferGeometry {
+  const g = colored(new THREE.CylinderGeometry(0.025, 0.035, 0.9, 4), color);
+  g.rotateZ(Math.PI / 2 - 0.08);
+  g.translate(0, 0.035, 0);
+  return g;
 }
 
 export function rockGeometry(color: number): THREE.BufferGeometry {
@@ -59,6 +93,11 @@ export interface ScatterOpts {
   scaleMin?: number;
   scaleMax?: number;
   avoid?: Array<{ x: number; z: number; r: number }>; // clearings (house, camp, dock)
+  /**
+   * Clump the scatter: placements survive only where a noise field exceeds
+   * the threshold. Kills the even "orchard rim" a uniform scatter produces.
+   */
+  cluster?: { scale: number; threshold: number };
 }
 
 export function scatter(
@@ -86,6 +125,7 @@ export function scatter(
     if (o.minHeight !== undefined && h < o.minHeight) continue;
     if (slopeAt(x, z) > o.maxSlope) continue;
     if (o.avoid && o.avoid.some((a) => Math.hypot(x - a.x, z - a.z) < a.r)) continue;
+    if (o.cluster && fbm(x * o.cluster.scale, z * o.cluster.scale, { seed: o.seed + 5 }) < o.cluster.threshold) continue;
     const sc = (o.scaleMin ?? 0.8) + rand() * ((o.scaleMax ?? 1.4) - (o.scaleMin ?? 0.8));
     p.set(x, h, z);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2);

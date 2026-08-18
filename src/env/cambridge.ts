@@ -179,12 +179,21 @@ export const CAMBRIDGE_CAMP: SceneDef = {
     putPerson({ dress: 'shirt', color: coat(), pose: 'carry', hat: 'none', seed: 51 }, 8.5, 3.4, -0.8);
 
     // ---- EMERSON'S SHELTERS — the sprawl, no two alike ---------------------
-    for (let i = 0; i < 26; i++) {
+    // Dense on purpose: at eye level a camp is measured in shelters per
+    // glance, and a sparse scatter reads as an empty park. Rough rows with
+    // crooked gaps — pitched in a hurry, not surveyed.
+    const placedShelters: Array<[number, number]> = [];
+    let tries = 0;
+    while (placedShelters.length < 58 && tries < 400) {
+      tries++;
       const a = rand() * Math.PI * 2;
-      const r = 10 + rand() * 26;
-      const sx = -4 + Math.cos(a) * r * 1.2;
-      const sz = 26 + Math.sin(a) * r * 0.55;
-      if (sx > 34) continue;
+      const r = 5 + rand() * 21;
+      const sx = -2 + Math.cos(a) * r * 1.25 + (rand() - 0.5) * 3;
+      const sz = 23 + Math.sin(a) * r * 0.62 + (rand() - 0.5) * 3;
+      if (sx > 32 || sz < 9) continue; // keep the road and the RI streets clear
+      if (placedShelters.some(([px2, pz2]) => Math.hypot(sx - px2, sz - pz2) < 3.4)) continue;
+      placedShelters.push([sx, sz]);
+      const i = placedShelters.length;
       const kind = rand();
       const yaw = rand() * Math.PI * 2;
       if (kind < 0.3) place(B.boardHut(i), sx, sz, yaw);
@@ -192,13 +201,48 @@ export const CAMBRIDGE_CAMP: SceneDef = {
       else if (kind < 0.75) place(K.brushShelter(), sx, sz, yaw);
       else place(B.turfHut(i), sx, sz, yaw);
       ctx.box(sx - 1.5, sz - 1.4, sx + 1.5, sz + 1.4);
-      if (rand() < 0.4) {
+      if (rand() < 0.3) {
         putPerson({
           dress: rand() < 0.5 ? 'shirt' : 'coat', color: coat(),
           pose: rand() < 0.5 ? 'stand' : 'bend', hat: rand() < 0.4 ? 'straw' : 'none',
           seed: 60 + i,
         }, sx + 2 + rand(), sz + rand() * 2 - 1, rand() * 6);
       }
+    }
+    // camp litter: barrels, crates, firewood, a kettle fire here and there —
+    // the floor of a camp that sixteen thousand men are living on
+    for (let i = 0; i < 30; i++) {
+      const a = rand() * Math.PI * 2;
+      const r = 4 + rand() * 24;
+      const lx = -2 + Math.cos(a) * r * 1.25, lz = 22 + Math.sin(a) * r * 0.6;
+      if (lx > 33 || lz < 9) continue;
+      const kind = rand();
+      if (kind < 0.35) place(K.barrel(0.7 + rand() * 0.3, 0.3 + rand() * 0.12), lx, lz, rand() * 3);
+      else if (kind < 0.6) place(K.crate(0.5 + rand() * 0.4), lx, lz, rand() * 3);
+      else if (kind < 0.85) {
+        // a firewood pile
+        const pile = new THREE.Group();
+        for (let w = 0; w < 5; w++) {
+          const log = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.0, 5), K.mat(0x7a6038));
+          log.castShadow = true;
+          log.rotation.z = Math.PI / 2; log.rotation.y = (rand() - 0.5) * 0.3;
+          log.position.set(0, 0.08 + Math.floor(w / 2) * 0.14, (w % 2) * 0.16 - 0.08);
+          pile.add(log);
+        }
+        place(pile, lx, lz, rand() * 3);
+      } else place(B.stump(i + 40), lx, lz, 0);
+    }
+    // two more mess fires deeper in the sprawl
+    for (const [fx, fz] of [[-16, 28], [8, 34]] as const) {
+      place(K.campfire(), fx, fz);
+      ctx.box(fx - 0.8, fz - 0.8, fx + 0.8, fz + 0.8);
+      const sm2 = E.smokeColumn(0.65);
+      place(sm2.group, fx, fz); sm2.group.position.y = g2(fx, fz) + 1.2;
+      animate(sm2.animate);
+    }
+    // the wood's edge is being eaten for fuel: stumps at the camp fringe
+    for (let i = 0; i < 12; i++) {
+      place(B.stump(i), -40 + rand() * 20, 14 + rand() * 28, 0);
     }
 
     // ---- THE RHODE ISLAND STREETS — one patch that looks like an army ------

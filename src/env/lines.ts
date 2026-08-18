@@ -77,6 +77,7 @@ export const THE_LINES: SceneDef = {
   bounds: 160,
   defaultWeather: 'clear',
   snow: 0.16, // first frost, not yet winter
+  season: 'winter', // November: the trees are bare even before the snow
   spawn: { x: -14, z: 10, yaw: -Math.PI / 2 },
   elevation,
   paint,
@@ -204,9 +205,17 @@ export const THE_LINES: SceneDef = {
     for (let i = 0; i < 3; i++) place(K.ridgeTent(3.4, 2.7, 2.0), -14 - i * 4.4, -26, 0.05);
     // the Appeal to Heaven mast
     place(B.appealFlag(12), -6, -12);
-    // the firewood famine: stumps and a robbed fence line
-    for (let i = 0; i < 9; i++) {
-      place(B.stump(i), -34 + rand() * 40, 28 + rand() * 16, 0);
+    // engineering litter along the whole line: spare gabions, fascine piles,
+    // earth baskets — a work site, not a museum wall
+    for (let i = 0; i < 12; i++) {
+      const lz = -42 + rand() * 84;
+      const lx = CREST - 4 - rand() * 6;
+      if (rand() < 0.55) place(B.gabion(0.5 + rand() * 0.7, 0.38), lx, lz, rand() * 3);
+      else place(B.fascines(2 + Math.floor(rand() * 3)), lx, lz, rand() * 3);
+    }
+    // the firewood famine: stumps everywhere the wood used to be
+    for (let i = 0; i < 24; i++) {
+      place(B.stump(i), -44 + rand() * 52, -34 + rand() * 66, 0);
     }
     for (let i = 0; i < 4; i++) {
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.9, 0.13), K.mat(0x7a6a4a));

@@ -168,6 +168,38 @@ export function groundTex(): THREE.CanvasTexture {
   }, 48);
 }
 
+/**
+ * Thrown-up earth — clods, spade streaks, embedded stones. Repeat is tuned
+ * for geometry whose UVs are in metres (extruded shapes), not 0..1 quads.
+ */
+export function earthTex(): THREE.CanvasTexture {
+  const t = make('earth', 256, 256, (ctx, rand) => {
+    for (let i = 0; i < 700; i++) {
+      const r = 4 + rand() * 12;
+      ctx.beginPath();
+      ctx.arc(rand() * 256, rand() * 256, r, 0, 7);
+      ctx.fillStyle = rand() < 0.5
+        ? `rgba(50,38,20,${0.03 + rand() * 0.06})`
+        : `rgba(255,250,235,${0.02 + rand() * 0.045})`;
+      ctx.fill();
+    }
+    // spade streaks
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(60,45,22,${0.05 + rand() * 0.06})`;
+      ctx.fillRect(rand() * 256, rand() * 256, 2 + rand() * 3, 14 + rand() * 26);
+    }
+    // small embedded stones
+    for (let i = 0; i < 26; i++) {
+      ctx.beginPath();
+      ctx.arc(rand() * 256, rand() * 256, 1.5 + rand() * 2.5, 0, 7);
+      ctx.fillStyle = 'rgba(120,118,110,0.35)';
+      ctx.fill();
+    }
+  });
+  t.repeat.set(0.3, 0.3);
+  return t;
+}
+
 /** Wicker weave for gabions. */
 export function wickerTex(): THREE.CanvasTexture {
   return make('wicker', 128, 128, (ctx, rand) => {

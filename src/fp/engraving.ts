@@ -60,7 +60,11 @@ const COMPOSITE_FRAG = /* glsl */`
     for(int i=0;i<4;i++){
       nE = max(nE, length(texture2D(uNormal, vUv+offs[i]).rgb - nC));
     }
-    float normEdge  = step(0.45, nE);
+    // Rolling terrain is smooth but faceted, and a fixed threshold draws
+    // wandering "contour" spiderwebs across open ground. Ground pixels (view
+    // normal near up) get a much stiffer threshold; real creases still ink.
+    float upness = smoothstep(0.72, 0.92, nC.g);
+    float normEdge  = step(mix(0.45, 0.85, upness), nE);
     float edge = clamp(max(depthEdge, normEdge*0.9), 0.0, 1.0) * uInk;
 
     // slightly thicken the near lines

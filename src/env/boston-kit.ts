@@ -17,7 +17,7 @@
 import * as THREE from 'three';
 import { mat, texMat } from '../fp/kit';
 import { V, gableRoofGeo } from './vernon-kit';
-import { wickerTex, plankTex, brickTex, canvasTex } from './textures';
+import { wickerTex, plankTex, brickTex, canvasTex, earthTex } from './textures';
 import { prng } from './noise';
 
 function mesh(geo: THREE.BufferGeometry, color: number, flat = true): THREE.Mesh {
@@ -114,25 +114,52 @@ export function cannon(empty = false): THREE.Group {
   return g;
 }
 
-/** A run of abatis: felled branches, sharpened, staked pointing at the enemy. */
+/**
+ * A run of abatis: sharpened stakes planted in crossed pairs, points leaning
+ * toward the enemy (+z), with a lashing rail along the crossings. Reads as a
+ * fence with teeth, which is what it was.
+ */
 export function abatis(len = 6): THREE.Group {
   const g = new THREE.Group();
   const rand = prng(Math.floor(len * 977));
-  for (let x = -len / 2; x < len / 2; x += 0.7) {
-    for (let i = 0; i < 2; i++) {
-      const spike = mesh(new THREE.CylinderGeometry(0.015, 0.05, 1.6, 5), 0x6a5334);
-      spike.position.set(x + rand() * 0.4, 0.45, (i - 0.5) * 0.5 + rand() * 0.3);
-      spike.rotation.z = -0.9 - rand() * 0.4;
-      spike.rotation.y = rand() * 0.6 - 0.3;
-      g.add(spike);
-    }
+  const spike = (x: number, leanZ: number, leanX: number) => {
+    const s = mesh(new THREE.CylinderGeometry(0.012, 0.055, 1.7, 5), 0x6a5334);
+    // planted: base at ground, tip up and toward +z
+    s.rotation.x = leanZ;
+    s.rotation.z = leanX;
+    s.position.set(x, Math.cos(leanZ) * 0.75, Math.sin(leanZ) * 0.75);
+    g.add(s);
+  };
+  for (let x = -len / 2; x < len / 2; x += 0.85) {
+    const jx = x + rand() * 0.3;
+    // the crossed pair, both leaning forward, splayed apart
+    spike(jx, 0.75 + rand() * 0.15, 0.5 + rand() * 0.12);
+    spike(jx, 0.75 + rand() * 0.15, -0.5 - rand() * 0.12);
+    // an occasional third, lower and meaner
+    if (rand() < 0.4) spike(jx + 0.2, 1.05, rand() * 0.5 - 0.25);
   }
+  // the lashing rail through the crossings
+  const rail = mesh(new THREE.CylinderGeometry(0.04, 0.04, len, 5), 0x59452a);
+  rail.rotation.z = Math.PI / 2;
+  rail.position.set(0, 1.05, 0.45);
+  g.add(rail);
   return g;
 }
 
-/** The earthwork berm — a long triangular prism of thrown-up earth. */
+/** The earthwork berm — thrown-up earth, textured and slightly irregular. */
 export function berm(len = 10, h = 1.7, base = 3.2): THREE.Mesh {
-  const m = mesh(gableRoofGeo(len, base, h), EARTH);
+  const geo = gableRoofGeo(len, base, h);
+  // roughen the ridge and faces so it reads as spadework, not joinery
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i), py = pos.getY(i);
+    const n = Math.sin(px * 2.7) * 0.5 + Math.sin(px * 6.3 + py * 4) * 0.5;
+    if (py > 0.05) pos.setY(i, py * (1 + n * 0.09));
+    pos.setZ(i, pos.getZ(i) + n * 0.1 * (py / h));
+  }
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, texMat(EARTH, earthTex()));
+  m.castShadow = m.receiveShadow = true;
   return m;
 }
 

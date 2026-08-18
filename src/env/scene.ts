@@ -17,7 +17,7 @@ import { Terrain } from './terrain';
 import { Sky, type SkyConfig } from './sky';
 import { Water } from './water';
 import { Weather, type WeatherKind } from './weather';
-import { treeGeometry, rockGeometry, scatter } from './scatter';
+import { treeGeometry, rockGeometry, tuftGeometry, stickGeometry, scatter } from './scatter';
 import { fbm } from './noise';
 import * as K from '../fp/kit';
 import { MOUNT_VERNON_1775 } from './vernon';
@@ -64,6 +64,8 @@ export interface SceneDef {
   paint?: (x: number, z: number, h: number, slope: number, out: THREE.Color) => void;
   /** Cap on scattered forest trees (a tended estate is not a wilderness). */
   treeCount?: number;
+  /** Drives bare trees and clutter colour; falls back to snow amount. */
+  season?: 'summer' | 'winter';
 }
 
 interface BuildCtx {
@@ -216,27 +218,60 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
     scene.add(water.mesh);
   }
 
-  // scatter — trees and rock, seeded, avoiding steep ground and water
-  const winter = (def.snow ?? 0) > 0.4;
-  const trees = treeGeometry(0x6b4f2e, winter ? 0x7a684a : 0x6f9a40, winter);
-  const treeMesh = scatter(trees, RAMP, elevation, slopeAt, {
-    count: def.treeCount ?? (winter ? 90 : 150), area: def.bounds * 0.92, seed: 11, maxSlope: 0.5,
-    minHeight: def.water ? def.water.level + 1.5 : -999, scaleMin: 0.9, scaleMax: 1.9,
-    avoid: def.clearings,
-  });
-  scene.add(treeMesh);
-  const rocks = scatter(rockGeometry(0x807a70), RAMP, elevation, slopeAt, {
+  // scatter — trees, rock and ground clutter, seeded, avoiding steep ground
+  // and water. Two tree species, clumped by a noise field so the horizon
+  // reads as woods-with-clearings instead of an even orchard rim.
+  const winter = def.season === 'winter' || (def.snow ?? 0) > 0.4;
+  const treeN = def.treeCount ?? (winter ? 90 : 150);
+  const minH = def.water ? def.water.level + 1.5 : -999;
+  const broad = treeGeometry(0x6b4f2e, winter ? 0x7a684a : 0x6f9a40, winter, 'broad');
+  const tall = treeGeometry(0x755632, winter ? 0x827052 : 0x5d8c3a, winter, 'tall');
+  scene.add(scatter(broad, RAMP, elevation, slopeAt, {
+    count: Math.round(treeN * 0.6), area: def.bounds * 0.92, seed: 11, maxSlope: 0.5,
+    minHeight: minH, scaleMin: 0.9, scaleMax: 1.9, avoid: def.clearings,
+    cluster: { scale: 0.045, threshold: 0.46 },
+  }));
+  scene.add(scatter(tall, RAMP, elevation, slopeAt, {
+    count: Math.round(treeN * 0.4), area: def.bounds * 0.92, seed: 31, maxSlope: 0.5,
+    minHeight: minH, scaleMin: 0.85, scaleMax: 1.6, avoid: def.clearings,
+    cluster: { scale: 0.045, threshold: 0.52 },
+  }));
+  scene.add(scatter(rockGeometry(0x807a70), RAMP, elevation, slopeAt, {
     count: 60, area: def.bounds * 0.9, seed: 23, maxSlope: 1, minHeight: def.water ? def.water.level + 0.5 : -999,
     scaleMin: 0.6, scaleMax: 1.8, avoid: def.clearings,
-  });
-  scene.add(rocks);
+  }));
+
+  // ground clutter — the eye-level layer. Everywhere, including the camps;
+  // this is what keeps open ground from reading as an empty lawn.
+  const snowy = (def.snow ?? 0) > 0.4;
+  const tuftC = snowy ? 0xb0ac96 : winter ? 0x9a9062 : 0x84a84e;
+  scene.add(scatter(tuftGeometry(tuftC), RAMP, elevation, slopeAt, {
+    count: 4200, area: def.bounds * 0.95, seed: 41, maxSlope: 0.6,
+    minHeight: minH, scaleMin: 0.7, scaleMax: 1.6,
+    cluster: { scale: 0.09, threshold: 0.34 },
+  }));
+  scene.add(scatter(rockGeometry(0x8a847a), RAMP, elevation, slopeAt, {
+    count: 520, area: def.bounds * 0.95, seed: 43, maxSlope: 0.9,
+    minHeight: minH, scaleMin: 0.08, scaleMax: 0.28,
+  }));
+  scene.add(scatter(stickGeometry(0x6a5334), RAMP, elevation, slopeAt, {
+    count: 380, area: def.bounds * 0.95, seed: 47, maxSlope: 0.7,
+    minHeight: minH, scaleMin: 0.6, scaleMax: 1.4,
+  }));
 
   // dressing
   const animators: Array<(t: number, dt: number, cam?: THREE.Vector3) => void> = [];
   const boxes: BuiltEnv['boxes'] = [];
   let heightOverride: BuiltEnv['heightOverride'] = null;
+  // settle: seat each prop at the LOWEST of five ground samples under its
+  // footprint, slightly sunk — so no corner ever hovers on curved ground
   const place = (o: THREE.Object3D, x: number, z: number, yaw = 0) => {
-    o.position.set(x, elevation(x, z), z);
+    const r = 0.7;
+    let y = elevation(x, z);
+    for (const [dx, dz] of [[r, 0], [-r, 0], [0, r], [0, -r]]) {
+      y = Math.min(y, elevation(x + dx, z + dz));
+    }
+    o.position.set(x, y - 0.03, z);
     o.rotation.y = yaw;
     scene.add(o);
   };

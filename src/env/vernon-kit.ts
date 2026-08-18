@@ -153,9 +153,20 @@ export function doorLeaf(w = 1.1, h = 2.15): THREE.Group {
  */
 export function panelDoor(w = 1.1, h = 2.2, pediment = false, leafless = false): THREE.Group {
   const g = new THREE.Group();
-  const frame = mesh(new THREE.BoxGeometry(w + 0.2, h + 0.15, 0.07), V.trim);
-  frame.position.y = h / 2; g.add(frame);
-  if (!leafless) {
+  if (leafless) {
+    // a true jamb frame with a VOID opening — a separately-hinged leaf lives
+    // in the gap, and a solid backing slab here would hide it
+    for (const sx of [-1, 1]) {
+      const jamb = mesh(new THREE.BoxGeometry(0.12, h + 0.05, 0.09), V.trim);
+      jamb.position.set(sx * (w / 2 + 0.05), (h + 0.05) / 2, 0);
+      g.add(jamb);
+    }
+    const head = mesh(new THREE.BoxGeometry(w + 0.22, 0.14, 0.09), V.trim);
+    head.position.y = h + 0.07;
+    g.add(head);
+  } else {
+    const frame = mesh(new THREE.BoxGeometry(w + 0.2, h + 0.15, 0.07), V.trim);
+    frame.position.y = h / 2; g.add(frame);
     const leaf = doorLeaf(w, h);
     leaf.position.set(-w / 2, 0, 0.02);
     g.add(leaf);
@@ -320,14 +331,18 @@ export function building(s: BuildingSpec): THREE.Group {
     }
   }
 
-  // chimneys, through the ridge — brick unless told otherwise
+  // chimneys, through the ridge — brick unless told otherwise. In a
+  // multi-storey building the stack runs down to the top floor, so the
+  // chimney breast meets the room inside instead of hovering at its ceiling.
   for (const c of s.chimneys ?? []) {
     const x = c === 'c' ? 0 : (c === 'e' ? 1 : -1) * (s.w / 2 - 0.5);
     const cc = s.chimneyColor ?? V.brick;
     const cTex = cc === V.stone ? stoneTex() : brickTex();
-    const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, roofH + 1.6, 1.3), texMat(cc, cTex));
+    const chTop = plinth + H + roofH + 1.3;
+    const chBottom = s.stories > 1 ? plinth + (s.stories - 1) * storyH + 0.15 : plinth + H - 0.3;
+    const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, chTop - chBottom, 1.3), texMat(cc, cTex));
     ch.castShadow = true;
-    ch.position.set(x, plinth + H + (roofH + 1.6) / 2 - 0.3, 0);
+    ch.position.set(x, (chTop + chBottom) / 2, 0);
     g.add(ch);
     const cap = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.22, 1.5), texMat(cc, cTex));
     cap.position.set(x, plinth + H + roofH + 1.35, 0);
@@ -541,9 +556,11 @@ export function smokeColumn(strength = 1): { group: THREE.Group; animate: Animat
   const puffs: THREE.Mesh[] = [];
   const n = 7;
   for (let i = 0; i < n; i++) {
+    // near-opaque, so against a bright sky the puff reads as a drawn cloud
+    // rather than an outlined bubble
     const p = mesh(new THREE.IcosahedronGeometry(0.4, 0), V.smoke, false);
     const m = p.material as THREE.MeshToonMaterial;
-    m.transparent = true; m.opacity = 0.85; m.fog = true;
+    m.transparent = true; m.opacity = 0.96; m.fog = true;
     puffs.push(p); g.add(p);
   }
   const animate: Animated = (t) => {
@@ -557,7 +574,7 @@ export function smokeColumn(strength = 1): { group: THREE.Group; animate: Animat
       );
       const s = 0.7 + ph * 2.0;
       p.scale.setScalar(s);
-      (p.material as THREE.MeshToonMaterial).opacity = 0.85 * (1 - ph * 0.8);
+      (p.material as THREE.MeshToonMaterial).opacity = 0.96 * (1 - ph * 0.7);
     }
   };
   return { group: g, animate };

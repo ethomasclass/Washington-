@@ -17,7 +17,7 @@ import { Terrain } from './terrain';
 import { Sky, type SkyConfig } from './sky';
 import { Water } from './water';
 import { Weather, type WeatherKind } from './weather';
-import { treeGeometry, rockGeometry, tuftGeometry, stickGeometry, scatter } from './scatter';
+import { treeGeometry, rockGeometry, tuftGeometry, stickGeometry, scatter, WIND } from './scatter';
 import { fbm } from './noise';
 import * as K from '../fp/kit';
 import { MOUNT_VERNON_1775 } from './vernon';
@@ -31,7 +31,7 @@ function makeRamp(): THREE.Texture {
   t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true;
   return t;
 }
-const RAMP = makeRamp();
+export const RAMP = makeRamp();
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -229,12 +229,12 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
   scene.add(scatter(broad, RAMP, elevation, slopeAt, {
     count: Math.round(treeN * 0.6), area: def.bounds * 0.92, seed: 11, maxSlope: 0.5,
     minHeight: minH, scaleMin: 0.9, scaleMax: 1.9, avoid: def.clearings,
-    cluster: { scale: 0.045, threshold: 0.46 },
+    cluster: { scale: 0.045, threshold: 0.46 }, wind: 0.012,
   }));
   scene.add(scatter(tall, RAMP, elevation, slopeAt, {
     count: Math.round(treeN * 0.4), area: def.bounds * 0.92, seed: 31, maxSlope: 0.5,
     minHeight: minH, scaleMin: 0.85, scaleMax: 1.6, avoid: def.clearings,
-    cluster: { scale: 0.045, threshold: 0.52 },
+    cluster: { scale: 0.045, threshold: 0.52 }, wind: 0.012,
   }));
   scene.add(scatter(rockGeometry(0x807a70), RAMP, elevation, slopeAt, {
     count: 60, area: def.bounds * 0.9, seed: 23, maxSlope: 1, minHeight: def.water ? def.water.level + 0.5 : -999,
@@ -248,7 +248,7 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
   scene.add(scatter(tuftGeometry(tuftC), RAMP, elevation, slopeAt, {
     count: 4200, area: def.bounds * 0.95, seed: 41, maxSlope: 0.6,
     minHeight: minH, scaleMin: 0.7, scaleMax: 1.6,
-    cluster: { scale: 0.09, threshold: 0.34 },
+    cluster: { scale: 0.09, threshold: 0.34 }, wind: 0.09,
   }));
   scene.add(scatter(rockGeometry(0x8a847a), RAMP, elevation, slopeAt, {
     count: 520, area: def.bounds * 0.95, seed: 43, maxSlope: 0.9,
@@ -293,6 +293,7 @@ export function buildEnv(def: SceneDef, weatherKind: WeatherKind): BuiltEnv {
     boxes,
     heightOverride,
     update: (dt, camera, t) => {
+      WIND.value = t;
       weather.update(dt, camera);
       water?.update(t);
       for (const fn of animators) {

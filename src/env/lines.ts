@@ -28,6 +28,7 @@ import * as K from '../fp/kit';
 import * as E from './vernon-kit';
 import * as B from './boston-kit';
 import { plankTex, shingleTex } from './textures';
+import { landmass } from './landmass';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -45,6 +46,10 @@ function elevation(x: number, z: number): number {
   if (x > CREST) {
     const t = smooth(clamp((x - CREST) / (SLOPE_FOOT - CREST), 0, 1));
     h = mixN(h, WATER_LEVEL + 0.6, t);
+  }
+  // and under the water the ground keeps falling — the channel is a channel
+  if (x > SLOPE_FOOT + 4) {
+    h = mixN(h, WATER_LEVEL - 4, smooth(clamp((x - SLOPE_FOOT - 4) / 22, 0, 1)));
   }
   // the trench floor: a shallow cut just behind the crest, along the line
   const trench = clamp(1 - Math.abs(x - (CREST - 2.2)) / 2.2, 0, 1);
@@ -203,8 +208,12 @@ export const THE_LINES: SceneDef = {
     place(hs.group, -29.5, -21.5); hs.group.position.y = g2(-27, -21) + 3.6;
     animate(hs.animate);
     for (let i = 0; i < 3; i++) place(K.ridgeTent(3.4, 2.7, 2.0), -14 - i * 4.4, -26, 0.05);
-    // the Appeal to Heaven mast
-    place(B.appealFlag(12), -6, -12);
+    // the Appeal to Heaven mast, working in the wind
+    const mast = B.appealFlag(12);
+    place(mast, -6, -12);
+    animate((t) => {
+      mast.rotation.y = Math.sin(t * 0.5) * 0.12 + Math.sin(t * 1.7) * 0.05;
+    });
     // engineering litter along the whole line: spare gabions, fascine piles,
     // earth baskets — a work site, not a museum wall
     for (let i = 0; i < 12; i++) {
@@ -225,62 +234,85 @@ export const THE_LINES: SceneDef = {
     place(K.wagon(), -36, -6, 0.5);
     ctx.box(-37.5, -7.7, -34.5, -4.3);
 
-    // ---- THE VISTA — everything the spyglass names -------------------------
-    // Charlestown: a heap of chimneys, directly across the water.
-    const ruins = new THREE.Group();
+    // ---- THE VISTA — everything the spyglass names, on real ground ---------
+    // The Charlestown peninsula: one landmass carrying both the burned town
+    // on its low shore and Bunker Hill's crest behind it.
+    const penC = { x: 106, z: -52 };
+    const pen = landmass({
+      w: 115, d: 80, peak: 13, seed: 21, crestX: 0.45, crestZ: -0.5,
+      shore: 0xa89a6e, field: 0x8f8a5c, crest: 0x7d7a4c,
+    });
+    pen.mesh.position.set(penC.x, WATER_LEVEL, penC.z);
+    ctx.scene.add(pen.mesh);
+    const onPen = (o: THREE.Object3D, lx: number, lz: number, yaw = 0) => {
+      o.position.set(penC.x + lx, WATER_LEVEL + pen.heightAt(lx, lz), penC.z + lz);
+      o.rotation.y = yaw;
+      ctx.scene.add(o);
+    };
+    // the heap of chimneys on the near shore, in the town's old street grid
     for (let i = 0; i < 24; i++) {
-      const cr = B.chimneyRuin(i);
-      cr.position.set((i % 6) * 7 + rand() * 3, 0, Math.floor(i / 6) * 6.5 + rand() * 2.5);
-      cr.rotation.y = rand() * 0.5;
-      ruins.add(cr);
+      const lx = -34 + (i % 6) * 6.5 + rand() * 2.5;
+      const lz = 14 + Math.floor(i / 6) * 6 + rand() * 2;
+      onPen(B.chimneyRuin(i), lx, lz, rand() * 0.5 - 0.2);
     }
-    ruins.position.set(84, WATER_LEVEL + 1.1, -42);
-    ruins.rotation.y = -0.2;
-    ctx.scene.add(ruins);
-    // redcoat pickets in the ruins
-    // (kept as colour only — tiny at this range)
+    // redcoat pickets posted where the streets ran
     for (let i = 0; i < 3; i++) {
-      const picket = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.3, 0.4), K.mat(0x9c3428));
-      picket.position.set(100 + i * 6, WATER_LEVEL + 1.8, -40 + i * 3);
-      ctx.scene.add(picket);
+      onPen(new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.3, 0.4), K.mat(0x9c3428)), -20 + i * 9, 20 + i * 2);
     }
-    // Bunker Hill: the crowned work, blockhouses, their flag
-    const bunker = new THREE.Group();
-    const hill = new THREE.Mesh(new THREE.SphereGeometry(20, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), K.mat(0x8a8a5e));
-    hill.scale.set(1.5, 0.42, 1); bunker.add(hill);
-    const fortWall = new THREE.Mesh(new THREE.BoxGeometry(16, 2.2, 12), K.mat(0x6d5a3c));
-    fortWall.position.y = 8.6; bunker.add(fortWall);
-    const b1 = B.blockhouse(); b1.position.set(-4, 9.7, -2); bunker.add(b1);
-    const b2 = B.blockhouse(); b2.position.set(4, 9.7, 3); bunker.add(b2);
-    const ukPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 8, 5), K.mat(0x59452a));
-    ukPole.position.set(0, 14, 0); bunker.add(ukPole);
-    const ukFly = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.4), K.mat(0x8c2f3a));
+    // Bunker Hill's crown: the fort, the blockhouses, their colours
+    const fortWall = new THREE.Mesh(new THREE.BoxGeometry(17, 2.4, 13), K.mat(0x6d5a3c));
+    onPen(fortWall, 22, -22); fortWall.position.y += 1.0;
+    const b1 = B.blockhouse(); onPen(b1, 18, -24);
+    const b2 = B.blockhouse(); onPen(b2, 26, -19);
+    const ukPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 9, 5), K.mat(0x59452a));
+    onPen(ukPole, 22, -22); ukPole.position.y += 6;
+    const ukFly = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.5), K.mat(0x8c2f3a));
     (ukFly.material as THREE.Material).side = THREE.DoubleSide;
-    ukFly.position.set(1.3, 16.8, 0); bunker.add(ukFly);
-    bunker.position.set(124, WATER_LEVEL, -68);
-    ctx.scene.add(bunker);
-    // Boston: the town, Christ Church tallest, Copp's Hill, Beacon Hill's mast
-    const boston = new THREE.Group();
-    boston.add(K.distantTown(80));
+    onPen(ukFly, 23.3, -22); ukFly.position.y += 9.6;
+
+    // Boston: its own landmass, the town on the slope, Christ Church tallest,
+    // Copp's Hill toward the water, the beacon mast on the summit
+    const bosC = { x: 152, z: 48 };
+    const bos = landmass({
+      w: 115, d: 90, peak: 10, seed: 33, crestX: 0.25, crestZ: 0.25,
+      shore: 0xa39872, field: 0x8f8763, crest: 0x837c52,
+    });
+    bos.mesh.position.set(bosC.x, WATER_LEVEL, bosC.z);
+    ctx.scene.add(bos.mesh);
+    const onBos = (o: THREE.Object3D, lx: number, lz: number, yaw = 0) => {
+      o.position.set(bosC.x + lx, WATER_LEVEL + bos.heightAt(lx, lz), bosC.z + lz);
+      o.rotation.y = yaw;
+      ctx.scene.add(o);
+    };
+    onBos(K.distantTown(70), -6, -8, -0.35);
     const tower = new THREE.Mesh(new THREE.BoxGeometry(2.4, 10, 2.4), K.mat(0x8d5138));
-    tower.position.set(-10, 5, -6); boston.add(tower);
+    onBos(tower, -16, -20); tower.position.y += 5;
     const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.6, 8, 6), K.mat(0xd8d2c0));
-    steeple.position.set(-10, 14, -6); boston.add(steeple);
+    onBos(steeple, -16, -20); steeple.position.y += 14;
     const copps = new THREE.Mesh(new THREE.BoxGeometry(10, 3, 6), K.mat(0x6d5a3c));
-    copps.position.set(-24, 1.8, -2); boston.add(copps);
-    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 10, 5), K.mat(0x59452a));
-    beacon.position.set(20, 8, 8); boston.add(beacon);
-    boston.position.set(150, WATER_LEVEL + 0.5, 42);
-    boston.rotation.y = -0.35;
-    ctx.scene.add(boston);
-    // the water: floating batteries close in, the fleet in the stream
-    const fb1 = B.floatingBattery(); fb1.position.set(76, WATER_LEVEL + 0.3, -18); fb1.rotation.y = 2.6; ctx.scene.add(fb1);
-    const fb2 = B.floatingBattery(); fb2.position.set(82, WATER_LEVEL + 0.3, 6); fb2.rotation.y = -0.6; ctx.scene.add(fb2);
-    const s1 = B.shipOfLine(1); s1.position.set(120, WATER_LEVEL + 0.3, 10); s1.rotation.y = 0.5; ctx.scene.add(s1);
-    const s2 = B.shipOfLine(0.85); s2.position.set(132, WATER_LEVEL + 0.3, 28); s2.rotation.y = 0.3; ctx.scene.add(s2);
-    const s3 = B.shipOfLine(0.7); s3.position.set(140, WATER_LEVEL + 0.3, -8); s3.rotation.y = -0.9; ctx.scene.add(s3);
+    onBos(copps, -28, -26); copps.position.y += 1.2;
+    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 11, 5), K.mat(0x59452a));
+    onBos(beacon, 8, 10); beacon.position.y += 5;
+
+    // the far shore closes the horizon so water never meets bare sky
+    const far = landmass({
+      w: 110, d: 380, peak: 8, seed: 55,
+      shore: 0x9a9070, field: 0x84805a, crest: 0x6d7048, segments: 32,
+    });
+    far.mesh.position.set(268, WATER_LEVEL - 0.4, 0);
+    ctx.scene.add(far.mesh);
+
+    // the water: floating batteries close in, the fleet at TRUE scale in the
+    // stream — a 64's masts stand fifty metres over the anchorage
+    const fb1 = B.floatingBattery(); fb1.position.set(74, WATER_LEVEL + 0.3, -16); fb1.rotation.y = 2.6; ctx.scene.add(fb1);
+    const fb2 = B.floatingBattery(); fb2.position.set(82, WATER_LEVEL + 0.3, 8); fb2.rotation.y = -0.6; ctx.scene.add(fb2);
+    const s1 = B.shipOfLine(1); s1.position.set(126, WATER_LEVEL + 0.2, 2); s1.rotation.y = 0.55; ctx.scene.add(s1);
+    const s2 = B.shipOfLine(0.85); s2.position.set(168, WATER_LEVEL + 0.2, 30); s2.rotation.y = 0.3; ctx.scene.add(s2);
+    const s3 = B.shipOfLine(0.75); s3.position.set(185, WATER_LEVEL + 0.2, -26); s3.rotation.y = -0.8; ctx.scene.add(s3);
     // crows over the graves; nothing over the water in November
     const crows = E.birds(4, 10, 15);
     place(crows.group, -26, 24); animate(crows.animate);
+    // the Appeal to Heaven standard works in the wind
+    void 0;
   },
 };

@@ -26,6 +26,7 @@ import * as E from './vernon-kit';
 import * as B from './boston-kit';
 import { prng } from './noise';
 import { canvasTex, brickTex, shingleTex } from './textures';
+import { landmass } from './landmass';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -48,6 +49,11 @@ function elevation(x: number, z: number): number {
   if (x > BANK) {
     const t = smooth(clamp((x - BANK) / (WATER - BANK), 0, 1));
     h = mixN(h, RIVER_LEVEL + 0.5, t);
+  }
+  // past the tide line the ground actually submerges — otherwise the "sea"
+  // is a mud shelf and the ships stand on it
+  if (x > WATER) {
+    h = mixN(h, RIVER_LEVEL - 4, smooth(clamp((x - WATER) / 24, 0, 1)));
   }
   return h;
 }
@@ -153,7 +159,11 @@ export const CAMBRIDGE_CAMP: SceneDef = {
     }
     place(elm, -18, -6, 0);
     ctx.box(-18.9, -6.9, -17.1, -5.1);
-    place(K.flagpole(7), -14, -3);
+    const colours = K.flagpole(7);
+    place(colours, -14, -3);
+    animate((t) => {
+      colours.rotation.y = Math.sin(t * 0.55) * 0.12 + Math.sin(t * 1.9) * 0.05;
+    });
 
     // ---- THE MESS FIRES — the near end of the street -----------------------
     for (let i = 0; i < 3; i++) {
@@ -272,29 +282,37 @@ export const CAMBRIDGE_CAMP: SceneDef = {
     putPerson({ dress: 'shirt', color: coat(), pose: 'stand', hat: 'none', musket: true, seed: 96 }, 40, 2.5, -1.6);
 
     // ---- BOSTON, two miles off, a skyline you cannot touch -----------------
-    const boston = new THREE.Group();
-    const town = K.distantTown(70);
-    boston.add(town);
-    // Christ Church — the tallest thing on the horizon
-    const spire = new THREE.Group();
+    // A real landmass: the town on its slope, Christ Church tallest, Beacon
+    // Hill the summit with its mast.
+    const bosC = { x: 152, z: 8 };
+    const bos = landmass({
+      w: 125, d: 100, peak: 11, seed: 27, crestX: 0.3, crestZ: 0.1,
+      shore: 0xa39872, field: 0x87905c, crest: 0x77854e,
+    });
+    bos.mesh.position.set(bosC.x, RIVER_LEVEL, bosC.z);
+    ctx.scene.add(bos.mesh);
+    const onBos = (o: THREE.Object3D, lx: number, lz: number, yaw = 0) => {
+      o.position.set(bosC.x + lx, RIVER_LEVEL + bos.heightAt(lx, lz), bosC.z + lz);
+      o.rotation.y = yaw;
+      ctx.scene.add(o);
+    };
+    onBos(K.distantTown(70), -10, -4, -0.15);
     const tower = new THREE.Mesh(new THREE.BoxGeometry(2.2, 9, 2.2), K.mat(0x8d5138));
-    tower.position.y = 4.5; spire.add(tower);
+    onBos(tower, -18, -14); tower.position.y += 4.5;
     const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.5, 7, 6), K.mat(0xd8d2c0));
-    steeple.position.y = 12.5; spire.add(steeple);
-    spire.position.set(-6, 0, -8);
-    boston.add(spire);
-    // Beacon Hill and its mast
-    const hill = new THREE.Mesh(new THREE.SphereGeometry(11, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2), K.mat(0x7d8a52));
-    hill.scale.set(1.6, 0.5, 1); hill.position.set(24, -0.5, 6);
-    boston.add(hill);
+    onBos(steeple, -18, -14); steeple.position.y += 12.5;
     const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 9, 5), K.mat(0x59452a));
-    mast.position.set(24, 9.5, 6); boston.add(mast);
-    boston.position.set(150, RIVER_LEVEL + 0.4, 10);
-    boston.rotation.y = -0.15;
-    ctx.scene.add(boston);
-    // shipping in the stream
-    const s1 = B.shipOfLine(0.9); s1.position.set(115, RIVER_LEVEL + 0.3, 34); s1.rotation.y = 0.4; ctx.scene.add(s1);
-    const s2 = B.shipOfLine(0.7); s2.position.set(125, RIVER_LEVEL + 0.3, -26); s2.rotation.y = -1.1; ctx.scene.add(s2);
+    onBos(mast, 12, 4); mast.position.y += 4.5;
+    // the far shore closes the horizon behind the anchorage
+    const far = landmass({
+      w: 100, d: 360, peak: 7, seed: 51,
+      shore: 0x9a9070, field: 0x7d8856, crest: 0x687446, segments: 32,
+    });
+    far.mesh.position.set(262, RIVER_LEVEL - 0.4, 0);
+    ctx.scene.add(far.mesh);
+    // shipping in the stream, at true scale
+    const s1 = B.shipOfLine(1); s1.position.set(136, RIVER_LEVEL + 0.2, 52); s1.rotation.y = 0.4; ctx.scene.add(s1);
+    const s2 = B.shipOfLine(0.8); s2.position.set(142, RIVER_LEVEL + 0.2, -46); s2.rotation.y = -1.1; ctx.scene.add(s2);
     // gulls over the flats
     const gulls = E.birds(7, 14, 13);
     place(gulls.group, 62, 6); animate(gulls.animate);

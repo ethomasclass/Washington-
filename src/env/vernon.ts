@@ -51,6 +51,7 @@ import { V } from './vernon-kit';
 import { buildInterior } from './vernon-interior';
 import { shingleTex, brickTex, clapboardTex } from './textures';
 import { texMat } from '../fp/kit';
+import { landmass } from './landmass';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -79,6 +80,10 @@ function elevation(x: number, z: number): number {
   if (x > BLUFF_EDGE) {
     const t = smooth(clamp((x - BLUFF_EDGE) / (SHORE - BLUFF_EDGE), 0, 1));
     h = mixN(h, RIVER_LEVEL + 0.8, t);
+  }
+  // and the riverbed drops away past the strand
+  if (x > SHORE + 6) {
+    h = mixN(h, RIVER_LEVEL - 4, smooth(clamp((x - SHORE - 6) / 20, 0, 1)));
   }
   // a soft ravine breaking the ground south of the lawn
   const rav = clamp(1 - segDist(x, z, 10, 38, 50, 52) / 13, 0, 1);
@@ -385,7 +390,8 @@ export const MOUNT_VERNON_1775: SceneDef = {
     wharfG.rotation.y = Math.PI / 2;
     ctx.scene.add(wharfG);
     const boat = E.sloop();
-    boat.group.position.set(67, RIVER_LEVEL + 0.15, 20);
+    boat.group.scale.setScalar(1.8); // a river sloop ran 40-60 ft, not 20
+    boat.group.position.set(68, RIVER_LEVEL + 0.15, 20);
     boat.group.rotation.y = 0.5;
     ctx.scene.add(boat.group);
     animate((t) => { boat.animate(t, 0); boat.group.position.y = RIVER_LEVEL + 0.15 + Math.sin(t * 0.6) * 0.08; });
@@ -404,6 +410,14 @@ export const MOUNT_VERNON_1775: SceneDef = {
     for (let i = 0; i < 5; i++) place(K.barrel(0.8, 0.36), 48 + (i % 2) * 1.3, 28 + i * 0.9);
     const gulls = E.birds(6, 10, 12);
     place(gulls.group, 56, 20); animate(gulls.animate);
+    // the Maryland shore, a wooded line across the mile of river — so the
+    // Potomac reads as a river with a far bank, not water running to sky
+    const md = landmass({
+      w: 130, d: 420, peak: 9, seed: 63, segments: 32,
+      shore: 0x9a9070, field: 0x6f8a4a, crest: 0x5a7440,
+    });
+    md.mesh.position.set(330, RIVER_LEVEL - 0.4, 0);
+    ctx.scene.add(md.mesh);
 
     // ---- THE DEPARTURE (R.11) ---------------------------------------------
     // The chariot stands ready before the west door, the pair in the traces;

@@ -84,6 +84,36 @@ export function rockGeometry(color: number): THREE.BufferGeometry {
   return g;
 }
 
+/**
+ * The one wind clock, shared by every wind-swayed material. buildEnv advances
+ * it each frame; the sway itself runs on the GPU, so four thousand tufts and
+ * a whole treeline move for the cost of a uniform write.
+ */
+export const WIND = { value: 0 };
+
+/** Patch a material so its vertices sway in the wind, scaled by height. */
+export function windify(mat: THREE.Material, strength: number): void {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uWind = WIND;
+    shader.vertexShader = ('uniform float uWind;\n' + shader.vertexShader).replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      {
+        #ifdef USE_INSTANCING
+          vec4 wpW = instanceMatrix * vec4(transformed, 1.0);
+        #else
+          vec4 wpW = vec4(transformed, 1.0);
+        #endif
+        float swayW = sin(uWind * 1.35 + wpW.x * 0.33 + wpW.z * 0.21)
+                    + 0.55 * sin(uWind * 2.9 + wpW.x * 0.9 + wpW.z * 0.6);
+        float liftW = max(transformed.y, 0.0);
+        transformed.x += swayW * ${strength.toFixed(4)} * liftW;
+        transformed.z += swayW * ${(strength * 0.6).toFixed(4)} * liftW;
+      }`,
+    );
+  };
+}
+
 export interface ScatterOpts {
   count: number;
   area: number;           // half-extent to place within
@@ -98,6 +128,8 @@ export interface ScatterOpts {
    * the threshold. Kills the even "orchard rim" a uniform scatter produces.
    */
   cluster?: { scale: number; threshold: number };
+  /** Wind sway strength per metre of height (0 = rigid). */
+  wind?: number;
 }
 
 export function scatter(
@@ -109,6 +141,7 @@ export function scatter(
 ): THREE.InstancedMesh {
   const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: ramp });
   (mat as unknown as { flatShading: boolean }).flatShading = true;
+  if (o.wind) windify(mat, o.wind);
   const inst = new THREE.InstancedMesh(geo, mat, o.count);
   const rand = prng(o.seed);
   const m = new THREE.Matrix4();

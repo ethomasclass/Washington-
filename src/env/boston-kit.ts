@@ -196,49 +196,79 @@ export function blockhouse(): THREE.Group {
   return g;
 }
 
-/** A floating battery: a low barge with sloped timber sides and two guns. */
+/** A floating battery: a low barge with sloped timber sides and three guns. */
 export function floatingBattery(): THREE.Group {
   const g = new THREE.Group();
-  const hull = mesh(new THREE.BoxGeometry(7, 1.0, 3), 0x4a3a28);
-  hull.position.y = 0.3; g.add(hull);
-  const casemate = new THREE.Mesh(new THREE.BoxGeometry(5.5, 1.2, 2.2), texMat(0x59452a, plankTex()));
-  casemate.castShadow = true; casemate.position.y = 1.3; g.add(casemate);
-  for (const dx of [-1.4, 1.4]) {
-    const muzzle = mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.8, 7), 0x33342f);
+  const hull = mesh(new THREE.BoxGeometry(13, 1.6, 5.4), 0x4a3a28);
+  hull.position.y = 0.5; g.add(hull);
+  const casemate = new THREE.Mesh(new THREE.BoxGeometry(10.5, 2.1, 4.2), texMat(0x59452a, plankTex()));
+  casemate.castShadow = true; casemate.position.y = 2.1; g.add(casemate);
+  for (const dx of [-3.2, 0, 3.2]) {
+    const muzzle = mesh(new THREE.CylinderGeometry(0.14, 0.17, 1.4, 7), 0x33342f);
     muzzle.rotation.x = Math.PI / 2;
-    muzzle.position.set(dx, 1.25, 1.35); g.add(muzzle);
+    muzzle.position.set(dx, 2.1, 2.5); g.add(muzzle);
   }
-  const staff = mesh(new THREE.CylinderGeometry(0.03, 0.03, 2, 5), V.postWood);
-  staff.position.set(-3.2, 2, 0); g.add(staff);
+  const staff = mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.6, 5), V.postWood);
+  staff.position.set(-6, 3.6, 0); g.add(staff);
   return g;
 }
 
-/** A ship of the line at anchor, yards crossed, sails furled — a silhouette. */
+/**
+ * A ship of the line at anchor, yards crossed, sails furled. Built at REAL
+ * dimensions — a 64 like HMS Somerset ran ~49 m on the gundeck with her main
+ * truck near 55 m over the water. The first build was 16 m long: a launch
+ * wearing three masts. Scale 1 = full size; use `scale` only for smaller
+ * consorts, not for distance.
+ */
 export function shipOfLine(scale = 1): THREE.Group {
   const g = new THREE.Group();
-  const hull = mesh(new THREE.CylinderGeometry(1.4, 0.8, 16, 7), 0x3a2e22);
-  hull.rotation.z = Math.PI / 2; hull.scale.y = 0.42; hull.position.y = 1.0; g.add(hull);
-  const stripe = mesh(new THREE.BoxGeometry(14.5, 0.5, 2.6), 0xb09a5e);
-  stripe.position.y = 1.7; g.add(stripe);
-  const stern = mesh(new THREE.BoxGeometry(1.6, 1.6, 2.4), 0x3a2e22);
-  stern.position.set(-7.2, 2.0, 0); g.add(stern);
-  for (const [mx, mh] of [[-4.5, 11], [0.5, 13], [5, 10]] as const) {
-    const mast = mesh(new THREE.CylinderGeometry(0.09, 0.14, mh, 6), 0x59452a);
-    mast.position.set(mx, mh / 2 + 1.5, 0); g.add(mast);
-    for (const [fy, yl] of [[0.55, 6.5], [0.75, 5], [0.9, 3.6]] as const) {
-      const yard = mesh(new THREE.CylinderGeometry(0.04, 0.04, yl, 5), 0x59452a);
+  // hull: 46 m between the curves, freeboard ~7 m to the rail
+  const hull = mesh(new THREE.CylinderGeometry(4.4, 2.4, 46, 8), 0x3a2e22);
+  hull.rotation.z = Math.PI / 2; hull.scale.y = 0.5; hull.position.y = 2.6; g.add(hull);
+  // the wales and the two gun-deck stripes — dull 1775 ochre, not the
+  // high-contrast chequer of the Nelson era
+  for (const [sy, sc] of [[4.4, 0x87724a], [6.1, 0x87724a]] as const) {
+    const stripe = mesh(new THREE.BoxGeometry(42, 1.1, 7.6), sc);
+    stripe.position.y = sy; g.add(stripe);
+    // gunports along the stripe
+    for (let i = 0; i < 12; i++) {
+      for (const sz of [-1, 1]) {
+        const port = mesh(new THREE.BoxGeometry(1.3, 0.65, 0.2), 0x241c14);
+        port.position.set(-18 + i * 3.3, sy, sz * 3.75);
+        g.add(port);
+      }
+    }
+  }
+  // quarterdeck and stern cabin
+  const stern = mesh(new THREE.BoxGeometry(7, 3.4, 7.2), 0x3a2e22);
+  stern.position.set(-20, 7.2, 0); g.add(stern);
+  const gallery = mesh(new THREE.BoxGeometry(1.2, 2.2, 6.2), 0xb09a5e);
+  gallery.position.set(-23.4, 7.4, 0); g.add(gallery);
+  // three masts with fighting tops, crossed yards, furled sails
+  for (const [mx, mh] of [[-13, 40], [1.5, 47], [15, 36]] as const) {
+    const mast = mesh(new THREE.CylinderGeometry(0.28, 0.45, mh, 7), 0x59452a);
+    mast.position.set(mx, mh / 2 + 5.5, 0); g.add(mast);
+    const top = mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.5, 7), 0x4a3a28);
+    top.position.set(mx, 5.5 + mh * 0.42, 0); g.add(top);
+    for (const [fy, yl] of [[0.38, 22], [0.62, 17], [0.82, 12]] as const) {
+      const yard = mesh(new THREE.CylinderGeometry(0.14, 0.14, yl, 5), 0x59452a);
       yard.rotation.x = Math.PI / 2;
-      yard.position.set(mx, 1.5 + mh * fy, 0);
+      yard.position.set(mx, 5.5 + mh * fy, 0);
       g.add(yard);
-      // furled sail on the yard
-      const furl = mesh(new THREE.CylinderGeometry(0.09, 0.09, yl * 0.92, 5), V.linen);
+      const furl = mesh(new THREE.CylinderGeometry(0.3, 0.3, yl * 0.9, 5), V.linen);
       furl.rotation.x = Math.PI / 2;
-      furl.position.set(mx, 1.36 + mh * fy, 0);
+      furl.position.set(mx, 5.1 + mh * fy, 0);
       g.add(furl);
     }
   }
-  const bowsprit = mesh(new THREE.CylinderGeometry(0.06, 0.09, 5, 5), 0x59452a);
-  bowsprit.rotation.z = -0.9; bowsprit.position.set(8.6, 2.6, 0); g.add(bowsprit);
+  const bowsprit = mesh(new THREE.CylinderGeometry(0.2, 0.32, 16, 5), 0x59452a);
+  bowsprit.rotation.z = -0.55; bowsprit.position.set(27, 7.5, 0); g.add(bowsprit);
+  // an ensign at the stern
+  const staff = mesh(new THREE.CylinderGeometry(0.08, 0.08, 6, 4), 0x59452a);
+  staff.position.set(-24.5, 11.5, 0); g.add(staff);
+  const ensign = mesh(new THREE.PlaneGeometry(3.4, 2), 0x8c2f3a);
+  (ensign.material as THREE.Material).side = THREE.DoubleSide;
+  ensign.position.set(-26.4, 13.6, 0); g.add(ensign);
   g.scale.setScalar(scale);
   return g;
 }

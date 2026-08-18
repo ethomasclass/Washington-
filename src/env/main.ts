@@ -82,10 +82,13 @@ const SCENE_POSES: Record<string, Record<string, Pose>> = {
 };
 const POSES = SCENE_POSES[SCENE] ?? SCENE_POSES['mount-vernon'];
 if (SHOT) {
+  // ?px&pz&yaw&pitch override any named pose — the location scout's camera
   const q = POSES[p.get('pose') ?? 'a'] ?? POSES['a'];
-  fp.setPose(q.x, q.z, q.yaw);
-  fp.pitch = q.pitch;
-  if (q.up) fp.pos.y = fp.eyeHeight + 20; // bias the floor-picker to the upper storey
+  const px = p.has('px') ? parseFloat(p.get('px')!) : q.x;
+  const pz = p.has('pz') ? parseFloat(p.get('pz')!) : q.z;
+  fp.setPose(px, pz, p.has('yaw') ? parseFloat(p.get('yaw')!) : q.yaw);
+  fp.pitch = p.has('pitch') ? parseFloat(p.get('pitch')!) : q.pitch;
+  if (q.up || p.has('up')) fp.pos.y = fp.eyeHeight + 20;
 }
 
 addEventListener('resize', () => {

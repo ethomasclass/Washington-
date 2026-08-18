@@ -45,8 +45,17 @@ environments (Emerson's shelter menagerie, the Appeal to Heaven flag, burned
 Charlestown's chimneys, empty embrasures — sources in each header; low-contrast
 procedural textures in `textures.ts` under the cel shading). One-file playable
 builds: `node scripts/build-fp-single.mjs` and the env equivalent inside it —
-output in `dist-single/`. The game logic is NOT wired into 3D; scenes are
-walkable dioramas so the direction can be judged.
+output in `dist-single/`.
+
+**The game IS wired into 3D** (`game3d.html` → `src/game3d/main.ts`): the full
+loop from `src/main.ts` — state, flags, Council, decisions, dialogue, examine,
+tasks, spyglass survey (raised over a live 3D still, oriented at the harbour),
+journal, Return, reckoning, passport saves, theatre map, dev bar — running on
+the first-person environments for MV-01, CB-01, CB-03. Content anchors to the
+2D stations via per-scene anchor tables in `game3d/main.ts` (ENV); NPCs stand
+as articulated `vernon-kit` figures. CB-02's parlour has no 3D world yet: the
+camp's exit remaps to CB-03 with an in-fiction note (EXIT_REMAP). One-file
+build: `node scripts/build-game3d-single.mjs` → `dist-single/washington-3d.html`.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment

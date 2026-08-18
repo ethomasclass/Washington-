@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>In Washington's Shoes — first person</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      /* The game UI (ui.ts CSS) mounts inside #overlay; it expects a positioned
+         root that covers the frame, exactly as #app does for the 2D build. */
+      #app { position: fixed; inset: 0; pointer-events: none; }
+      #overlay { position: absolute; inset: 0; }
+      /* Crosshair — a dot, not a reticle; this is a walk, not a shooter. */
+      #dot {
+        position: fixed; left: 50%; top: 50%; width: 5px; height: 5px;
+        margin: -2.5px 0 0 -2.5px; border-radius: 50%;
+        background: rgba(245, 240, 226, 0.85);
+        box-shadow: 0 0 3px rgba(0, 0, 0, 0.55);
+        pointer-events: none; z-index: 30;
+      }
+      #hint {
+        position: fixed; left: 50%; bottom: 7%; transform: translateX(-50%);
+        padding: 9px 16px; border-radius: 3px;
+        background: rgba(16, 14, 10, 0.62); color: #efe7d5;
+        font: 14px/1.4 Georgia, "Times New Roman", serif;
+        letter-spacing: 0.04em;
+        opacity: 0; transition: opacity 0.35s; pointer-events: none; z-index: 30;
+        text-align: center;
+      }
+      #hint b { font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="dot"></div>
+    <div id="hint">
+      <b>click</b> to look about &nbsp;·&nbsp; <b>WASD</b> walk &nbsp;·&nbsp;
+      <b>E</b> use &nbsp;·&nbsp; <b>Tab</b> next &nbsp;·&nbsp; <b>J</b> journal
+    </div>
+    <div id="app"><div id="overlay"></div></div>
+    <script type="module" src="/src/game3d/main.ts"></script>
+  </body>
+</html>

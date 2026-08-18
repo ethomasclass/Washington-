@@ -54,6 +54,13 @@ export class FirstPerson {
 
   get isLocked() { return this.locked; }
 
+  /** Swap the collision world — for a driver that moves between scenes. */
+  setWorld(bounds: number, boxes: BoxBlocker[], blockers: Blocker[] = []): void {
+    this.bounds = bounds;
+    this.boxes = boxes;
+    this.blockers = blockers;
+  }
+
   setPose(x: number, z: number, yaw: number) {
     this.pos.set(x, this.eyeHeight, z);
     this.yaw = yaw;

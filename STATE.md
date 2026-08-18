@@ -64,7 +64,9 @@ walking in; CB-02's map-table exit carries on to CB-03. Interior lighting note:
 the ceiling slab casts shadow (the shell's own shadow leaks at the sunward
 eave), and Cambridge aims its shadow box between camp and house (sky.ts
 `shadowFocus`). One-file build: `node scripts/build-game3d-single.mjs` →
-`dist-single/washington-3d.html`.
+`dist-single/washington-3d.html`. **The 3D quality audit and staged plan
+live in `docs/11-the-3d-quality-plan.md`** — people first, then sound, then
+grounding; read it before any art work on this branch.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment

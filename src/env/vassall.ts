@@ -166,7 +166,7 @@ export function vassallHouse(ctx: BuildCtx): void {
   const plaster = 0xe9e2cf;
 
   // floor boards and seams
-  solid(HX, floorY - 0.05, HZ, W, 0.1, D, 0xa8875a, 0.4);
+  solid(HX, floorY - 0.05, HZ, W - 0.14, 0.1, D - 0.14, 0xa8875a, 0.4);
   for (let z = Z0 + 0.85; z < Z1; z += 0.85) {
     solid(HX, floorY + 0.002, z, W, 0.004, 0.03, 0x82653e, 0.08);
   }
@@ -175,20 +175,20 @@ export function vassallHouse(ctx: BuildCtx): void {
   // back-face depth, normal bias), and without this the sun paints a wedge
   // across the plaster. A horizontal caster overhead closes the rooms off
   // from the sky for good.
-  const ceil = solid(HX, floorY + STORY + 0.06, HZ, W, 0.12, D, 0x9c7c50);
+  const ceil = solid(HX, floorY + STORY + 0.06, HZ, W - 0.14, 0.12, D - 0.14, 0x9c7c50);
   ceil.castShadow = true;
-  solid(HX, floorY + STORY - 0.015, HZ, W, 0.03, D, 0xf2edda, 0.5);
+  solid(HX, floorY + STORY - 0.015, HZ, W - 0.14, 0.03, D - 0.14, 0xf2edda, 0.5);
 
   // exterior wall linings, split at the front door
   const lin = (cx: number, cz: number, sx: number, sz: number) =>
     solid(cx, floorY + STORY / 2, cz, sx, STORY, sz, plaster, 0.55);
-  lin((X0 + FDOOR_X0) / 2, Z0 + 0.12, FDOOR_X0 - X0, 0.08);   // front, west of door
-  lin((FDOOR_X1 + X1) / 2, Z0 + 0.12, X1 - FDOOR_X1, 0.08);   // front, east of door
-  lin(HX, Z1 - 0.12, W, 0.08);                                 // back
-  lin(X0 + 0.12, HZ, 0.08, D);                                 // west gable
-  lin(X1 - 0.12, HZ, 0.08, D);                                 // east gable
+  lin((X0 + FDOOR_X0) / 2, Z0 + 0.31, FDOOR_X0 - X0, 0.08);   // front, west of door
+  lin((FDOOR_X1 + X1) / 2, Z0 + 0.31, X1 - FDOOR_X1, 0.08);   // front, east of door
+  lin(HX, Z1 - 0.31, W, 0.08);                                 // back
+  lin(X0 + 0.31, HZ, 0.08, D);                                 // west gable
+  lin(X1 - 0.31, HZ, 0.08, D);                                 // east gable
   // over the front door
-  solid(HX, floorY + 2.55 + (STORY - 2.55) / 2, Z0 + 0.12, 1.3, STORY - 2.55, 0.08, plaster, 0.55);
+  solid(HX, floorY + 2.55 + (STORY - 2.55) / 2, Z0 + 0.31, 1.3, STORY - 2.55, 0.08, plaster, 0.55);
 
   // daylight: bright panes just inside the linings, at the shell's bays
   const glow = new THREE.MeshToonMaterial({ color: 0xdfe8e4 });
@@ -196,7 +196,7 @@ export function vassallHouse(ctx: BuildCtx): void {
   glow.emissiveIntensity = 0.7;
   const bayXs = [HX - 6, HX - 3, HX, HX + 3, HX + 6];
   for (const bx of bayXs) {
-    for (const [wz, face] of [[Z0 + 0.18, 0], [Z1 - 0.18, Math.PI]] as const) {
+    for (const [wz, face] of [[Z0 + 0.36, 0], [Z1 - 0.36, Math.PI]] as const) {
       if (bx === HX && wz < HZ) continue; // the door bay
       const frame = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.65), mat(0x8d6f46));
       frame.position.set(bx, floorY + 1.7, wz);
@@ -218,8 +218,9 @@ export function vassallHouse(ctx: BuildCtx): void {
       solid(xLine, floorY + 0.09, (za + zb) / 2, WALL_T + 0.04, 0.18, zb - za, 0x8d6f46, 0.08);
       box(xLine - WALL_T / 2, za, xLine + WALL_T / 2, zb, floorY - 0.3, floorY + 2.4);
     };
-    seg(Z0, gapZ0);
-    seg(gapZ1, Z1);
+    // inset from the shell: a coplanar end face z-fights through the facade
+    seg(Z0 + 0.07, gapZ0);
+    seg(gapZ1, Z1 - 0.07);
     if (gapZ1 > gapZ0) {
       solid(xLine, floorY + 2.55 + (STORY - 2.55) / 2, (gapZ0 + gapZ1) / 2,
         WALL_T, STORY - 2.55, gapZ1 - gapZ0, plaster, 0.5);

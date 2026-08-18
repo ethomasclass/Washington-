@@ -194,6 +194,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
       // face 'n' lands on the WEST front after the 90° rotation — face 's' put
       // the surround on the east and left a window where the front door goes
       windowsX: 7, door: { face: 'n', bay: 2, pediment: true, leafless: true },
+      doorThrough: true, // the passage runs straight through to the east door
       dormers: 4, chimneys: ['e', 'w'], shutters: true, plinth: 0.5,
       courses: true, cornice: true, roofTex: shingleTex(),
     });

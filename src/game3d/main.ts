@@ -202,13 +202,38 @@ function groundY(x: number, z: number): number {
   return env.heightOverride?.(x, z, fp.pos.y - fp.eyeHeight) ?? env.height(x, z);
 }
 
+/**
+ * Push a placement out of collision boxes. NPCs must never stand inside a
+ * hut, a table, or an earthwork; items are pushed only out of LARGE boxes
+ * (buildings, works) — a letter belongs on the table whose box it sits in.
+ */
+function declip(p0: Placed, clear: number, minArea = 0): Placed {
+  let p = p0;
+  for (let pass = 0; pass < 4; pass++) {
+    const b = env!.boxes.find((bb) =>
+      (bb.maxX - bb.minX) * (bb.maxZ - bb.minZ) >= minArea &&
+      p.x > bb.minX - clear && p.x < bb.maxX + clear &&
+      p.z > bb.minZ - clear && p.z < bb.maxZ + clear);
+    if (!b) return p;
+    const exits: Array<[number, Placed]> = [
+      [p.x - (b.minX - clear), { x: b.minX - clear, z: p.z }],
+      [(b.maxX + clear) - p.x, { x: b.maxX + clear, z: p.z }],
+      [p.z - (b.minZ - clear), { x: p.x, z: b.minZ - clear }],
+      [(b.maxZ + clear) - p.z, { x: p.x, z: b.maxZ + clear }],
+    ];
+    exits.sort((a, c) => a[0] - c[0]);
+    p = exits[0][1];
+  }
+  return p;
+}
+
 /** Stand the scene's cast up as articulated figures. */
 function buildCast(): void {
   if (!env) return;
   cast = new THREE.Group();
   castAnimators = [];
   for (const n of scene.npcs) {
-    const p = worldOf(n);
+    const p = declip(worldOf(n), 0.5);
     placedAt.set(`npc:${n.id}`, p);
     const look: Partial<import('../types').Look> = n.look ?? {};
     const coat = parseInt((look.coat ?? n.lines[0]?.coat ?? '#6B4F35').replace('#', ''), 16);
@@ -228,7 +253,7 @@ function buildCast(): void {
     castAnimators.push(pr.animate);
   }
   for (const it of [...scene.interactables, ...scene.tasks]) {
-    placedAt.set(it.id, worldOf(it));
+    placedAt.set(it.id, declip(worldOf(it), 0.4, 6));
   }
   env.scene.add(cast);
 }

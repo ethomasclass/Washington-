@@ -88,7 +88,7 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
 
   // ---- floors -------------------------------------------------------------
   // ground floor boards
-  solid((X0 + X1) / 2, floorY - 0.05, (Z0 + Z1) / 2, X1 - X0, 0.1, Z1 - Z0, 0xa8875a, 0.4);
+  solid((X0 + X1) / 2, floorY - 0.05, (Z0 + Z1) / 2, X1 - X0 - 0.14, 0.1, Z1 - Z0 - 0.14, 0xa8875a, 0.4);
   // board seams — thin darker strips, the cheap plank read
   for (let z = Z0 + 0.9; z < Z1; z += 0.9) {
     solid((X0 + X1) / 2, floorY + 0.002, z, X1 - X0, 0.004, 0.03, 0x82653e, 0.08);
@@ -103,13 +103,15 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
     [(X0 + IN + 2.0) / 2, (PASSAGE_N + 3.0) / 2, 2.0 - X0 - IN, 3.0 - PASSAGE_N],
   ];
   for (const [cx, cz, sx, sz] of slabPieces) {
-    solid(cx, slabY, cz, sx, SLAB, sz, 0x9c7c50, 0.2);
+    const piece = solid(cx, slabY, cz, sx, SLAB, sz, 0x9c7c50, 0.2);
+    piece.castShadow = true;
     // plastered ceiling skin under each piece
     solid(cx, slabY - SLAB / 2 - 0.02, cz, sx, 0.03, sz, 0xf4f0e2, 0.36);
   }
   // garret ceiling, plastered below
-  solid((X0 + X1) / 2, floor2Y + STORY, (Z0 + Z1) / 2, X1 - X0, SLAB, Z1 - Z0, plaster);
-  solid((X0 + X1) / 2, floor2Y + STORY - SLAB / 2 - 0.02, (Z0 + Z1) / 2, X1 - X0, 0.03, Z1 - Z0, 0xf4f0e2, 0.36);
+  const garret = solid((X0 + X1) / 2, floor2Y + STORY, (Z0 + Z1) / 2, X1 - X0 - 0.14, SLAB, Z1 - Z0 - 0.14, plaster);
+  garret.castShadow = true;
+  solid((X0 + X1) / 2, floor2Y + STORY - SLAB / 2 - 0.02, (Z0 + Z1) / 2, X1 - X0 - 0.14, 0.03, Z1 - Z0 - 0.14, 0xf4f0e2, 0.36);
 
   // ---- a partition wall with a doorway, plus its collision ----------------
   const partition = (
@@ -132,8 +134,9 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
       }
       spec.box(xa, zLine - WALL_T / 2, xb, zLine + WALL_T / 2, baseY - 0.3, baseY + 2.4);
     };
-    mkSeg(X0, gapX0);
-    mkSeg(gapX1, X1);
+    // inset from the shell: a coplanar end face z-fights through the facade
+    mkSeg(X0 + 0.07, gapX0);
+    mkSeg(gapX1, X1 - 0.07);
     // door head over the gap
     if (!raw) solid((gapX0 + gapX1) / 2, baseY + 2.55, zLine, gapX1 - gapX0, STORY - 2.55 + 0.05, WALL_T, plaster);
   };
@@ -209,16 +212,16 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
   for (const baseY of [floorY, floor2Y]) {
     // west wall, split at the door on the ground floor
     if (baseY === floorY) {
-      lining(X0 + 0.12, (Z0 + 2.6) / 2, 0.08, 2.6 - Z0, baseY);
-      lining(X0 + 0.12, (3.7 + Z1) / 2, 0.08, Z1 - 3.7, baseY);
-      lining(X1 - 0.12, (Z0 + 2.6) / 2, 0.08, 2.6 - Z0, baseY);
-      lining(X1 - 0.12, (3.7 + Z1) / 2, 0.08, Z1 - 3.7, baseY);
+      lining(X0 + 0.31, (Z0 + 2.6) / 2, 0.08, 2.6 - Z0, baseY);
+      lining(X0 + 0.31, (3.7 + Z1) / 2, 0.08, Z1 - 3.7, baseY);
+      lining(X1 - 0.31, (Z0 + 2.6) / 2, 0.08, 2.6 - Z0, baseY);
+      lining(X1 - 0.31, (3.7 + Z1) / 2, 0.08, Z1 - 3.7, baseY);
     } else {
-      lining(X0 + 0.12, 0, 0.08, Z1 - Z0, baseY);
-      lining(X1 - 0.12, 0, 0.08, Z1 - Z0, baseY);
+      lining(X0 + 0.31, 0, 0.08, Z1 - Z0, baseY);
+      lining(X1 - 0.31, 0, 0.08, Z1 - Z0, baseY);
     }
-    lining(0, Z0 + 0.12, X1 - X0, 0.08, baseY);
-    lining(0, Z1 - 0.12, X1 - X0, 0.08, baseY);
+    lining(0, Z0 + 0.31, X1 - X0, 0.08, baseY);
+    lining(0, Z1 - 0.31, X1 - X0, 0.08, baseY);
   }
 
   // ---- daylight: bright panes just inside the linings ---------------------
@@ -227,7 +230,7 @@ export function buildInterior(spec: InteriorSpec): BuiltInterior {
   glow.emissive = new THREE.Color(0xeef4ec);
   glow.emissiveIntensity = 0.5;
   for (const bz of bays) {
-    for (const [wx, face] of [[X0 + 0.18, 1], [X1 - 0.18, -1]] as const) {
+    for (const [wx, face] of [[X0 + 0.36, 1], [X1 - 0.36, -1]] as const) {
       for (const fy of [floorY + 1.75, floor2Y + 1.6]) {
         if (fy < floor2Y && Math.abs(bz - 3.14) < 0.01 && wx < 0) continue; // the west door bay
         const frame = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.7), mat(0x8d6f46));

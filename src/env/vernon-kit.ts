@@ -206,6 +206,8 @@ export interface BuildingSpec {
   windowsX: number;                // bays on the long (x) faces
   windowsZup?: boolean;            // windows on gable ends too
   door?: { face: 'n' | 's'; bay?: number; pediment?: boolean; leafless?: boolean };
+  /** Cut the door void through BOTH long faces — a central passage. */
+  doorThrough?: boolean;
   dormers?: number;
   chimneys?: Array<'e' | 'w' | 'c'>;
   chimneyColor?: number;
@@ -232,11 +234,46 @@ export function building(s: BuildingSpec): THREE.Group {
     p.castShadow = p.receiveShadow = true;
     p.position.y = plinth / 2; g.add(p);
   }
-  const body = s.wallTex
-    ? new THREE.Mesh(new THREE.BoxGeometry(s.w, H, s.d), texMat(s.wall, s.wallTex))
-    : mesh(new THREE.BoxGeometry(s.w, H, s.d), s.wall);
-  body.castShadow = body.receiveShadow = true;
-  body.position.y = plinth + H / 2; g.add(body);
+  const wallMat = s.wallTex ? texMat(s.wall, s.wallTex) : mat(s.wall);
+  const slab = (cx: number, cy: number, cz: number, sx: number, sy: number, sz: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), wallMat);
+    m.castShadow = m.receiveShadow = true;
+    m.position.set(cx, cy, cz);
+    g.add(m);
+    return m;
+  };
+  if (s.door?.leafless) {
+    /*
+     * A REAL doorway. A leafless door means a hinged leaf and a walk-through
+     * interior, and both were being defeated by the shell: one solid box has
+     * no hole, so the leaf hung EMBEDDED in the wall (z-fighting stripes, and
+     * a door that vanished into the facade as it swung). The shell is built
+     * as slabs instead, with a genuine void at the door bay — on both long
+     * faces when `doorThrough` says the passage runs straight through.
+     */
+    const T = 0.26;                       // wall slab thickness
+    const bayW2 = s.w / s.windowsX;
+    const bayX = -s.w / 2 + bayW2 * ((s.door.bay ?? Math.floor(s.windowsX / 2)) + 0.5);
+    const DW = 1.24, DH = 2.28;           // the void, a shade wider than the leaf
+    const yMid = plinth + H / 2;
+    const doored = (zc: number) => {
+      slab((-s.w / 2 + (bayX - DW / 2)) / 2, yMid, zc, bayX - DW / 2 + s.w / 2, H, T);
+      slab((bayX + DW / 2 + s.w / 2) / 2, yMid, zc, s.w / 2 - bayX - DW / 2, H, T);
+      slab(bayX, plinth + DH + (H - DH) / 2, zc, DW, H - DH, T);
+    };
+    const zN = -(s.d - T) / 2, zS = (s.d - T) / 2;
+    if (s.door.face === 'n') doored(zN); else slab(0, yMid, zN, s.w, H, T);
+    if (s.door.face === 's' || s.doorThrough) doored(zS); else slab(0, yMid, zS, s.w, H, T);
+    for (const sx of [-1, 1]) {
+      slab(sx * (s.w - T) / 2, yMid, 0, T, H, s.d - T * 2);
+    }
+    // a lid under the roof, so the hollow shell reads solid from any hill
+    slab(0, plinth + H - 0.06, 0, s.w - T, 0.12, s.d - T);
+  } else {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(s.w, H, s.d), wallMat);
+    body.castShadow = body.receiveShadow = true;
+    body.position.y = plinth + H / 2; g.add(body);
+  }
 
   // rusticated coursing: shallow horizontal score lines, inked by the outline
   // pass — the sand-painted "stone block" read without a texture. PERIMETER

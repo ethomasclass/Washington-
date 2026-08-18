@@ -275,18 +275,20 @@ export const THE_LINES: SceneDef = {
     place(K.wagon(), -36, -6, 0.5);
     ctx.box(-37.5, -7.7, -34.5, -4.3);
 
-    // ---- THE VISTA — a mile off, across real water -------------------------
-    // The Charlestown peninsula sits FAR out: its near shore starts ~140 m
-    // past the ditch, and the fog does the rest — silhouettes and smoke read,
-    // windows do not. Plateaus keep the ruins and the fort from burying
-    // their edges in the hillside.
-    const penC = { x: 215, z: -62 };
+    // ---- THE VISTA — a country across the water, not an islet --------------
+    // The whole north-east quarter is LAND. The Charlestown peninsula is a
+    // big ground joined to the mainland by its Neck, with the Mystic shore
+    // closing the horizon behind it — the burned town is the TIP of a
+    // country. Three heights read in order: the town's ground, Breed's Hill
+    // above it, Bunker Hill's crown with the British work.
+    const penC = { x: 225, z: -58 };
     const pen = landmass({
-      w: 150, d: 105, peak: 15, seed: 21, crestX: 0.45, crestZ: -0.5,
+      w: 210, d: 140, peak: 16, seed: 21, crestX: 0.35, crestZ: -0.45,
       shore: 0xa89a6e, field: 0x8f8a5c, crest: 0x7d7a4c,
       plateaus: [
-        { x: -30, z: 24, r: 30, h: 2.2 },   // the burned town's ground
-        { x: 30, z: -26, r: 22, h: 12.5 },  // Bunker Hill's crown
+        { x: -58, z: 30, r: 44, h: 2.6 },   // the burned town's ground
+        { x: -16, z: 4, r: 22, h: 9 },      // Breed's Hill above the town
+        { x: 26, z: -30, r: 27, h: 13.5 },  // Bunker Hill's crown
       ],
     });
     pen.mesh.position.set(penC.x, WATER_LEVEL, penC.z);
@@ -296,38 +298,95 @@ export const THE_LINES: SceneDef = {
       o.rotation.y = yaw;
       ctx.scene.add(o);
     };
-    // the heap of chimneys on the town plateau, in the old street grid
-    for (let i = 0; i < 30; i++) {
-      const lx = -46 + (i % 6) * 7 + rand() * 2.5;
-      const lz = 12 + Math.floor(i / 5) * 6 + rand() * 2;
-      onPen(B.chimneyRuin(i), lx, lz, rand() * 0.5 - 0.2);
+    // Charlestown Neck — the low isthmus the survivors fled over, running
+    // back toward the mainland; it tapers into the marsh short of our shore
+    const neck = landmass({
+      w: 130, d: 34, peak: 2.6, seed: 43, segments: 24,
+      shore: 0x9a9070, field: 0x8f8a5c, crest: 0x84805a,
+    });
+    neck.mesh.position.set(138, WATER_LEVEL - 0.2, -86);
+    ctx.scene.add(neck.mesh);
+    // the Mystic shore, closing the horizon north of the peninsula
+    const mystic = landmass({
+      w: 240, d: 100, peak: 7, seed: 61, segments: 28,
+      shore: 0x9a9070, field: 0x84805a, crest: 0x6d7048,
+    });
+    mystic.mesh.position.set(300, WATER_LEVEL - 0.3, -190);
+    ctx.scene.add(mystic.mesh);
+
+    // THE BURNED TOWN. Scorched ground, streets of standing gable ends and
+    // broken walls, and the documented heap of chimneys — charcoal-dark
+    // against the dun hill, so the silhouette carries at a mile.
+    const scorch = new THREE.Mesh(new THREE.CircleGeometry(46, 28), K.mat(0x3a342c));
+    scorch.rotation.x = -Math.PI / 2;
+    onPen(scorch, -58, 30);
+    scorch.position.y += 0.25;
+    for (let i = 0; i < 14; i++) {
+      const lx = -86 + (i % 5) * 13 + rand() * 3;
+      const lz = 12 + Math.floor(i / 5) * 13 + rand() * 3;
+      const w1 = 4.5 + rand() * 3, h1 = 3.5 + rand() * 3.2;
+      const shell = new THREE.Group();
+      const gable = new THREE.Mesh(new THREE.BoxGeometry(0.5, h1, w1), K.mat(0x35302a));
+      gable.castShadow = true;
+      gable.position.y = h1 / 2;
+      shell.add(gable);
+      if (rand() < 0.7) {
+        const side = new THREE.Mesh(new THREE.BoxGeometry(w1 * 0.9, h1 * 0.45, 0.45), K.mat(0x3d362e));
+        side.position.set(w1 * 0.35, h1 * 0.22, w1 * 0.4);
+        shell.add(side);
+      }
+      onPen(shell, lx, lz, (rand() - 0.5) * 0.3 + (i % 2) * Math.PI / 2);
     }
-    // five months cold, still smoking faintly where the cellars smoulder
-    for (const [sx, sz] of [[-38, 20], [-22, 28], [-10, 16]] as const) {
-      const sm = E.smokeColumn(0.28);
-      sm.group.scale.setScalar(3.2);
+    for (let i = 0; i < 48; i++) {
+      const lx = -90 + (i % 8) * 9 + rand() * 3.5;
+      const lz = 8 + Math.floor(i / 8) * 8 + rand() * 3;
+      const ch = B.chimneyRuin(i);
+      ch.scale.setScalar(1.5);
+      onPen(ch, lx, lz, rand() * 0.6 - 0.3);
+    }
+    // the waterfront burned to the piles: wharf stubs in the shallows
+    for (let i = 0; i < 16; i++) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 2.4, 5), K.mat(0x2e2a24));
+      post.position.set(
+        118 + rand() * 10, WATER_LEVEL + 0.8, -42 + i * 2.6 + rand() * 1.6);
+      ctx.scene.add(post);
+    }
+    // five months cold, still smoking faintly where the cellars smoulder —
+    // grey wisps, not white chimney smoke; the town is a cold ruin
+    for (const [sx, sz] of [[-72, 24], [-52, 40], [-38, 18], [-60, 12]] as const) {
+      const sm = E.smokeColumn(0.18);
+      sm.group.scale.setScalar(2.8);
+      sm.group.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.MeshToonMaterial | undefined;
+        if (m?.color) {
+          const mm = m.clone();
+          mm.color.set(0x8a857c);
+          mm.opacity = 0.8;
+          (o as THREE.Mesh).material = mm;
+        }
+      });
       onPen(sm.group, sx, sz);
       sm.group.position.y += 1.5;
       animate(sm.animate);
     }
     // Bunker Hill's crown: the fort, the blockhouses, their colours
-    const fortWall = new THREE.Mesh(new THREE.BoxGeometry(18, 2.6, 14), K.mat(0x6d5a3c));
-    onPen(fortWall, 30, -26); fortWall.position.y += 1.1;
-    const b1 = B.blockhouse(); onPen(b1, 25, -29);
-    const b2 = B.blockhouse(); onPen(b2, 34, -22);
-    const ukPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 10, 5), K.mat(0x59452a));
-    onPen(ukPole, 30, -26); ukPole.position.y += 6.5;
-    const ukFly = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.6), K.mat(0x8c2f3a));
+    const fortWall = new THREE.Mesh(new THREE.BoxGeometry(22, 3, 16), K.mat(0x6d5a3c));
+    onPen(fortWall, 26, -30); fortWall.position.y += 1.3;
+    const b1 = B.blockhouse(); onPen(b1, 20, -34);
+    const b2 = B.blockhouse(); onPen(b2, 31, -25);
+    const ukPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 11, 5), K.mat(0x59452a));
+    onPen(ukPole, 26, -30); ukPole.position.y += 7;
+    const ukFly = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.9), K.mat(0x8c2f3a));
     (ukFly.material as THREE.Material).side = THREE.DoubleSide;
-    onPen(ukFly, 31.4, -26); ukFly.position.y += 10.5;
+    onPen(ukFly, 27.8, -30); ukFly.position.y += 11.6;
 
-    // Boston: farther still, to the south-east — a hazed silhouette with the
-    // spire and the beacon mast doing the talking
-    const bosC = { x: 290, z: 85 };
+    // Boston: farther still, to the south-east — a WIDE town on its own
+    // ground, two districts of roofline, the spire and the beacon mast
+    const bosC = { x: 300, z: 95 };
     const bos = landmass({
-      w: 150, d: 115, peak: 12, seed: 33, crestX: 0.25, crestZ: 0.25,
+      w: 200, d: 150, peak: 13, seed: 33, crestX: 0.25, crestZ: 0.25,
       shore: 0xa39872, field: 0x8f8763, crest: 0x837c52,
-      plateaus: [{ x: -8, z: -10, r: 34, h: 4.2 }],
+      plateaus: [{ x: -12, z: -14, r: 42, h: 4.6 }],
     });
     bos.mesh.position.set(bosC.x, WATER_LEVEL, bosC.z);
     ctx.scene.add(bos.mesh);
@@ -336,31 +395,34 @@ export const THE_LINES: SceneDef = {
       o.rotation.y = yaw;
       ctx.scene.add(o);
     };
-    onBos(K.distantTown(70), -6, -8, -0.35);
+    onBos(K.distantTown(110), -8, -10, -0.35);
+    onBos(K.distantTown(55), -38, -34, 0.2);
     const tower = new THREE.Mesh(new THREE.BoxGeometry(2.6, 11, 2.6), K.mat(0x8d5138));
-    onBos(tower, -20, -22); tower.position.y += 5.5;
+    onBos(tower, -24, -26); tower.position.y += 5.5;
     const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.8, 9, 6), K.mat(0xd8d2c0));
-    onBos(steeple, -20, -22); steeple.position.y += 15.5;
+    onBos(steeple, -24, -26); steeple.position.y += 15.5;
+    const spire2 = new THREE.Mesh(new THREE.ConeGeometry(1.3, 7, 6), K.mat(0xd8d2c0));
+    onBos(spire2, 6, 2); spire2.position.y += 11;
     const copps = new THREE.Mesh(new THREE.BoxGeometry(11, 3.4, 7), K.mat(0x6d5a3c));
-    onBos(copps, -34, -30); copps.position.y += 1.4;
+    onBos(copps, -44, -38); copps.position.y += 1.4;
     const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 13, 5), K.mat(0x59452a));
-    onBos(beacon, 10, 12); beacon.position.y += 6;
+    onBos(beacon, 14, 16); beacon.position.y += 6;
 
     // the far shore closes the horizon so water never meets bare sky
     const far = landmass({
-      w: 120, d: 420, peak: 10, seed: 55,
+      w: 120, d: 460, peak: 10, seed: 55,
       shore: 0x9a9070, field: 0x84805a, crest: 0x6d7048, segments: 32,
     });
-    far.mesh.position.set(380, WATER_LEVEL - 0.4, 0);
+    far.mesh.position.set(390, WATER_LEVEL - 0.4, 0);
     ctx.scene.add(far.mesh);
 
     // the water: floating batteries close in (documented), the fleet riding
-    // FAR out in the stream at true scale
+    // in the channel south of the peninsula, at true scale
     const fb1 = B.floatingBattery(); fb1.position.set(80, WATER_LEVEL + 0.3, -20); fb1.rotation.y = 2.6; ctx.scene.add(fb1);
     const fb2 = B.floatingBattery(); fb2.position.set(92, WATER_LEVEL + 0.3, 10); fb2.rotation.y = -0.6; ctx.scene.add(fb2);
-    const s1 = B.shipOfLine(1); s1.position.set(170, WATER_LEVEL + 0.2, -4); s1.rotation.y = 0.55; ctx.scene.add(s1);
-    const s2 = B.shipOfLine(0.85); s2.position.set(225, WATER_LEVEL + 0.2, 30); s2.rotation.y = 0.3; ctx.scene.add(s2);
-    const s3 = B.shipOfLine(0.75); s3.position.set(250, WATER_LEVEL + 0.2, -35); s3.rotation.y = -0.8; ctx.scene.add(s3);
+    const s1 = B.shipOfLine(1); s1.position.set(150, WATER_LEVEL + 0.2, 36); s1.rotation.y = 0.55; ctx.scene.add(s1);
+    const s2 = B.shipOfLine(0.85); s2.position.set(210, WATER_LEVEL + 0.2, 42); s2.rotation.y = 0.3; ctx.scene.add(s2);
+    const s3 = B.shipOfLine(0.75); s3.position.set(248, WATER_LEVEL + 0.2, 18); s3.rotation.y = -0.8; ctx.scene.add(s3);
     // crows over the graves; nothing over the water in November
     const crows = E.birds(4, 10, 15);
     place(crows.group, -26, 24); animate(crows.animate);

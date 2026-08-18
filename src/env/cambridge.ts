@@ -27,6 +27,7 @@ import * as B from './boston-kit';
 import { prng } from './noise';
 import { canvasTex, brickTex, shingleTex } from './textures';
 import { landmass } from './landmass';
+import { vassallHouse, HX as VHX, HZ as VHZ } from './vassall';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -63,6 +64,7 @@ const LANES: Array<[number, number, number, number]> = [
   [-30, 4, -34, -44],     // north to Harvard's yard
   [-6, 4, -2, 40],        // south into the shelter sprawl
   [16, 4, 22, -30],       // to the Rhode Island streets
+  [-64, 4, -78, 10],      // the lane up to the Vassall house — headquarters
 ];
 
 function paint(x: number, z: number, h: number, slope: number, out: THREE.Color): void {
@@ -107,12 +109,15 @@ export const CAMBRIDGE_CAMP: SceneDef = {
     { x: -34, z: -40, r: 20 },  // Harvard's yard
     { x: 24, z: -22, r: 20 },   // the Rhode Island streets
     { x: -60, z: 4, r: 10 },    // the west road
+    { x: -78, z: 14, r: 15 },   // the Vassall house and its forecourt
     { x: 60, z: 0, r: 30 },     // the flats stay open for the vista
   ],
   sky: {
     zenith: 0x4585c4, horizon: 0xdde8e0, sunColor: 0xfff0be,
     sunAzimuth: -2.0, sunElevation: 1.02, sunIntensity: 2.4, ambient: 1.2,
     fogColor: 0xe2ead8, fogNear: 110, fogFar: 340, haze: 0.65,
+    // centre the shadow box between the camp and the Vassall house
+    shadowFocus: [-30, 8],
   },
 
   build(ctx) {
@@ -280,6 +285,23 @@ export const CAMBRIDGE_CAMP: SceneDef = {
     place(E.horse(0x6e5136), -27, 22, 1.2);
     putPerson({ dress: 'shirt', color: coat(), pose: 'stand', hat: 'straw', musket: true, seed: 95 }, -46, 3, -1.5);
     putPerson({ dress: 'shirt', color: coat(), pose: 'stand', hat: 'none', musket: true, seed: 96 }, 40, 2.5, -1.6);
+
+    // ---- THE VASSALL HOUSE — headquarters, up its own lane -----------------
+    // The finest house in Cambridge, west of the camp: shell, animated front
+    // door, and the furnished hall and parlour CB-02 plays in (see vassall.ts).
+    vassallHouse(ctx);
+    // the headquarters guard: two sentries flanking the lane at the forecourt,
+    // and a rail fence marking the yard off from the road
+    putPerson({ dress: 'coat', color: 0x4f4438, pose: 'stand', hat: 'tricorne', musket: true, seed: 97 },
+      VHX - 3.2, VHZ - 7.8, 0.2);
+    putPerson({ dress: 'coat', color: 0x59452a, pose: 'stand', hat: 'tricorne', musket: true, seed: 98 },
+      VHX + 3.2, VHZ - 7.8, -0.2);
+    for (const [fa, fb] of [[-10, -2.2], [2.2, 10]] as const) {
+      ctx.scene.add(E.palingFence(
+        new THREE.Vector2(VHX + fa, VHZ - 8.2), new THREE.Vector2(VHX + fb, VHZ - 8.2), g2));
+    }
+    // an express rider's horse waiting at the gate
+    place(E.horse(0x4a3826), VHX + 5.5, VHZ - 6.5, 2.4);
 
     // ---- BOSTON, two miles off, a skyline you cannot touch -----------------
     // A real landmass: the town on its slope, Christ Church tallest, Beacon

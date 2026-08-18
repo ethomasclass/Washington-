@@ -51,11 +51,20 @@ output in `dist-single/`.
 loop from `src/main.ts` — state, flags, Council, decisions, dialogue, examine,
 tasks, spyglass survey (raised over a live 3D still, oriented at the harbour),
 journal, Return, reckoning, passport saves, theatre map, dev bar — running on
-the first-person environments for MV-01, CB-01, CB-03. Content anchors to the
+the first-person environments for all four scenes. Content anchors to the
 2D stations via per-scene anchor tables in `game3d/main.ts` (ENV); NPCs stand
-as articulated `vernon-kit` figures. CB-02's parlour has no 3D world yet: the
-camp's exit remaps to CB-03 with an in-fiction note (EXIT_REMAP). One-file
-build: `node scripts/build-game3d-single.mjs` → `dist-single/washington-3d.html`.
+as articulated `vernon-kit` figures. CB-02's parlour lives INSIDE the Cambridge
+world (`src/env/vassall.ts`): the Vassall house stands up its own lane west of
+the camp — pale yellow (V.1 unverified for 1775), five bays, animated front
+door, sentries at the paling fence — with a furnished walkable hall and parlour
+(map table with a drawn map, secretary's desk, council chairs, hearth, the
+portrait turned to the wall, the stair blocked with baggage). CB-01's exit
+stands in the entry hall, so reaching the parlour means finding the house and
+walking in; CB-02's map-table exit carries on to CB-03. Interior lighting note:
+the ceiling slab casts shadow (the shell's own shadow leaks at the sunward
+eave), and Cambridge aims its shadow box between camp and house (sky.ts
+`shadowFocus`). One-file build: `node scripts/build-game3d-single.mjs` →
+`dist-single/washington-3d.html`.
 
 **Read next:** `docs/08-progress-enlistment-and-playability.md` — the plan for what
 the player is working toward, the Return as the one visible number, the enlistment

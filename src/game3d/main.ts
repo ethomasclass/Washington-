@@ -12,8 +12,9 @@
  * first person; the authored content anchors to the same STATIONS the 2D
  * staging computed from, mapped scene-by-scene onto world coordinates.
  *
- * CB-02 (the Vassall House parlour) has no 3D world yet: the camp's exit
- * remaps to CB-03 and says so, rather than dead-ending the act.
+ * CB-02 (the Vassall House parlour) lives INSIDE the Cambridge world: the
+ * camp's exit stands in the house's entry hall, so reaching the parlour means
+ * walking the lane, finding the house, and stepping in through the door.
  */
 
 import * as THREE from 'three';
@@ -36,6 +37,7 @@ import { EngravingPass } from '../fp/engraving';
 import { FirstPerson } from '../fp/controller';
 import { SCENES as ENV_SCENES, buildEnv, type BuiltEnv } from '../env/scene';
 import * as E from '../env/vernon-kit';
+import { MARKS as VA } from '../env/vassall';
 
 // ---------------------------------------------------------------------------
 // CONTENT → WORLD: per-scene station anchors
@@ -80,7 +82,22 @@ const ENV: Record<string, EnvMapping> = {
       landing: [46, 8],
       arms: [16, -8.5],
       rhodeisland: [24, -20],
-      hq: [-44, 4],
+      // The way to headquarters is the house itself: the exit stands in the
+      // Vassall house's entry hall, so the player walks the lane, finds the
+      // house, and steps in through the door before the act can move on.
+      hq: [VA.hall[0], VA.hall[1]],
+    },
+  },
+  'CB-02': {
+    env: 'cambridge',   // the parlour IS the camp's world — same Cambridge, indoors
+    spawn: { x: VA.hall[0], z: VA.hall[1], yaw: -1.5 }, // in the hall, facing the parlour door
+    localScale: 6,      // parlour scale: a room, not a field
+    anchors: {
+      door: [VA.door[0], VA.door[1]],
+      hearth: [VA.hearth[0] - 0.9, VA.hearth[1]],
+      maptable: [VA.maptable[0], VA.maptable[1] - 0.4], // the table's near side, so Gates stands clear of it
+      secretary: [VA.secretary[0], VA.secretary[1] - 0.9],
+      window: [VA.window[0], VA.window[1] + 0.7],
     },
   },
   'CB-03': {
@@ -98,8 +115,6 @@ const ENV: Record<string, EnvMapping> = {
   },
 };
 
-/** The parlour is 2D-only for now; the lane carries the player on. */
-const EXIT_REMAP: Record<string, string> = { 'CB-02': 'CB-03' };
 
 // ---------------------------------------------------------------------------
 // BOOT
@@ -500,18 +515,13 @@ function interact(): void {
 
   if (it.id === scene.exit) {
     const left = owed();
-    const rawOnward = scene.exitTo;
-    const onward = rawOnward ? (EXIT_REMAP[rawOnward] ?? rawOnward) : rawOnward;
-    const remapped = rawOnward && onward !== rawOnward;
+    const onward = scene.exitTo;
     const ends = scene.endsAct;
     const text = left.length
       ? `${it.examine} But ${left.join(', and ')}.`
       : `${it.examine}\n\n${
           onward || ends !== undefined ? scene.exitPrompt : 'Nothing here is unfinished.'
-        }${remapped
-          ? '\n\n(The parlour at the Vassall house is not yet standing in this world; ' +
-            'the lane carries you on to the works above Charlestown.)'
-          : ''}`;
+        }`;
     overlay.showExamine(it.label, text, () => {
       if (left.length) { busy = false; return; }
       if (ends !== undefined) { closeAct(ends, onward); return; }
@@ -706,7 +716,8 @@ loadScene(scene.id);
   }
 }
 // Debug handle for the headless probes; nothing in the game reads it.
-(window as unknown as Record<string, unknown>).__g3d = { placedAt, fp };
+(window as unknown as Record<string, unknown>).__g3d =
+  { placedAt, fp, THREE, camera, get env() { return env; } };
 refreshCode();
 refreshIntent();
 mountDevTab();

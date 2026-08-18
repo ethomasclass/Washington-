@@ -22,6 +22,13 @@ export interface SkyConfig {
   fogNear: number;
   fogFar: number;
   haze?: number;        // 0..1 strength of horizon glow
+  /**
+   * Where the shadow camera looks, in world x/z. The ortho shadow box is a
+   * fixed 130m half-extent, so a scene whose built-up ground is off-centre
+   * (Cambridge: the camp east, headquarters far west) must aim it, or the
+   * far buildings fall off the map's edge and the sun shines through them.
+   */
+  shadowFocus?: [number, number];
 }
 
 const SKY_FRAG = /* glsl */`
@@ -101,6 +108,12 @@ export class Sky {
   }
 
   addTo(scene: THREE.Scene, cfg: SkyConfig) {
+    if (cfg.shadowFocus) {
+      const [fx, fz] = cfg.shadowFocus;
+      this.sun.position.copy(this.sunDir).multiplyScalar(200).add(new THREE.Vector3(fx, 0, fz));
+      this.sun.target.position.set(fx, 0, fz);
+      scene.add(this.sun.target);
+    }
     scene.add(this.dome, this.sun, this.hemi);
     scene.fog = new THREE.Fog(cfg.fogColor, cfg.fogNear, cfg.fogFar);
     scene.background = new THREE.Color(cfg.horizon);

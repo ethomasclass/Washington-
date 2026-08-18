@@ -68,7 +68,7 @@ export interface SceneDef {
   season?: 'summer' | 'winter';
 }
 
-interface BuildCtx {
+export interface BuildCtx {
   scene: THREE.Scene;
   height: (x: number, z: number) => number;
   slopeAt: (x: number, z: number) => number;

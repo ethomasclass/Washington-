@@ -26,6 +26,12 @@ export interface LandmassOpts {
   field?: number;         // colour of the open ground
   crest?: number;         // colour of the high ground
   segments?: number;
+  /**
+   * Levelled patches (LOCAL x/z), for standing towns and forts on — without
+   * one, a group of houses placed at a single height half-buries its edges
+   * in the hillside.
+   */
+  plateaus?: Array<{ x: number; z: number; r: number; h: number }>;
 }
 
 export interface BuiltLandmass {
@@ -61,7 +67,12 @@ export function landmass(o: LandmassOpts): BuiltLandmass {
     const r = Math.hypot(ux, uz);
     const falloff = clamp(1 - r, 0, 1);
     const n = fbm(x * 0.03 + o.seed, z * 0.03 + o.seed * 2, { seed: o.seed, octaves: 4 });
-    return Math.pow(falloff, 1.35) * o.peak * (0.72 + n * 0.55) - 0.6;
+    let h = Math.pow(falloff, 1.35) * o.peak * (0.72 + n * 0.55) - 0.6;
+    for (const p of o.plateaus ?? []) {
+      const t = clamp(1 - Math.hypot(x - p.x, z - p.z) / p.r, 0, 1);
+      h = h + (p.h - h) * (t * t * (3 - 2 * t));
+    }
+    return h;
   };
 
   const geo = new THREE.PlaneGeometry(o.w, o.d, seg, seg);

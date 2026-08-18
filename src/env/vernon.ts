@@ -63,7 +63,8 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 
 const RIVER_LEVEL = -5.2;
 const BLUFF_EDGE = 34;    // x where the high ground ends
-const SHORE = 66;         // x where the water begins
+const SHORE = 48;         // x where the water begins — a NARROW strand, not
+                          // thirty metres of dirt between the lawn and river
 
 function segDist(x: number, z: number, ax: number, az: number, bx: number, bz: number): number {
   const vx = bx - ax, vz = bz - az;
@@ -100,7 +101,7 @@ const LANES: Array<[number, number, number, number]> = [
   [-14, 0, 6, 0],         // the forecourt to the west door
   [-16, -13, -52, -17],   // north service row, out to the quarter
   [-16, 13, -22, 36],     // south lane to the stable and paddock
-  [8, 4, 54, 16],         // the track down the bluff to the wharf
+  [8, 4, 42, 14],         // the track down the bluff to the wharf
 ];
 
 function paint(x: number, z: number, h: number, slope: number, out: THREE.Color): void {
@@ -165,7 +166,7 @@ export const MOUNT_VERNON_1775: SceneDef = {
     { x: -95, z: -30, r: 26 },  // the ploughed corn ground
     { x: -45, z: 42, r: 16 },   // the orchard rows
     { x: 30, z: 9, r: 8 },      // the wharf track where it leaves the lawn
-    { x: 52, z: 16, r: 15 },    // the landing and fishery
+    { x: 43, z: 15, r: 11 },    // the landing and fishery
   ],
   sky: {
     zenith: 0x3f7ec2, horizon: 0xd8e6e2, sunColor: 0xfff2c8,
@@ -386,12 +387,12 @@ export const MOUNT_VERNON_1775: SceneDef = {
 
     // ---- THE RIVER (R.9, R.10) --------------------------------------------
     const wharfG = E.wharf(10);
-    wharfG.position.set(58, RIVER_LEVEL + 0.4, 14);
+    wharfG.position.set(46, RIVER_LEVEL + 0.4, 14);
     wharfG.rotation.y = Math.PI / 2;
     ctx.scene.add(wharfG);
     const boat = E.sloop();
     boat.group.scale.setScalar(1.8); // a river sloop ran 40-60 ft, not 20
-    boat.group.position.set(68, RIVER_LEVEL + 0.15, 20);
+    boat.group.position.set(57, RIVER_LEVEL + 0.15, 18);
     boat.group.rotation.y = 0.5;
     ctx.scene.add(boat.group);
     animate((t) => { boat.animate(t, 0); boat.group.position.y = RIVER_LEVEL + 0.15 + Math.sin(t * 0.6) * 0.08; });
@@ -405,18 +406,18 @@ export const MOUNT_VERNON_1775: SceneDef = {
       const net = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.1), K.mat(0x8a7f62));
       (net.material as THREE.Material).side = THREE.DoubleSide;
       net.position.y = 0.9; rack.add(net);
-      place(rack, 50, 22 + i * 3, 0.35);
+      place(rack, 42.5, 21 + i * 3, 0.35);
     }
-    for (let i = 0; i < 5; i++) place(K.barrel(0.8, 0.36), 48 + (i % 2) * 1.3, 28 + i * 0.9);
+    for (let i = 0; i < 5; i++) place(K.barrel(0.8, 0.36), 41.5 + (i % 2) * 1.3, 27 + i * 0.9);
     const gulls = E.birds(6, 10, 12);
-    place(gulls.group, 56, 20); animate(gulls.animate);
+    place(gulls.group, 48, 18); animate(gulls.animate);
     // the Maryland shore, a wooded line across the mile of river — so the
     // Potomac reads as a river with a far bank, not water running to sky
     const md = landmass({
       w: 130, d: 420, peak: 9, seed: 63, segments: 32,
       shore: 0x9a9070, field: 0x6f8a4a, crest: 0x5a7440,
     });
-    md.mesh.position.set(330, RIVER_LEVEL - 0.4, 0);
+    md.mesh.position.set(300, RIVER_LEVEL - 0.4, 0);
     ctx.scene.add(md.mesh);
 
     // ---- THE DEPARTURE (R.11) ---------------------------------------------

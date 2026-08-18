@@ -935,9 +935,11 @@ export function sloop(): { group: THREE.Group; animate: Animated } {
   mast.position.set(0.8, 4.2, 0); g.add(mast);
   const boom = mesh(new THREE.CylinderGeometry(0.05, 0.05, 4.6, 5), V.postWood);
   boom.rotation.z = Math.PI / 2; boom.position.set(-1.5, 1.8, 0); g.add(boom);
-  const sail = mesh(new THREE.PlaneGeometry(4.2, 4.6, 1, 1), V.linen, false);
-  (sail.material as THREE.MeshToonMaterial).side = THREE.DoubleSide;
-  sail.position.set(-1.4, 4.2, 0); g.add(sail);
+  // at anchor the sail rides FURLED on the boom — a loose bundle, not a wall
+  const furl = mesh(new THREE.CylinderGeometry(0.22, 0.16, 4.4, 6), V.linen, false);
+  furl.rotation.z = Math.PI / 2; furl.position.set(-1.5, 2.02, 0); g.add(furl);
+  const gaff = mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.4, 5), V.postWood);
+  gaff.rotation.z = Math.PI / 2 - 0.35; gaff.position.set(-1.2, 2.6, 0); g.add(gaff);
   const animate: Animated = (t) => {
     g.rotation.z = Math.sin(t * 0.5) * 0.015;
     g.rotation.x = Math.sin(t * 0.7) * 0.01;

@@ -112,7 +112,7 @@ export const CAMBRIDGE_CAMP: SceneDef = {
   sky: {
     zenith: 0x4585c4, horizon: 0xdde8e0, sunColor: 0xfff0be,
     sunAzimuth: -2.0, sunElevation: 1.02, sunIntensity: 2.4, ambient: 1.2,
-    fogColor: 0xe2ead8, fogNear: 120, fogFar: 420, haze: 0.65,
+    fogColor: 0xe2ead8, fogNear: 110, fogFar: 340, haze: 0.65,
   },
 
   build(ctx) {
@@ -284,10 +284,11 @@ export const CAMBRIDGE_CAMP: SceneDef = {
     // ---- BOSTON, two miles off, a skyline you cannot touch -----------------
     // A real landmass: the town on its slope, Christ Church tallest, Beacon
     // Hill the summit with its mast.
-    const bosC = { x: 152, z: 8 };
+    const bosC = { x: 258, z: 14 };
     const bos = landmass({
-      w: 125, d: 100, peak: 11, seed: 27, crestX: 0.3, crestZ: 0.1,
+      w: 170, d: 130, peak: 13, seed: 27, crestX: 0.3, crestZ: 0.1,
       shore: 0xa39872, field: 0x87905c, crest: 0x77854e,
+      plateaus: [{ x: -14, z: -6, r: 40, h: 4.5 }],
     });
     bos.mesh.position.set(bosC.x, RIVER_LEVEL, bosC.z);
     ctx.scene.add(bos.mesh);
@@ -296,23 +297,23 @@ export const CAMBRIDGE_CAMP: SceneDef = {
       o.rotation.y = yaw;
       ctx.scene.add(o);
     };
-    onBos(K.distantTown(70), -10, -4, -0.15);
-    const tower = new THREE.Mesh(new THREE.BoxGeometry(2.2, 9, 2.2), K.mat(0x8d5138));
-    onBos(tower, -18, -14); tower.position.y += 4.5;
-    const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.5, 7, 6), K.mat(0xd8d2c0));
-    onBos(steeple, -18, -14); steeple.position.y += 12.5;
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 9, 5), K.mat(0x59452a));
-    onBos(mast, 12, 4); mast.position.y += 4.5;
+    onBos(K.distantTown(70), -14, -4, -0.15);
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(2.6, 11, 2.6), K.mat(0x8d5138));
+    onBos(tower, -24, -16); tower.position.y += 5.5;
+    const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.8, 9, 6), K.mat(0xd8d2c0));
+    onBos(steeple, -24, -16); steeple.position.y += 15.5;
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 12, 5), K.mat(0x59452a));
+    onBos(mast, 16, 8); mast.position.y += 5.5;
     // the far shore closes the horizon behind the anchorage
     const far = landmass({
-      w: 100, d: 360, peak: 7, seed: 51,
+      w: 110, d: 400, peak: 9, seed: 51,
       shore: 0x9a9070, field: 0x7d8856, crest: 0x687446, segments: 32,
     });
-    far.mesh.position.set(262, RIVER_LEVEL - 0.4, 0);
+    far.mesh.position.set(385, RIVER_LEVEL - 0.4, 0);
     ctx.scene.add(far.mesh);
-    // shipping in the stream, at true scale
-    const s1 = B.shipOfLine(1); s1.position.set(136, RIVER_LEVEL + 0.2, 52); s1.rotation.y = 0.4; ctx.scene.add(s1);
-    const s2 = B.shipOfLine(0.8); s2.position.set(142, RIVER_LEVEL + 0.2, -46); s2.rotation.y = -1.1; ctx.scene.add(s2);
+    // shipping riding well out in the stream, at true scale
+    const s1 = B.shipOfLine(1); s1.position.set(178, RIVER_LEVEL + 0.2, 62); s1.rotation.y = 0.4; ctx.scene.add(s1);
+    const s2 = B.shipOfLine(0.8); s2.position.set(196, RIVER_LEVEL + 0.2, -52); s2.rotation.y = -1.1; ctx.scene.add(s2);
     // gulls over the flats
     const gulls = E.birds(7, 14, 13);
     place(gulls.group, 62, 6); animate(gulls.animate);

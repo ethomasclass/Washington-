@@ -52,8 +52,13 @@ function elevation(x: number, z: number): number {
     h = mixN(h, WATER_LEVEL - 4, smooth(clamp((x - SLOPE_FOOT - 4) / 22, 0, 1)));
   }
   // the trench floor: a shallow cut just behind the crest, along the line
+  const lineMask = clamp(1 - Math.abs(z) / 46, 0, 1);
   const trench = clamp(1 - Math.abs(x - (CREST - 2.2)) / 2.2, 0, 1);
-  h -= trench * 0.7 * clamp(1 - Math.abs(z) / 46, 0, 1);
+  h -= trench * 0.7 * lineMask;
+  // and the DITCH in front — the earth the parapet was made of came from
+  // somewhere, and a work without its ditch reads as a garden wall
+  const ditch = clamp(1 - Math.abs(x - (CREST + 3.8)) / 1.8, 0, 1);
+  h -= ditch * ditch * 0.95 * lineMask;
   return h;
 }
 
@@ -111,31 +116,66 @@ export const THE_LINES: SceneDef = {
     const COATS = [0x59452a, 0x6d6248, 0x4f4438, 0x6b5334, 0x7a6a4a];
     const coat = () => COATS[Math.floor(rand() * COATS.length)];
 
-    // ---- THE WORKS — berm, gabions, embrasures along the crest -------------
-    // Five berm segments with embrasure gaps between them; gabions crown the
-    // berm; one gun in three is real, and it shows.
-    const segZ = [-38, -20, -2, 16, 34];
-    for (const bz of segZ) {
-      const seg = B.berm(15, 1.8, 3.4);
-      seg.rotation.y = Math.PI / 2;
-      place(seg, CREST, bz, Math.PI / 2);
-      ctx.box(CREST - 1.9, bz - 7.8, CREST + 1.9, bz + 7.8);
-      for (let i = 0; i < 5; i++) {
-        place(B.gabion(1.1, 0.4), CREST - 0.6, bz - 6 + i * 3 + rand() * 0.5, rand() * 3);
+    // ---- THE WORKS — one continuous earthwork along the crest --------------
+    // A real siege parapet: an unbroken irregular rampart (overlapping,
+    // jittered, sunk segments so no seam or clean prism reads), gabions
+    // embedded IN its face, embrasures CUT THROUGH it with gabion cheeks, the
+    // ditch it was dug from in front, a firing step behind. One embrasure has
+    // a gun; one has an empty carriage waiting for a gun that does not exist;
+    // one is blinded with gabions. That ratio is the powder famine.
+    const EMB: number[] = [-30, -11, 21];
+    const inGap = (z: number) => EMB.some((e) => Math.abs(z - e) < 2.1);
+    for (let bz = -46; bz <= 46; bz += 5.8) {
+      if (inGap(bz)) continue;
+      const seg = B.berm(8.6 + rand() * 1.6, 1.55 + rand() * 0.5, 3.5);
+      seg.rotation.y = Math.PI / 2 + (rand() - 0.5) * 0.05;
+      place(seg, CREST + (rand() - 0.5) * 0.7, bz, Math.PI / 2);
+      seg.position.y -= 0.35; // grown out of the ground, not laid on it
+    }
+    // gabions embedded in the forward face
+    for (let bz = -44; bz <= 44; bz += 4.3) {
+      if (inGap(bz)) continue;
+      const gb = B.gabion(1.05, 0.4);
+      place(gb, CREST + 1.3 + rand() * 0.3, bz + rand() * 0.8, rand() * 3);
+      gb.position.y -= 0.42;
+    }
+    // the embrasures: gabion cheeks either side of each cut
+    for (const e of EMB) {
+      for (const s of [-1, 1]) {
+        const g1 = B.gabion(1.1, 0.42);
+        place(g1, CREST + 0.2, e + s * 1.8, rand() * 3);
+        g1.position.y -= 0.2;
+        const g2 = B.gabion(1.0, 0.4);
+        place(g2, CREST + 1.1, e + s * 1.6, rand() * 3);
+        g2.position.y -= 0.35;
       }
     }
-    // the embrasures: two guns, one empty carriage, one blinded with gabions
-    const emb = [(segZ[0] + segZ[1]) / 2, (segZ[1] + segZ[2]) / 2, (segZ[2] + segZ[3]) / 2, (segZ[3] + segZ[4]) / 2];
-    place(B.cannon(), CREST - 1.6, emb[0], Math.PI / 2);
-    place(B.cannon(), CREST - 1.6, emb[2], Math.PI / 2);
-    place(B.cannon(true), CREST - 1.6, emb[1], Math.PI / 2);   // carriage, no gun
-    place(B.gabion(1.1, 0.42), CREST - 0.3, emb[3], 1);        // blinded
-    place(B.gabion(1.1, 0.42), CREST - 0.3, emb[3] + 0.9, 2);
-    // abatis down the forward slope
-    for (const bz of [-30, -12, 6, 24]) {
-      const ab = B.abatis(9);
+    place(B.cannon(), CREST - 1.4, EMB[1], Math.PI / 2);        // the gun
+    place(B.cannon(true), CREST - 1.4, EMB[2], Math.PI / 2);    // the carriage
+    for (let i = 0; i < 3; i++) {                                // the blind
+      const gb = B.gabion(1.1, 0.42);
+      place(gb, CREST + 0.3, EMB[0] - 1 + i, rand() * 3);
+      gb.position.y -= 0.15;
+    }
+    // the firing step behind the parapet
+    for (let bz = -44; bz <= 44; bz += 8.4) {
+      if (inGap(bz + 2)) continue;
+      const step = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.42, 8), K.mat(0x77653f));
+      step.receiveShadow = true;
+      place(step, CREST - 1.8, bz, 0);
+      step.position.y -= 0.06;
+    }
+    // collision: the rampart is solid except at the cuts
+    let cStart = -46.5;
+    for (const e of [...EMB, 47]) {
+      if (e - 2.1 > cStart) ctx.box(CREST - 2.2, cStart, CREST + 2.2, e - 2.1);
+      cStart = e + 2.1;
+    }
+    // abatis beyond the ditch
+    for (const bz of [-38, -20, 2, 30]) {
+      const ab = B.abatis(11);
       ab.rotation.y = Math.PI / 2;
-      place(ab, CREST + 6.5, bz, Math.PI / 2);
+      place(ab, CREST + 7, bz, Math.PI / 2);
     }
 
     // ---- THE TRAVERSE — where the trench turns back ------------------------
@@ -177,9 +217,10 @@ export const THE_LINES: SceneDef = {
     // men still digging in November. Nobody paid them to dig.
     const workX = CREST - 12, workZ = 14;
     for (let i = 0; i < 6; i++) {
-      place(B.gabion(1.1, 0.42), workX + (i % 3) * 1.1, workZ + Math.floor(i / 3) * 1.4, rand() * 3);
+      // half of them stand empty, waiting on earth nobody has time to dig
+      place(B.gabion(1.1, 0.42, i % 2 === 0), workX + (i % 3) * 1.1, workZ + Math.floor(i / 3) * 1.4, rand() * 3);
     }
-    place(B.gabion(0.6, 0.42), workX + 3.4, workZ + 0.4, 1); // half built
+    place(B.gabion(1.05, 0.42, true), workX + 3.4, workZ + 0.4, 1); // an empty basket
     place(B.chandelier(), workX + 1, workZ + 3.6, 0.2);
     place(B.chandelier(), workX + 4.2, workZ + 3.9, -0.1);
     place(B.fascines(5), workX - 2.2, workZ + 2, 0.9);
@@ -234,13 +275,19 @@ export const THE_LINES: SceneDef = {
     place(K.wagon(), -36, -6, 0.5);
     ctx.box(-37.5, -7.7, -34.5, -4.3);
 
-    // ---- THE VISTA — everything the spyglass names, on real ground ---------
-    // The Charlestown peninsula: one landmass carrying both the burned town
-    // on its low shore and Bunker Hill's crest behind it.
-    const penC = { x: 106, z: -52 };
+    // ---- THE VISTA — a mile off, across real water -------------------------
+    // The Charlestown peninsula sits FAR out: its near shore starts ~140 m
+    // past the ditch, and the fog does the rest — silhouettes and smoke read,
+    // windows do not. Plateaus keep the ruins and the fort from burying
+    // their edges in the hillside.
+    const penC = { x: 215, z: -62 };
     const pen = landmass({
-      w: 115, d: 80, peak: 13, seed: 21, crestX: 0.45, crestZ: -0.5,
+      w: 150, d: 105, peak: 15, seed: 21, crestX: 0.45, crestZ: -0.5,
       shore: 0xa89a6e, field: 0x8f8a5c, crest: 0x7d7a4c,
+      plateaus: [
+        { x: -30, z: 24, r: 30, h: 2.2 },   // the burned town's ground
+        { x: 30, z: -26, r: 22, h: 12.5 },  // Bunker Hill's crown
+      ],
     });
     pen.mesh.position.set(penC.x, WATER_LEVEL, penC.z);
     ctx.scene.add(pen.mesh);
@@ -249,33 +296,38 @@ export const THE_LINES: SceneDef = {
       o.rotation.y = yaw;
       ctx.scene.add(o);
     };
-    // the heap of chimneys on the near shore, in the town's old street grid
-    for (let i = 0; i < 24; i++) {
-      const lx = -34 + (i % 6) * 6.5 + rand() * 2.5;
-      const lz = 14 + Math.floor(i / 6) * 6 + rand() * 2;
+    // the heap of chimneys on the town plateau, in the old street grid
+    for (let i = 0; i < 30; i++) {
+      const lx = -46 + (i % 6) * 7 + rand() * 2.5;
+      const lz = 12 + Math.floor(i / 5) * 6 + rand() * 2;
       onPen(B.chimneyRuin(i), lx, lz, rand() * 0.5 - 0.2);
     }
-    // redcoat pickets posted where the streets ran
-    for (let i = 0; i < 3; i++) {
-      onPen(new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.3, 0.4), K.mat(0x9c3428)), -20 + i * 9, 20 + i * 2);
+    // five months cold, still smoking faintly where the cellars smoulder
+    for (const [sx, sz] of [[-38, 20], [-22, 28], [-10, 16]] as const) {
+      const sm = E.smokeColumn(0.28);
+      sm.group.scale.setScalar(3.2);
+      onPen(sm.group, sx, sz);
+      sm.group.position.y += 1.5;
+      animate(sm.animate);
     }
     // Bunker Hill's crown: the fort, the blockhouses, their colours
-    const fortWall = new THREE.Mesh(new THREE.BoxGeometry(17, 2.4, 13), K.mat(0x6d5a3c));
-    onPen(fortWall, 22, -22); fortWall.position.y += 1.0;
-    const b1 = B.blockhouse(); onPen(b1, 18, -24);
-    const b2 = B.blockhouse(); onPen(b2, 26, -19);
-    const ukPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 9, 5), K.mat(0x59452a));
-    onPen(ukPole, 22, -22); ukPole.position.y += 6;
-    const ukFly = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.5), K.mat(0x8c2f3a));
+    const fortWall = new THREE.Mesh(new THREE.BoxGeometry(18, 2.6, 14), K.mat(0x6d5a3c));
+    onPen(fortWall, 30, -26); fortWall.position.y += 1.1;
+    const b1 = B.blockhouse(); onPen(b1, 25, -29);
+    const b2 = B.blockhouse(); onPen(b2, 34, -22);
+    const ukPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 10, 5), K.mat(0x59452a));
+    onPen(ukPole, 30, -26); ukPole.position.y += 6.5;
+    const ukFly = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.6), K.mat(0x8c2f3a));
     (ukFly.material as THREE.Material).side = THREE.DoubleSide;
-    onPen(ukFly, 23.3, -22); ukFly.position.y += 9.6;
+    onPen(ukFly, 31.4, -26); ukFly.position.y += 10.5;
 
-    // Boston: its own landmass, the town on the slope, Christ Church tallest,
-    // Copp's Hill toward the water, the beacon mast on the summit
-    const bosC = { x: 152, z: 48 };
+    // Boston: farther still, to the south-east — a hazed silhouette with the
+    // spire and the beacon mast doing the talking
+    const bosC = { x: 290, z: 85 };
     const bos = landmass({
-      w: 115, d: 90, peak: 10, seed: 33, crestX: 0.25, crestZ: 0.25,
+      w: 150, d: 115, peak: 12, seed: 33, crestX: 0.25, crestZ: 0.25,
       shore: 0xa39872, field: 0x8f8763, crest: 0x837c52,
+      plateaus: [{ x: -8, z: -10, r: 34, h: 4.2 }],
     });
     bos.mesh.position.set(bosC.x, WATER_LEVEL, bosC.z);
     ctx.scene.add(bos.mesh);
@@ -285,30 +337,30 @@ export const THE_LINES: SceneDef = {
       ctx.scene.add(o);
     };
     onBos(K.distantTown(70), -6, -8, -0.35);
-    const tower = new THREE.Mesh(new THREE.BoxGeometry(2.4, 10, 2.4), K.mat(0x8d5138));
-    onBos(tower, -16, -20); tower.position.y += 5;
-    const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.6, 8, 6), K.mat(0xd8d2c0));
-    onBos(steeple, -16, -20); steeple.position.y += 14;
-    const copps = new THREE.Mesh(new THREE.BoxGeometry(10, 3, 6), K.mat(0x6d5a3c));
-    onBos(copps, -28, -26); copps.position.y += 1.2;
-    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 11, 5), K.mat(0x59452a));
-    onBos(beacon, 8, 10); beacon.position.y += 5;
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(2.6, 11, 2.6), K.mat(0x8d5138));
+    onBos(tower, -20, -22); tower.position.y += 5.5;
+    const steeple = new THREE.Mesh(new THREE.ConeGeometry(1.8, 9, 6), K.mat(0xd8d2c0));
+    onBos(steeple, -20, -22); steeple.position.y += 15.5;
+    const copps = new THREE.Mesh(new THREE.BoxGeometry(11, 3.4, 7), K.mat(0x6d5a3c));
+    onBos(copps, -34, -30); copps.position.y += 1.4;
+    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 13, 5), K.mat(0x59452a));
+    onBos(beacon, 10, 12); beacon.position.y += 6;
 
     // the far shore closes the horizon so water never meets bare sky
     const far = landmass({
-      w: 110, d: 380, peak: 8, seed: 55,
+      w: 120, d: 420, peak: 10, seed: 55,
       shore: 0x9a9070, field: 0x84805a, crest: 0x6d7048, segments: 32,
     });
-    far.mesh.position.set(268, WATER_LEVEL - 0.4, 0);
+    far.mesh.position.set(380, WATER_LEVEL - 0.4, 0);
     ctx.scene.add(far.mesh);
 
-    // the water: floating batteries close in, the fleet at TRUE scale in the
-    // stream — a 64's masts stand fifty metres over the anchorage
-    const fb1 = B.floatingBattery(); fb1.position.set(74, WATER_LEVEL + 0.3, -16); fb1.rotation.y = 2.6; ctx.scene.add(fb1);
-    const fb2 = B.floatingBattery(); fb2.position.set(82, WATER_LEVEL + 0.3, 8); fb2.rotation.y = -0.6; ctx.scene.add(fb2);
-    const s1 = B.shipOfLine(1); s1.position.set(126, WATER_LEVEL + 0.2, 2); s1.rotation.y = 0.55; ctx.scene.add(s1);
-    const s2 = B.shipOfLine(0.85); s2.position.set(168, WATER_LEVEL + 0.2, 30); s2.rotation.y = 0.3; ctx.scene.add(s2);
-    const s3 = B.shipOfLine(0.75); s3.position.set(185, WATER_LEVEL + 0.2, -26); s3.rotation.y = -0.8; ctx.scene.add(s3);
+    // the water: floating batteries close in (documented), the fleet riding
+    // FAR out in the stream at true scale
+    const fb1 = B.floatingBattery(); fb1.position.set(80, WATER_LEVEL + 0.3, -20); fb1.rotation.y = 2.6; ctx.scene.add(fb1);
+    const fb2 = B.floatingBattery(); fb2.position.set(92, WATER_LEVEL + 0.3, 10); fb2.rotation.y = -0.6; ctx.scene.add(fb2);
+    const s1 = B.shipOfLine(1); s1.position.set(170, WATER_LEVEL + 0.2, -4); s1.rotation.y = 0.55; ctx.scene.add(s1);
+    const s2 = B.shipOfLine(0.85); s2.position.set(225, WATER_LEVEL + 0.2, 30); s2.rotation.y = 0.3; ctx.scene.add(s2);
+    const s3 = B.shipOfLine(0.75); s3.position.set(250, WATER_LEVEL + 0.2, -35); s3.rotation.y = -0.8; ctx.scene.add(s3);
     // crows over the graves; nothing over the water in November
     const crows = E.birds(4, 10, 15);
     place(crows.group, -26, 24); animate(crows.animate);

@@ -33,20 +33,29 @@ const CHARRED = 0x2a2320;
 // SIEGE ENGINEERING
 // ---------------------------------------------------------------------------
 
-/** A gabion: wicker basket the height of a man, filled with earth. */
-export function gabion(h = 1.15, r = 0.42): THREE.Group {
+/**
+ * A gabion: wicker basket the height of a man, filled with earth. `empty`
+ * leaves it an open basket awaiting its fill — the unfinished work's look.
+ */
+export function gabion(h = 1.15, r = 0.42, empty = false): THREE.Group {
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.94, h, 9), texMat(0x9c8250, wickerTex()));
   body.castShadow = true;
   body.position.y = h / 2; g.add(body);
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2;
-    const stake = mesh(new THREE.CylinderGeometry(0.03, 0.035, h + 0.18, 4), V.postWood);
-    stake.position.set(Math.cos(a) * r, (h + 0.1) / 2, Math.sin(a) * r);
+    const stake = mesh(new THREE.CylinderGeometry(0.03, 0.035, h + (empty ? 0.4 : 0.18), 4), V.postWood);
+    stake.position.set(Math.cos(a) * r, (h + (empty ? 0.3 : 0.1)) / 2, Math.sin(a) * r);
     g.add(stake);
   }
-  const fill = mesh(new THREE.CylinderGeometry(r * 0.88, r * 0.88, 0.1, 9), EARTH);
-  fill.position.y = h + 0.02; g.add(fill);
+  if (empty) {
+    // dark hollow mouth
+    const mouth = mesh(new THREE.CylinderGeometry(r * 0.82, r * 0.82, 0.04, 9), 0x2a2320);
+    mouth.position.y = h - 0.02; g.add(mouth);
+  } else {
+    const fill = mesh(new THREE.CylinderGeometry(r * 0.88, r * 0.88, 0.1, 9), EARTH);
+    fill.position.y = h + 0.02; g.add(fill);
+  }
   return g;
 }
 

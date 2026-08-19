@@ -3611,11 +3611,650 @@ export function linesForeground(): HTMLCanvasElement {
   return c;
 }
 
+/* ------------------------------------------------------------ the interior
+ *
+ * MOUNT VERNON, THE PASSAGE — the one interior set the prototype builds.
+ *
+ * The house was a thing you could see and never enter, which is a fair
+ * description of a stage flat and not of a home. The mansion stays painted at
+ * the horizon in the Vernon set: it is scenery, and no amount of walking was
+ * ever going to reach it. So the inside is its own composed view, entered
+ * through the west door, and the two are joined by a cut.
+ *
+ * TWO THINGS AN INTERIOR COSTS, both paid for and both worth writing down.
+ *
+ * 1. **This camera cannot see a low ceiling.** Read the eye height off
+ *    `figureAtPlateY` against the horizon and it comes to about two
+ *    man-heights: the view looks slightly DOWN. Any ceiling under that is
+ *    below the eye, and projecting it honestly fills the upper frame with a
+ *    plane and paints out the room. So the passage is given the height it
+ *    actually has — it opens to the stairwell — and the ceiling boundary is
+ *    struck at three man-heights, where it converges properly and leaves the
+ *    picture alone. Above it is one dark mass, painted, not blurred.
+ *
+ * 2. **The room is as wide as the ground is, and no wider.** The walkable band
+ *    narrows with depth (ground.ts FAR_SPREAD), so a far wall drawn across the
+ *    whole plate would stand where nobody can reach it and every door in it
+ *    would be a door the player can see and never open — the exact fault this
+ *    scene exists to fix. The walls are therefore laid on the ground curve
+ *    like everything else: `HALL_ROOM_X` outside the band, converging to the
+ *    frame edges as they come forward. Every door in the far wall is under a
+ *    place the player can stand.
+ */
+
+/** Where the far wall of the passage stands, in ground depth. */
+const HALL_WALL_Z = 0.66;
+
+/** How far outside the walkable band the side walls stand, in ground x. */
+const HALL_ROOM_X = 0.05;
+
+/**
+ * The ceiling boundary, as a multiple of the floor's distance below the horizon.
+ *
+ * Straight out of the projection: a plane at height H with the eye at E appears
+ * (H - E) / E times as far the other side of the horizon. E is about 2.05
+ * man-heights here and the passage is given 3.0, so this is 0.46 — which puts
+ * the boundary a little above the horizon at the back of the room and near the
+ * top of the frame at the front, converging the way a ceiling does.
+ */
+const HALL_CEIL = 0.46;
+
+/** Plate y of the foot of the far wall, on the centre line. */
+const hallFootY = (): number => platePx({ x: 0.5, z: HALL_WALL_Z }, W, H).y;
+
+/** Where the ceiling boundary sits, over a floor row at plate y `footY`. */
+const hallCeilY = (footY: number): number => H * HORIZON - HALL_CEIL * (footY - H * HORIZON);
+
+/**
+ * The foot of the far wall, across the room.
+ *
+ * Not a horizontal rule: the ground carries a cross-slope, so the line where a
+ * wall meets the floor is very slightly canted. Drawing it flat is the kind of
+ * thing that reads as wrong without being nameable.
+ */
+function hallFoot(): [number, number][] {
+  const out: [number, number][] = [];
+  for (let i = 0; i <= 8; i++) {
+    const gx = -HALL_ROOM_X + (i / 8) * (1 + HALL_ROOM_X * 2);
+    const p = platePx({ x: gx, z: HALL_WALL_Z }, W, H);
+    out.push([p.x, p.y]);
+  }
+  return out;
+}
+
+/** Plate y of the foot of the far wall at a given plate column. */
+function hallFootAt(px: number): number {
+  const f = hallFoot();
+  for (let i = 0; i < f.length - 1; i++) {
+    if (px >= f[i][0] && px <= f[i + 1][0]) {
+      const t = (px - f[i][0]) / (f[i + 1][0] - f[i][0]);
+      return f[i][1] + (f[i + 1][1] - f[i][1]) * t;
+    }
+  }
+  return hallFootY();
+}
+
+/** The foot of one side wall, from the far corner forward past the frame edge. */
+function hallSideFoot(side: -1 | 1): [number, number][] {
+  const gx = side < 0 ? -HALL_ROOM_X : 1 + HALL_ROOM_X;
+  const out: [number, number][] = [];
+  for (let i = 0; i <= 8; i++) {
+    const z = HALL_WALL_Z - (i / 8) * (HALL_WALL_Z + 0.08);
+    const p = platePx({ x: gx, z }, W, H);
+    out.push([p.x, p.y]);
+  }
+  return out;
+}
+
+/* The plate columns the far wall's furniture stands at. Everything here has a
+ * matching interactable in the scene file, and both are within reach of the
+ * band — see the note at the head of this section. */
+const HALL_PARLOUR_X = W * 0.341;
+const HALL_CLOCK_X = W * 0.413;
+const HALL_EAST_X = W * 0.494;
+const HALL_STUDY_X = W * 0.563;
+const HALL_GLASS_X = W * 0.613;
+const HALL_STAIR_X = W * 0.706;
+
+/**
+ * L0 — what shows THROUGH the openings, and nothing else.
+ *
+ * Painted first and therefore behind everything: the daylight at the east door
+ * standing open on the river front, and the corner of the parlour through its
+ * door. The wall plate lays over this and cuts it to shape, which is how a
+ * doorway gets a room behind it without a second projection.
+ */
+export function hallBeyond(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(211);
+  const man = figureAtPlateY(hallFootY(), H);
+
+  // The east doorway. The passage ran clean through the house, and this morning
+  // the far door stands open on the river. It is the brightest thing in the set
+  // and every value in the room is judged off it.
+  {
+    const dx = HALL_EAST_X;
+    const foot = hallFootAt(dx);
+    const dw = man * 0.55;
+    const dh = man * 2.05;
+    const top = foot - dh;
+    solid(x, [[dx - dw, top], [dx + dw, top], [dx + dw, foot + 4], [dx - dw, foot + 4]],
+      '#EDE6D2', rnd);
+    wash(x, [[dx - dw, top], [dx + dw, top], [dx + dw, top + dh * 0.45], [dx - dw, top + dh * 0.45]],
+      EARTH.SHADOW_SLATE, 0.15, rnd, 3);
+    // The far shore, in three strokes. Anything that reads as a picture out
+    // there stops being light and starts being a landscape hung in a doorway.
+    wash(x, [[dx - dw, foot - dh * 0.54], [dx + dw, foot - dh * 0.56],
+             [dx + dw, foot - dh * 0.46], [dx - dw, foot - dh * 0.44]],
+      EARTH.TERRE_VERTE, 0.30, rnd, 2);
+    wash(x, [[dx - dw, foot - dh * 0.24], [dx + dw, foot - dh * 0.24],
+             [dx + dw, foot + 4], [dx - dw, foot + 4]], EARTH.YELLOW_OCHRE, 0.20, rnd, 3);
+  }
+
+  // The parlour, through its door: one sash window, and enough warm wall to say
+  // the room is lived in and has somebody's chair in it.
+  {
+    const dx = HALL_PARLOUR_X;
+    const foot = hallFootAt(dx);
+    const dw = man * 0.62;
+    const dh = man * 2.0;
+    const top = foot - dh;
+    solid(x, [[dx - dw, top], [dx + dw, top], [dx + dw, foot + 4], [dx - dw, foot + 4]],
+      '#B4A88C', rnd, EARTH.RAW_UMBER, 0.18);
+    const wx = dx + dw * 0.14;
+    const ww = dw * 0.46;
+    const wh = dh * 0.42;
+    const wy = top + dh * 0.26;
+    solid(x, [[wx - ww, wy], [wx + ww, wy], [wx + ww, wy + wh], [wx - ww, wy + wh]],
+      '#E9E2CE', rnd, EARTH.SHADOW_SLATE, 0.10);
+    inkLine(x, [[wx, wy], [wx, wy + wh]], rnd, 1.1, 0.1);
+    inkLine(x, [[wx - ww, wy + wh * 0.5], [wx + ww, wy + wh * 0.5]], rnd, 1.1, 0.1);
+    wash(x, [[dx - dw, foot - dh * 0.18], [dx + dw, foot - dh * 0.2],
+             [dx + dw, foot + 4], [dx - dw, foot + 4]], EARTH.YELLOW_OCHRE, 0.24, rnd, 3);
+  }
+  return c;
+}
+
+/**
+ * L1 — the room: two side walls, the far wall, and the dark above them.
+ *
+ * The walls are laid on the ground curve, so they converge because the floor
+ * does. The far wall is panelled to a chair rail and plastered above it; the
+ * side walls are the same wall seen nearly edge-on, so they get the value and
+ * none of the detail — which is also true of how you see them.
+ */
+export function hallWall(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(223);
+  const foot = hallFootY();
+  const man = figureAtPlateY(foot, H);
+  const rail = foot - man * 0.52;
+  const ceil = hallCeilY(foot);
+
+  // The side walls first, so the far wall's corners lie over them.
+  for (const side of [-1, 1] as const) {
+    const f = hallSideFoot(side);
+    const pts: [number, number][] = [
+      ...f,
+      ...f.slice().reverse().map(([px, py]) => [px, hallCeilY(py)] as [number, number]),
+    ];
+    solid(x, pts, side < 0 ? '#B2A88E' : '#A79D84', rnd, EARTH.RAW_UMBER, 0.12);
+    // Nearly edge-on, so they darken fast as they come forward — which is the
+    // single cue that says these two planes are not the wall opposite.
+    const near = f[f.length - 1];
+    wash(x, [near, [side < 0 ? -30 : W + 30, near[1]],
+             [side < 0 ? -30 : W + 30, hallCeilY(near[1])], [near[0], hallCeilY(near[1])]],
+      INK.FLOOR, 0.26, rnd, 4);
+    wash(x, pts, side < 0 ? EARTH.SHADOW_SLATE : INK.FLOOR, side < 0 ? 0.08 : 0.14, rnd, 3);
+    // The chair rail, running away — the one line that carries the convergence.
+    const railPts = f.map(([px, py]) => [px, py - (py - hallCeilY(py)) * 0.175] as [number, number]);
+    inkLine(x, railPts, rnd, 1.5, 0.1);
+    inkLine(x, f, rnd, 1.4, 0.12);
+  }
+
+  // The far wall.
+  const wallPts: [number, number][] = [
+    ...hallFoot().map(([px, py]) => [px, hallCeilY(py)] as [number, number]),
+    ...hallFoot().slice().reverse().map(([px, py]) => [px, py + 5] as [number, number]),
+  ];
+  solid(x, wallPts, '#C9C0A6', rnd, EARTH.RAW_UMBER, 0.10);
+
+  // The plaster takes the light from the east door and falls away either side
+  // of it. That gradient is the only modelling a flat wall gets and it is what
+  // stops it reading as a card.
+  wash(x, [[HALL_EAST_X - man * 2, ceil], [HALL_EAST_X + man * 2, ceil],
+           [HALL_EAST_X + man * 2, rail], [HALL_EAST_X - man * 2, rail]],
+    PAPER.BRIGHT, 0.22, rnd, 4);
+  for (const [x0, x1] of [[hallFoot()[0][0], HALL_PARLOUR_X - man], [HALL_STAIR_X, hallFoot()[8][0]]]) {
+    wash(x, [[x0, ceil], [x1, ceil], [x1, foot], [x0, foot]], EARTH.SHADOW_SLATE, 0.13, rnd, 3);
+  }
+
+  // Wainscot: fielded panels under the chair rail, in widths that vary. A
+  // repeating unit reads as wallpaper; a joiner works to the wall he has.
+  {
+    const skirt = foot - man * 0.12;
+    const l = hallFoot()[0][0];
+    const r = hallFoot()[8][0];
+    solid(x, [[l, rail], [r, rail], [r, rail + man * 0.07], [l, rail + man * 0.07]],
+      '#B8AC8E', rnd, INK.FADED, 0.2);
+    inkLine(x, [[l, rail], [r, rail - 2]], rnd, 1.5, 0.05);
+    inkLine(x, [[l, skirt], [r, skirt - 2]], rnd, 1.4, 0.06);
+    let px = l;
+    while (px < r) {
+      const pw = Math.min(man * (0.42 + rnd() * 0.14), r - px);
+      const inset = man * 0.06;
+      if (pw > man * 0.2) {
+        const box: [number, number][] = [
+          [px + inset, rail + man * 0.15], [px + pw - inset, rail + man * 0.15],
+          [px + pw - inset, skirt - inset], [px + inset, skirt - inset],
+        ];
+        inkLine(x, [...box, box[0]], rnd, 1.1, 0.12);
+        wash(x, box, PAPER.BRIGHT, 0.09, rnd, 2);
+      }
+      px += pw;
+    }
+  }
+
+  /*
+   * The openings, cut back out of the wall.
+   *
+   * `destination-out`, rather than a wall drawn in pieces around them: the
+   * panelling is run across the whole wall the way a joiner runs it, and then
+   * the doorways are cut through it — so a panel a door interrupts is
+   * interrupted, instead of stopping politely short of the architrave.
+   */
+  const cut = (cx: number, halfW: number, height: number): void => {
+    const b = hallFootAt(cx);
+    x.save();
+    x.globalCompositeOperation = 'destination-out';
+    x.fillStyle = '#000';
+    x.beginPath();
+    x.rect(cx - halfW, b - height, halfW * 2, height + 8);
+    x.fill();
+    x.restore();
+  };
+  const architrave = (cx: number, halfW: number, height: number): void => {
+    const b = hallFootAt(cx);
+    const top = b - height;
+    const j = man * 0.085;
+    for (const s of [-1, 1]) {
+      solid(x, [[cx + s * halfW, top - j], [cx + s * (halfW + j), top - j],
+                [cx + s * (halfW + j), b + 5], [cx + s * halfW, b + 5]],
+        '#D3CAB0', rnd, EARTH.RAW_UMBER, 0.16);
+    }
+    solid(x, [[cx - halfW - j, top - j], [cx + halfW + j, top - j],
+              [cx + halfW + j, top], [cx - halfW - j, top]],
+      '#D8CFB5', rnd, EARTH.RAW_UMBER, 0.14);
+    inkLine(x, [[cx - halfW, b], [cx - halfW, top], [cx + halfW, top], [cx + halfW, b]],
+      rnd, 1.5, 0.05);
+  };
+
+  cut(HALL_EAST_X, man * 0.55, man * 2.05);
+  architrave(HALL_EAST_X, man * 0.55, man * 2.05);
+  cut(HALL_PARLOUR_X, man * 0.62, man * 2.0);
+  architrave(HALL_PARLOUR_X, man * 0.62, man * 2.0);
+
+  /*
+   * The study door, shut.
+   *
+   * Six panels and a brass lock. It is the only closed door in the house this
+   * morning and it is drawn so that a player can see that it is closed —
+   * because a door you cannot tell from a wall is the fault that put this whole
+   * scene in the game.
+   */
+  {
+    const dx = HALL_STUDY_X;
+    const b = hallFootAt(dx);
+    const dw = man * 0.46;
+    const dh = man * 1.95;
+    const top = b - dh;
+    solid(x, [[dx - dw, top], [dx + dw, top], [dx + dw, b + 2], [dx - dw, b + 2]],
+      '#4A3B2A', rnd, INK.FLOOR, 0.24);
+    architrave(dx, dw, dh);
+    for (let r = 0; r < 3; r++) {
+      for (const s of [-1, 1]) {
+        const py = top + dh * (0.09 + r * 0.30);
+        const ph = dh * 0.21;
+        const box: [number, number][] = [
+          [dx + s * dw * 0.10, py], [dx + s * dw * 0.78, py],
+          [dx + s * dw * 0.78, py + ph], [dx + s * dw * 0.10, py + ph],
+        ];
+        inkLine(x, [...box, box[0]], rnd, 1.1, 0.14);
+        wash(x, box, PAPER.BRIGHT, 0.07, rnd, 2);
+      }
+    }
+    wash(x, [[dx + dw * 0.6, b - dh * 0.52], [dx + dw * 0.9, b - dh * 0.52],
+             [dx + dw * 0.9, b - dh * 0.45], [dx + dw * 0.6, b - dh * 0.45]],
+      '#CBB37A', 0.85, rnd, 2);
+  }
+
+  // The cornice, and the dark above it. The dark is a painted mass, not a
+  // gradient — there is not a soft edge anywhere else in this game either.
+  {
+    const cornice: [number, number][] = [
+      [-40, hallCeilY(platePx({ x: 0.5, z: -0.08 }, W, H).y)],
+      ...hallFoot().map(([px, py]) => [px, hallCeilY(py)] as [number, number]),
+      [W + 40, hallCeilY(platePx({ x: 0.5, z: -0.08 }, W, H).y)],
+    ];
+    solid(x, [...cornice, [W + 40, -40], [-40, -40]], '#2E2922', rnd, INK.FLOOR, 0.25);
+    inkLine(x, cornice, rnd, 1.8, 0.04);
+    // A band of lit plaster just under it, so the dark has an edge to sit on.
+    x.globalAlpha = 0.4;
+    x.strokeStyle = PAPER.SMOKED;
+    x.lineWidth = 5;
+    x.beginPath();
+    cornice.forEach(([px, py], i) => (i ? x.lineTo(px, py + 6) : x.moveTo(px, py + 6)));
+    x.stroke();
+    x.globalAlpha = 1;
+  }
+  return c;
+}
+
+/**
+ * L2 — the floor.
+ *
+ * Wide pine boards laid down the length of the passage. The seams are
+ * constant-x lines through `platePx`, so they converge because the ground
+ * converges and not because somebody drew them converging — which means the
+ * player walks ALONG a board instead of across the grain of a drawn
+ * perspective.
+ */
+export function hallFloor(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(227);
+  const foot = hallFootY();
+  const man = figureAtPlateY(foot, H);
+
+  solid(x, [...hallFoot(), [W + 40, H + 20], [-40, H + 20]], '#A98F6C', rnd, EARTH.BISTRE, 0.12);
+  wash(x, [[HALL_EAST_X - man, foot], [HALL_EAST_X + man, foot],
+           [W * 0.62, H], [W * 0.34, H]], EARTH.YELLOW_OCHRE, 0.20, rnd, 4);
+  wash(x, [[-40, foot], [HALL_PARLOUR_X - man, foot], [W * 0.16, H], [-40, H]],
+    EARTH.SHADOW_SLATE, 0.15, rnd, 3);
+  wash(x, [[HALL_STAIR_X, foot], [W + 40, foot], [W + 40, H], [W * 0.84, H]],
+    EARTH.SHADOW_SLATE, 0.17, rnd, 3);
+
+  // Board seams, with the bevel between two boards catching light on one side.
+  for (let i = 0; i <= 20; i++) {
+    const gx = -0.08 + (i / 20) * 1.16;
+    const a = platePx({ x: gx, z: 0.0 }, W, H);
+    const b = platePx({ x: gx, z: HALL_WALL_Z - 0.006 }, W, H);
+    inkLine(x, [[a.x, H + 10], [a.x, a.y], [b.x, b.y]], rnd, 1.2, 0.22);
+    x.globalAlpha = 0.2;
+    x.strokeStyle = PAPER.BRIGHT;
+    x.lineWidth = 1.4;
+    x.beginPath();
+    x.moveTo(a.x + 2, H);
+    x.lineTo(b.x + 1, b.y);
+    x.stroke();
+    x.globalAlpha = 1;
+  }
+
+  // End joints, staggered, and the odd knot. Without them the boards read as
+  // ruled lines rather than as timber that came in lengths.
+  for (let i = 0; i < 30; i++) {
+    const gx = -0.06 + rnd() * 1.12;
+    const gz = 0.03 + rnd() * (HALL_WALL_Z - 0.06);
+    const p = platePx({ x: gx, z: gz }, W, H);
+    const q = platePx({ x: gx + 0.058, z: gz }, W, H);
+    inkLine(x, [[p.x, p.y], [q.x, q.y]], rnd, 1.0, 0.3);
+    if (rnd() < 0.35) {
+      const r = 3 + rnd() * 4 * p.scale;
+      wash(x, [[p.x - r, p.y - r], [p.x + r, p.y - r * 0.8],
+               [p.x + r * 0.8, p.y + r], [p.x - r, p.y + r * 0.7]],
+        EARTH.RAW_UMBER, 0.4, rnd, 2);
+    }
+  }
+
+  // The light off the east door, lying down the boards. It is the only shape on
+  // the floor, and it is what carries the eye to the far end of the passage.
+  wash(x, [[HALL_EAST_X - man * 0.55, foot], [HALL_EAST_X + man * 0.55, foot],
+           [W * 0.58, H * 0.92], [W * 0.38, H * 0.92]], PAPER.BRIGHT, 0.20, rnd, 4);
+  return c;
+}
+
+/**
+ * L3 — the stair.
+ *
+ * The thing that was missing, and the reason a house with people in it read as
+ * a single ground-floor room: a flight you can see, going up. It climbs from
+ * the right-hand end of the passage into the dark above the cornice, and its
+ * balustrade is the one open silhouette in a set otherwise made of flat planes.
+ *
+ * Drawn as a raking string with treads on it rather than a stack of boxes: from
+ * this angle you see the front edge of every tread and the underside of none.
+ */
+export function hallStair(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(229);
+  const man = figureAtPlateY(hallFootY(), H);
+
+  const steps = 12;
+  const x0 = HALL_STAIR_X + man * 0.30;   // bottom of the flight, out in the room
+  const y0 = hallFootAt(x0) + man * 0.06;
+  const x1 = HALL_STAIR_X - man * 0.62;   // top, back against the wall and high
+  const y1 = y0 - man * 3.1;
+  const w0 = man * 0.80;
+  const w1 = man * 0.52;
+
+  const at = (t: number) => ({
+    x: x0 + (x1 - x0) * t,
+    y: y0 + (y1 - y0) * t,
+    w: w0 + (w1 - w0) * t,
+  });
+
+  // The closed string: the raking board the treads sit on.
+  {
+    const a = at(0);
+    const b = at(1);
+    solid(x, [[a.x - a.w, a.y], [b.x - b.w, b.y], [b.x - b.w * 0.3, b.y + man * 0.30],
+              [a.x - a.w * 0.3, a.y + man * 0.42]],
+      '#6B5947', rnd, INK.FLOOR, 0.22);
+    inkLine(x, [[a.x - a.w, a.y], [b.x - b.w, b.y]], rnd, 1.8, 0.04);
+  }
+
+  for (let i = 0; i <= steps; i++) {
+    const p = at(i / steps);
+    const rise = man * 0.16;
+    // The tread, lit along its front edge; the riser under it in shadow.
+    solid(x, [[p.x - p.w, p.y], [p.x + p.w * 0.4, p.y - rise * 0.26],
+              [p.x + p.w * 0.4, p.y - rise * 0.26 + rise * 0.4], [p.x - p.w, p.y + rise * 0.4]],
+      '#C6B593', rnd, EARTH.YELLOW_OCHRE, 0.18);
+    solid(x, [[p.x - p.w, p.y + rise * 0.4], [p.x + p.w * 0.4, p.y - rise * 0.26 + rise * 0.4],
+              [p.x + p.w * 0.4, p.y + rise * 0.5], [p.x - p.w, p.y + rise * 1.2]],
+      '#6E5C46', rnd, INK.FLOOR, 0.3);
+    inkLine(x, [[p.x - p.w, p.y], [p.x + p.w * 0.4, p.y - rise * 0.26]], rnd, 1.4, 0.06);
+  }
+
+  /*
+   * Balusters and the handrail.
+   *
+   * Two turned balusters to a tread was the Virginia practice, and a regular
+   * comb of verticals climbing away from the viewer is what makes a stair
+   * legible as a stair before anything else about it is read.
+   */
+  const railH = man * 0.80;
+  const railPts: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const p = at(t);
+    const h = railH * (1 - t * 0.2);
+    for (const off of [-0.88, -0.56]) {
+      const bx = p.x + p.w * off;
+      const by = p.y + (off + 0.88) * 5;
+      inkLine(x, [[bx, by], [bx, by - h]], rnd, 1.9 * (1 - t * 0.28), 0.02);
+      wash(x, [[bx - 2.4, by - h * 0.22], [bx + 2.4, by - h * 0.22],
+               [bx + 1.7, by - h * 0.6], [bx - 1.7, by - h * 0.6]], '#D6C9AA', 0.5, rnd, 2);
+    }
+    railPts.push([p.x - p.w * 0.88, p.y - h]);
+  }
+  solid(x, [...railPts,
+            ...railPts.slice().reverse().map(([px, py]) => [px, py + man * 0.07] as [number, number])],
+    '#4C3B2A', rnd, INK.FLOOR, 0.2);
+  inkLine(x, railPts, rnd, 2.1, 0.02);
+
+  // The newel: the post the whole flight hangs off, and the heaviest single
+  // vertical in the set.
+  {
+    const p = at(0);
+    const nx = p.x - p.w * 0.88;
+    const nw = man * 0.065;
+    const nt = p.y - railH * 1.18;
+    const nb = p.y + man * 0.34;
+    solid(x, [[nx - nw, nt], [nx + nw, nt], [nx + nw, nb], [nx - nw, nb]],
+      '#463526', rnd, INK.FLOOR, 0.22);
+    inkLine(x, [[nx - nw, nt], [nx + nw, nt], [nx + nw, nb], [nx - nw, nb], [nx - nw, nt]],
+      rnd, 1.5, 0.06);
+    solid(x, [[nx - nw * 1.5, nt], [nx + nw * 1.5, nt],
+              [nx + nw * 1.2, nt - nw * 1.1], [nx - nw * 1.2, nt - nw * 1.1]],
+      '#5A4632', rnd, INK.FLOOR, 0.2);
+  }
+  return c;
+}
+
+/**
+ * L4 — what stands against the far wall.
+ *
+ * All of it beyond the walkable band on purpose. A plate is flat and cannot be
+ * walked behind, so anything painted here that the player could reach would be
+ * a thing he walks through. The floor he can cross is left clear; the objects
+ * he can pick up are drawn by the prop painter and stood on the ground curve
+ * like everyone else.
+ */
+export function hallFurniture(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(233);
+  const man = figureAtPlateY(hallFootY(), H);
+
+  // The tall case clock. Eight feet of it, taller than the man reading it, and
+  // the only tall thing in the room besides the stair.
+  {
+    const cx = HALL_CLOCK_X;
+    const b = hallFootAt(cx);
+    const w = man * 0.15;
+    const h = man * 1.30;
+    solid(x, [[cx - w, b - h], [cx + w, b - h], [cx + w, b], [cx - w, b]],
+      '#5E4630', rnd, INK.FLOOR, 0.2);
+    solid(x, [[cx - w * 1.3, b - h], [cx + w * 1.3, b - h],
+              [cx + w * 1.3, b - h * 0.76], [cx - w * 1.3, b - h * 0.76]],
+      '#6A5035', rnd, INK.FLOOR, 0.18);
+    solid(x, [[cx - w * 1.35, b - h * 0.13], [cx + w * 1.35, b - h * 0.13],
+              [cx + w * 1.35, b], [cx - w * 1.35, b]], '#523D2A', rnd, INK.FLOOR, 0.2);
+    // The dial: the one brass note in the room.
+    const dial: [number, number][] = [
+      [cx - w * 0.75, b - h * 0.95], [cx + w * 0.75, b - h * 0.95],
+      [cx + w * 0.75, b - h * 0.80], [cx - w * 0.75, b - h * 0.80],
+    ];
+    wash(x, dial, '#CBB37A', 0.85, rnd, 3);
+    inkLine(x, [...dial, dial[0]], rnd, 1.2, 0.08);
+    contact(x, cx, b, w * 1.5, rnd);
+  }
+
+  // A side table with a looking glass over it. A mirror in this light is a pale
+  // rectangle in a dark frame: nothing is reflected in it, because a reflection
+  // drawn wrong is worse than no reflection at all.
+  {
+    const cx = HALL_GLASS_X;
+    const b = hallFootAt(cx);
+    const w = man * 0.28;
+    const h = man * 0.44;
+    solid(x, [[cx - w, b - h], [cx + w, b - h], [cx + w, b - h * 0.86], [cx - w, b - h * 0.86]],
+      '#6B5335', rnd, INK.FLOOR, 0.2);
+    for (const s of [-0.86, 0.86]) {
+      inkLine(x, [[cx + w * s, b - h * 0.86], [cx + w * s * 0.9, b]], rnd, 1.9, 0.05);
+    }
+    const gw = man * 0.20;
+    const gh = man * 0.40;
+    const gy = b - h - man * 0.12;
+    solid(x, [[cx - gw, gy - gh], [cx + gw, gy - gh], [cx + gw, gy], [cx - gw, gy]],
+      '#4A3928', rnd, INK.FLOOR, 0.2);
+    solid(x, [[cx - gw * 0.8, gy - gh * 0.87], [cx + gw * 0.8, gy - gh * 0.87],
+              [cx + gw * 0.8, gy - gh * 0.09], [cx - gw * 0.8, gy - gh * 0.09]],
+      '#C3C1B2', rnd, EARTH.SHADOW_SLATE, 0.18);
+    contact(x, cx, b, w, rnd);
+  }
+
+  // A row of pegs on the left-hand wall, with a cloak and a hat on it. Placed
+  // where the wall is, not where the frame edge is — the interactable under it
+  // is at the same ground point.
+  {
+    const p = platePx({ x: -HALL_ROOM_X, z: 0.40 }, W, H);
+    const m = figureAtPlateY(p.y, H);
+    const py = p.y - m * 1.35;
+    inkLine(x, [[p.x - m * 0.32, py], [p.x + m * 0.34, py - m * 0.05]], rnd, 2.2, 0.04);
+    // A cloak on the middle peg, and a round hat on the one beside it.
+    solid(x, [[p.x - m * 0.12, py], [p.x + m * 0.14, py],
+              [p.x + m * 0.20, py + m * 0.62], [p.x - m * 0.18, py + m * 0.60]],
+      '#4E4436', rnd, INK.FLOOR, 0.28);
+    solid(x, [[p.x + m * 0.20, py - m * 0.02], [p.x + m * 0.34, py - m * 0.03],
+              [p.x + m * 0.34, py + m * 0.10], [p.x + m * 0.20, py + m * 0.11]],
+      '#3B3229', rnd, INK.FLOOR, 0.26);
+  }
+
+  // A chest pushed under the stair — where the surveying instruments go, and
+  // where they went. The one piece of furniture in the room that is about to be
+  // shut for good.
+  {
+    const cx = HALL_STAIR_X + man * 0.9;
+    const b = hallFootAt(cx);
+    const w = man * 0.26;
+    const h = man * 0.28;
+    solid(x, [[cx - w, b - h], [cx + w, b - h], [cx + w, b], [cx - w, b]],
+      '#6E5943', rnd, INK.FLOOR, 0.24);
+    inkLine(x, [[cx - w, b - h * 0.7], [cx + w, b - h * 0.7]], rnd, 1.3, 0.1);
+    contact(x, cx, b, w, rnd);
+  }
+  return c;
+}
+
+/**
+ * L5 — the west door, behind you.
+ *
+ * The door the player came in by is at his back, which is where a door you have
+ * just walked through belongs and is also the one place the camera cannot show
+ * it. So it is drawn by what it does: a wedge of lawn light thrown up the
+ * boards from behind the viewer, and the two jambs cropped hard at the frame
+ * edges. Standing in a doorway looks exactly like this.
+ *
+ * The near plate is also where the darkest value in the set goes — the same
+ * repoussoir the lawn gets from its tree — but kept low and to the corners,
+ * because a heavy near mass in an interior stops reading as a doorway and
+ * starts reading as a smear on the lens.
+ */
+export function hallNear(): HTMLCanvasElement {
+  const { c, x } = surface(W, H);
+  const rnd = mulberry(239);
+
+  // The light from the open door behind, on the floor.
+  wash(x, [[W * 0.30, H + 10], [W * 0.70, H + 10], [W * 0.60, H * 0.80], [W * 0.40, H * 0.80]],
+    PAPER.BRIGHT, 0.16, rnd, 4);
+
+  // The jambs, cropped by the frame. Short of the corners rather than running
+  // the full height: the passage is what the picture is about.
+  for (const side of [-1, 1] as const) {
+    const outer = side < 0 ? -30 : W + 30;
+    const inner = side < 0 ? W * 0.055 : W * 0.945;
+    solid(x, [[outer, H * 0.30], [inner, H * 0.42], [inner + side * 14, H + 20], [outer, H + 20]],
+      '#28221B', rnd, INK.FLOOR, 0.3);
+    inkLine(x, [[inner, H * 0.42], [inner + side * 14, H + 20]], rnd, 2.0, 0.06);
+  }
+  return c;
+}
+
 export const PLATE_DEPTHS: Record<string, number[]> = {
   //          sky  hills  ground  farMid            midground             foreground
   vernon: [1, 1, 1, 1, nearestOn(H * HORIZON + 236), 0],
   camp: [1, 1, 1, 1, nearestOn(H * HORIZON + 251), 0],
   lines: [1, 1, 1, 1, nearestOn(H * HORIZON + 214), 0],
+  /*
+   * The interior.
+   *
+   * Everything painted in the passage stands against a wall at HALL_WALL_Z or
+   * behind it, and the scene stops the player short of that — so there is
+   * nothing in here a figure can legitimately be behind, and the two near
+   * plates declare themselves accordingly: the stair and the furniture at the
+   * wall, the jambs at the viewer.
+   */
+  hall: [1, 1, 1, HALL_WALL_Z, HALL_WALL_Z, 0],
 };
 
 /**
@@ -3699,6 +4338,19 @@ export const PLATE_SETS: Record<string, () => HTMLCanvasElement[]> = {
     linesSky(), campHills(), linesGround(),
     linesFarMidground(), linesMidground(), linesForeground(),
   ]),
+  /*
+   * No air.
+   *
+   * `withAir` is aerial perspective, and aerial perspective is a fact about
+   * how much atmosphere stands between the eye and the thing. Across a passage
+   * that is twenty feet, so the answer is none — and laying the horizon-keyed
+   * ramp on an interior greys the top of every wall as hard as the far shore of
+   * the Potomac, which is exactly as wrong as it sounds.
+   */
+  hall: () => [
+    hallBeyond(), hallWall(), hallFloor(),
+    hallStair(), hallFurniture(), hallNear(),
+  ],
 };
 
 /* -------------------------------------------------------------- set pieces

@@ -11,7 +11,7 @@
 import { decode, deserialise, encode, FLAG_REGISTRY, PASSPORT_FLAGS, serialise } from './passport';
 import { SCENE_ORDER } from './scene-order';
 import { applyDelta, initialState, loudness, type StatId } from './state';
-import { decisionList, ledgerFor, sceneList } from './content';
+import { decisionList, FIRST_SCENE, ledgerFor, SCENES, sceneList } from './content';
 import { reckon, RECKONED_ACTS } from './ledger';
 import {
   at, confidenceOf, gridRef, labelOffset, MAP_H, MAP_W, SCARS, scarsFor, THEATRES,
@@ -1006,10 +1006,22 @@ console.log('\nthe council');
   };
 
   /*
-   * Scenes are visited in order; the people inside one are not. A player picks
-   * who to speak to first, and Act 1's lock turns entirely on that choice — so
-   * a walk that fixed the authoring order would report the lock as dead when it
-   * is merely order-dependent. Permute within each scene, chain the scenes.
+   * Moments are visited in order; the people inside one are not.
+   *
+   * A player picks who to speak to first, and Act 1's lock turns entirely on
+   * that choice — so a walk that fixed the authoring order would report the
+   * lock as dead when it is merely order-dependent.
+   *
+   * A MOMENT, not a scene, is the unit that can be shuffled, and the
+   * distinction started mattering the day the house got an inside. Mount Vernon
+   * is two scenes now, joined by a door, and `timePasses()` says a door costs
+   * nothing: a player can answer his wife and then the messenger, or the
+   * messenger and then his wife, and Act 1's whole voice lock is the difference.
+   * So scenes sharing an act and a dateline are pooled and permuted together.
+   *
+   * The chain is PLAY order, walked from the first scene through exits and
+   * doors — never SCENE_ORDER, which is the save code's bit order, is
+   * append-only, and puts the newest room in the game after Act 2.
    */
   const permute = <T,>(xs: T[]): T[][] =>
     xs.length <= 1
@@ -1018,14 +1030,41 @@ console.log('\nthe council');
           permute([...xs.slice(0, i), ...xs.slice(i + 1)]).map((rest) => [x, ...rest]),
         );
 
-  let sequences: Decision[][] = [[]];
-  for (const id of SCENE_ORDER) {
-    const sc = sceneList().find((s) => s.id === id);
-    if (!sc) continue;
-    const here = sc.npcs.map((n) => n.decision).filter((d): d is Decision => Boolean(d));
-    if (!here.length) continue;
-    sequences = sequences.flatMap((head) => permute(here).map((tail) => [...head, ...tail]));
+  const played: string[] = [];
+  {
+    const queue = [FIRST_SCENE];
+    while (queue.length) {
+      const id = queue.shift()!;
+      const sc = SCENES[id];
+      if (!sc || played.includes(id)) continue;
+      played.push(id);
+      // Doors first: a door leads somewhere inside the same moment.
+      for (const it of sc.interactables) if (it.goTo) queue.push(it.goTo);
+      if (sc.exitTo) queue.push(sc.exitTo);
+    }
   }
+  check(`play order reaches every scene (${played.join(' → ')})`,
+    played.length === sceneList().length,
+    sceneList().filter((s) => !played.includes(s.id)).map((s) => s.id).join(', '));
+
+  let sequences: Decision[][] = [[]];
+  let moment: { key: string; ds: Decision[] } | null = null;
+  const flush = (): void => {
+    if (!moment || !moment.ds.length) return;
+    const here = moment.ds;
+    sequences = sequences.flatMap((head) => permute(here).map((tail) => [...head, ...tail]));
+    moment = null;
+  };
+  for (const id of played) {
+    const sc = SCENES[id];
+    const key = `${sc.act}·${sc.when}`;
+    if (!moment || moment.key !== key) {
+      flush();
+      moment = { key, ds: [] };
+    }
+    moment.ds.push(...sc.npcs.map((n) => n.decision).filter((d): d is Decision => Boolean(d)));
+  }
+  flush();
   for (const seq of sequences) walk(seq, 0, { ...CORNERS.opening });
 
   const dead = Object.entries(locked).filter(([, c]) => c.open === 0 || c.shut === 0);

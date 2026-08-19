@@ -80,6 +80,8 @@ export const FLAG_REGISTRY: string[] = [
   'task.a1.orders',
   'task.a1.nelson',
   'obs.a1.house_in_order',
+  'obs.a1.study_settled',
+  'obs.a1.stair',
   'obs.a1.river',
   'doc.a2.ration_return',
   'doc.a2.reed_letter',

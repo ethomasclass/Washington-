@@ -7,6 +7,7 @@
  */
 
 import { MV01 } from './scenes/mv01';
+import { MV02 } from './scenes/mv02';
 import { CB01 } from './scenes/cb01';
 import { CB03 } from './scenes/cb03';
 import type { Decision, Scene } from './types';
@@ -16,6 +17,7 @@ export * from './types';
 
 export const SCENES: Record<string, Scene> = {
   [MV01.id]: MV01,
+  [MV02.id]: MV02,
   [CB01.id]: CB01,
   [CB03.id]: CB03,
 };

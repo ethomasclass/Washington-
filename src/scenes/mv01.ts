@@ -15,27 +15,6 @@
 
 import type { Ambient, Business, Interactable, NpcThread, Scene, Task } from '../types';
 
-const MARTHA = { portraitSeed: 202, coat: '#6B4F35' };
-
-/**
- * Martha Washington, from the likenesses.
- *
- * Small — a little under five feet, against a husband of six foot two, and the
- * difference is worth seeing in the frame. Dark hair under the white linen cap
- * she wears in every portrait of her, and a plain gown of a good but sober
- * colour: she was the wealthiest widow in Virginia and dressed like someone who
- * had nothing left to prove.
- */
-const MARTHA_LOOK = {
-  coat: '#6B4F35',
-  hat: 'none' as const,
-  gown: true,
-  cap: true,
-  hair: '#3E3226',
-  build: 0.96,
-  tall: 0.84,
-};
-
 /**
  * William Lee, in the Mount Vernon livery.
  *
@@ -125,7 +104,7 @@ export const MV01: Scene = {
       'your uniform to every session. That was not an accident, and everyone has noticed.',
   ],
   objectives: [
-    'Answer Martha. She asked you a question a week ago and you have been avoiding it.',
+    'Go inside and answer Martha. She is in the house, waiting.',
     'Give the messenger your answer. He rides back to Philadelphia with it.',
     'Put the estate in order before you leave. You do not know for how long.',
   ],
@@ -135,6 +114,7 @@ export const MV01: Scene = {
     'You have been home since the autumn, and you have not been still for a day of it.',
     'A rider came up from the ferry this morning with a letter from Philadelphia, and the ' +
       'house has been quiet in a particular way ever since.',
+    'The west door is open. Your wife is somewhere behind it and has been all morning.',
   ],
 
   business: [
@@ -182,7 +162,7 @@ export const MV01: Scene = {
     },
     {
       id: 'amb.river',
-      x: 0.30, z: 0.78, r: 0.11, minLoudness: 0.32,
+      x: 0.16, z: 0.80, r: 0.11, minLoudness: 0.32,
       variants: {
         duty: 'The herring will come up in April whether you are here to count them or not.',
         restraint: 'Everything here runs on a season. An army does not, and you have not learned that yet.',
@@ -214,40 +194,6 @@ export const MV01: Scene = {
   allTasksFlag: 'obs.a1.house_in_order',
 
   tasks: [
-    {
-      id: 'task.instruments',
-      label: 'put up the instruments',
-      x: 0.10, z: 0.16,
-      done:
-        'Chain, compass and the Ohio field books go back in the chest, and the chest goes under ' +
-        'the stair. You will not be laying out any ground this year.',
-      grants: 'task.a1.instruments',
-      note: 'Put up the surveying instruments',
-      prop: 'chest',
-    },
-    {
-      id: 'task.weather',
-      label: 'make the weather entry',
-      x: 0.21, z: 0.14,
-      done:
-        'Fair. Wind southerly. Mercury at sixty-four at sunrise. You have written this line ' +
-        'nearly every morning for sixteen years, and it takes you longer today than it should.',
-      grants: 'task.a1.weather',
-      note: 'Made the morning weather entry',
-      prop: 'table',
-    },
-    {
-      id: 'task.letter',
-      label: 'write to Burwell Bassett',
-      x: 0.37, z: 0.14,
-      done:
-        'To your brother-in-law, because he will not repeat it. You write that you are going to ' +
-        'Philadelphia, and that you do not know what you will be when you come back. Then you ' +
-        'seal it before you can read it over.',
-      grants: 'task.a1.letter',
-      note: 'Wrote to Burwell Bassett — the first time you have said it in writing',
-      prop: 'table',
-    },
     {
       id: 'task.orders',
       label: 'leave standing orders',
@@ -300,69 +246,6 @@ export const MV01: Scene = {
       prop: 'papers',
     },
     {
-      id: 'ledger',
-      label: 'the farm ledger',
-      x: 0.395,
-      z: 0.27,
-      examine:
-        'Wheat, herring, flour to the West Indies, in your own hand. Every entry assumes you will ' +
-        'be here in the autumn to make the next one.',
-      grants: 'doc.a1.ledger',
-      contradicts: {
-        heard: 'heard.a1.martha',
-        line:
-          'The last entry is three weeks old. You stopped writing them the week the news came ' +
-          'from Boston — before the uniform came down from the press, and before you said nothing.',
-        grants: 'obs.a1.ledger_stops',
-        note: 'The ledger stops the week the Boston news came — you decided earlier than you have admitted',
-      },
-      prop: 'papers',
-    },
-    {
-      id: 'commission',
-      label: 'the Fairfax commission',
-      x: 0.343,
-      z: 0.5,
-      examine:
-        'Command of the Fairfax Independent Company. You did not ask for it either. Four counties ' +
-        'have now named you to something, and none of them waited for an answer.',
-      grants: 'doc.a1.commission',
-      prop: 'papers',
-    },
-    {
-      id: 'uniform',
-      label: 'the new uniform',
-      x: 0.448,
-      z: 0.58,
-      examine:
-        'Blue faced with buff, cut to your own specification, hanging where it can be seen. You ' +
-        'have not said why you had it made. Neither has anyone asked.',
-      grants: 'obs.a1.uniform',
-      prop: 'uniform',
-    },
-    {
-      id: 'surveyors_chest',
-      label: "the surveyor's chest",
-      x: 0.133,
-      z: 0.3,
-      examine:
-        'Chain, compass, and the Ohio field books from when you were seventeen. You know that ' +
-        'country better than any man in Virginia. Ground is a thing you can read.',
-      grants: 'obs.a1.surveying',
-      prop: 'chest',
-    },
-    {
-      id: 'braddock',
-      label: "Braddock's sash",
-      x: 0.71,
-      z: 0.19,
-      examine:
-        'Crimson silk, given to you as he was dying on the Monongahela road. Two horses shot ' +
-        'under you that day, four balls through your coat, and nine hundred men lost in three hours.',
-      grants: 'doc.a1.braddock',
-      prop: 'sash',
-    },
-    {
       id: 'lund_letter',
       label: "Lund's accounts",
       x: 0.605,
@@ -384,8 +267,8 @@ export const MV01: Scene = {
     {
       id: 'bowling_green',
       label: 'the bowling green',
-      x: 0.08,
-      z: 0.72,
+      x: 0.06,
+      z: 0.68,
       examine:
         'You laid it out yourself, and the serpentine walks either side of it, and you moved grown ' +
         'trees to stand where you wanted them. Nothing on this side of the house grew where it ' +
@@ -394,8 +277,10 @@ export const MV01: Scene = {
     {
       id: 'river_view',
       label: 'the river beyond',
-      x: 0.30,
-      z: 0.78,
+      /* Moved west, off the line of the front door. The doorstep is an
+         interactable now and the two were a thumb's width apart. */
+      x: 0.16,
+      z: 0.80,
       examine:
         'The Potomac shows over the roofline, near two miles across, with Maryland a low green ' +
         'line above it. The herring come up in April in numbers that beggar description. You will ' +
@@ -427,6 +312,57 @@ export const MV01: Scene = {
         'Seedlings under glass, half of them experiments. You wrote to England for the seed and ' +
         'the war may well arrive before the answer does.',
     },
+    /*
+     * THE FRONT DOOR.
+     *
+     * The mansion is painted at the horizon and always will be — the plate puts
+     * it past the end of the walkable ground, which is correct for a house seen
+     * across its own lawn and useless for a house you are meant to live in. So
+     * the door is staged at the far edge of the band, on the plate column the
+     * painted door stands in (`xAtPlateX` of the house's centre bay), and it is
+     * a door: it opens, and what is behind it is a room.
+     */
+    {
+      id: 'front_door',
+      label: 'the west door',
+      x: 0.278,
+      z: 0.78,
+      examine:
+        'Up two stone steps, and standing open on the passage. The house has been quiet in a ' +
+        'particular way since the rider came, and every quiet thing in it is waiting on the same ' +
+        'answer you are.',
+      goTo: 'MV-02',
+      arriveAt: { x: 0.50, z: 0.16 },
+    },
+    {
+      id: 'kitchen',
+      label: 'the kitchen',
+      x: 0.70,
+      z: 0.70,
+      examine:
+        'A separate building, as every kitchen here is, and smoking since four. Everything you ' +
+        'have ever eaten in that house was carried across this yard in the weather, by somebody ' +
+        'who was not asked.',
+    },
+    {
+      id: 'stable',
+      label: 'the stable yard',
+      x: 0.72,
+      z: 0.16,
+      examine:
+        'Bricked, swept, and better built than most houses in the county. You bred half the horses ' +
+        'in it and you can name the dam of every one, which is more than you can do for the men ' +
+        'in the Fairfax company.',
+    },
+    {
+      id: 'well',
+      label: 'the well',
+      x: 0.44,
+      z: 0.70,
+      examine:
+        'Windlass, bucket, and a rope gone furry with use. An army wants forty gallons a man a ' +
+        'week and there is no windlass in Massachusetts that has been asked that question yet.',
+    },
     {
       id: 'chariot',
       label: 'the chariot',
@@ -441,95 +377,6 @@ export const MV01: Scene = {
   ] as Interactable[],
 
   npcs: [
-    {
-      id: 'martha',
-      look: MARTHA_LOOK,
-      name: 'Martha',
-      hearFlag: 'heard.a1.martha',
-      x: 0.238,
-      z: 0.38,
-      lines: [
-        {
-          speaker: 'Martha',
-          ...MARTHA,
-          text: 'You have read it four times. It says the same thing each time.',
-        },
-        {
-          speaker: 'Martha',
-          ...MARTHA,
-          text:
-            'You had Lund bring the uniform down from the press before the letter ever came. ' +
-            'I saw him carry it. You have not said a word about it since.',
-        },
-      ],
-      decision: {
-        id: 'A1-D2',
-        prompt: 'She is not asking whether you will go. She is asking what you mean to wear.',
-        speaker: 'Martha',
-        portrait: 'martha',
-        ...MARTHA,
-        voices: ['vanity', 'restraint', 'duty', 'temper'],
-        interjections: {
-          vanity:
-            'A room full of lawyers in broadcloth, and one man dressed as a soldier. They will ' +
-            'not need to be told.',
-          restraint:
-            'To wear it is to ask for the thing while pretending not to. Say what you want or ' +
-            'want nothing.',
-          duty: 'You hold a commission. It is not a costume.',
-          temper: 'Let them ask you plainly, or let them find another man.',
-        },
-        rejoinders: {
-          vanity: 'They will describe the coat in their letters home. Every one of them.',
-          restraint: 'Wear it once and you cannot afterwards be a man who did not.',
-          duty: 'She is asking what you mean to be. Answer that, not the coat.',
-        },
-        options: [
-          {
-            id: 'wear_uniform',
-            label: 'Wear it',
-            full: 'Wear the uniform to Philadelphia and let the room draw its own conclusion.',
-            favoured: ['vanity', 'duty'],
-            effects: { legitimacy: 5, character: -3, judgment: 2 },
-            result:
-              'He wore it through every session. No one recorded him saying he wanted the command, ' +
-              'and no one in that room was in any doubt.',
-          },
-          {
-            id: 'wear_plain',
-            label: 'Wear plain clothes',
-            full: 'Go dressed as what you are today — a Virginia planter, and nothing more.',
-            favoured: ['restraint'],
-            effects: { character: 5, legitimacy: -3 },
-            result:
-              'You go in broadcloth. If they want a soldier they will have to say the word ' +
-              'themselves, and they may not.',
-          },
-          {
-            id: 'tell_martha',
-            label: 'Tell her the truth',
-            full:
-              'Say that you had it made because you expect to be asked, and that you do not know ' +
-              'whether you should be.',
-            favoured: ['restraint', 'temper'],
-            requires: 'obs.a1.ledger_stops',
-            lockNote: 'you have not admitted to yourself when you decided',
-            effects: { character: 7, loyalty: 2 },
-            result:
-              'It is the first time you have said it aloud. She does not tell you it will be all ' +
-              'right, which is why you told her.',
-          },
-        ],
-      },
-      after: [
-        {
-          speaker: 'Martha',
-          ...MARTHA,
-          text: 'Then go and see Lund about the accounts. If you are leaving, he should hear it from you.',
-        },
-      ],
-    },
-
     {
       id: 'lund',
       look: { coat: '#6E5B45', hat: 'round', build: 1.10, tall: 0.97 },

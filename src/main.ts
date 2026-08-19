@@ -469,6 +469,21 @@ function interact(): void {
     return;
   }
 
+  /*
+   * A door.
+   *
+   * Handled before the exit, and unconditionally: a door is not a gate. It
+   * reads its line — the latch, the dark of the passage, the light off the
+   * lawn — and then it cuts, because the man went somewhere and no time
+   * passed.
+   */
+  if (it.goTo) {
+    overlay.showExamine(it.label, it.examine, () => {
+      enterScene(it.goTo!, it.arriveAt);
+    });
+    return;
+  }
+
   // The exit reports what is still owed rather than refusing to open. Nothing
   // in this game blocks the player; it only tells them what they are leaving.
   if (it.id === scene.exit) {
@@ -643,18 +658,18 @@ function closeAct(act: number, onward: string | undefined): void {
  * interior voices have spoken. What persists is the state — the stats, the
  * knowledge, the decisions — which is the whole point of the passport.
  */
-function enterScene(id: string): void {
+function enterScene(id: string, at?: { x: number; z: number }): void {
   const from = scene;
   const to = SCENES[id];
   if (to && from !== to && timePasses(from, to)) {
     busy = true;
-    overlay.fadeThrough(() => loadScene(id), () => {});
+    overlay.fadeThrough(() => loadScene(id, at), () => {});
     return;
   }
-  loadScene(id);
+  loadScene(id, at);
 }
 
-function loadScene(id: string): void {
+function loadScene(id: string, at?: { x: number; z: number }): void {
   scene = SCENES[id];
   state.scene = scene.id;
   state.act = scene.act;
@@ -669,8 +684,10 @@ function loadScene(id: string): void {
   lastAmbientAt = -Infinity;
   lastVoiceAt.clear();
   speaking = null;
-  pos.x = 0.5;
-  pos.z = 0.34;
+  // A door names where it puts him down; anything else drops him at the mark
+  // the scene was staged around.
+  pos.x = at?.x ?? 0.5;
+  pos.z = at?.z ?? 0.34;
   held.left = held.right = held.up = held.down = false;
 
   lightFor(scene);
@@ -683,8 +700,27 @@ function loadScene(id: string): void {
   refreshIntent();
 
   busy = true;
-  openAct(scene.act, () => arrive(scene));
+  openAct(scene.act, () => {
+    /*
+     * The briefing is for arriving somewhere, not for crossing a threshold.
+     *
+     * Doors make a scene re-entrant: a player who steps into the house and back
+     * out again would sit through the situation card twice, and then a third
+     * time when they went back for the thing they forgot. It is shown once per
+     * scene per session and it is always in the journal, which is where a
+     * student who wants it again should find it anyway.
+     */
+    if (arrived.has(scene.id)) {
+      busy = false;
+      return;
+    }
+    arrived.add(scene.id);
+    arrive(scene);
+  });
 }
+
+/** Scenes whose briefing this session has already shown. */
+const arrived = new Set<string>();
 
 /**
  * The arrival card. Where, when, what has happened, what he is here to do.
@@ -753,6 +789,7 @@ if (resumed) {
   theatreAct = state.act;
 } else {
   busy = true;
+  arrived.add(scene.id);
   openAct(scene.act, () => arrive(scene));
 }
 

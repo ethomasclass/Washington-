@@ -60,6 +60,29 @@ export interface Interactable {
    * own flag, a player who names five of seven keeps those five.
    */
   survey?: SurveyTarget[];
+  /**
+   * A door. Looking at this leaves the scene and opens another one.
+   *
+   * Distinct from `Scene.exit`, which is the way OUT of the act and reports
+   * what is still owed before it will open. A door is not a gate: the front
+   * door of a house you live in does not ask whether you have finished your
+   * business before it lets you through, and a player who cannot find the
+   * person they were sent to answer has to be able to go and look.
+   *
+   * Cut, never fade — the man went somewhere and no time passed (02 §8.6), and
+   * `timePasses()` gets that right on its own because a door leads to a scene
+   * with the same dateline.
+   */
+  goTo?: string;
+  /**
+   * Where the player stands on the far side of it.
+   *
+   * Without this every door drops him in the middle of the new scene, so
+   * stepping out of a house puts him twenty yards from the door he just came
+   * through, facing the wrong way. A threshold is a place, and both sides of it
+   * are worth naming.
+   */
+  arriveAt?: { x: number; z: number };
 }
 
 export interface SurveyTarget {
@@ -391,7 +414,7 @@ export interface Scene {
    */
   extras?: Extra[];
   /** Which placeholder plate set the renderer should build. */
-  plates: 'vernon' | 'camp' | 'lines';
+  plates: 'vernon' | 'camp' | 'lines' | 'hall';
   /** Where the light comes from, in uv. Flat overcast sits high and central. */
   sun: [number, number];
 }

@@ -51,6 +51,17 @@ export function installInput(target: HTMLElement | Window = window): () => void 
 
 let padCycle = false;
 let padAct = false;
+/**
+ * Set once `getGamepads()` throws and never cleared for the rest of the
+ * session. The optional-call `?.()` only guards a missing method — it does
+ * nothing for a browser that HAS the method but whose Permissions-Policy
+ * forbids calling it, which is exactly what an embedded iframe (Artifact's
+ * viewer among them) does. Uncaught, that throws from inside the render
+ * loop every single frame, and because nothing upstream wraps `readInput()`,
+ * the first throw stops `requestAnimationFrame` from ever rescheduling —
+ * the whole game freezes on frame one with no error the player can see.
+ */
+let gamepadBlocked = false;
 
 export function readInput(): InputState {
   let ax = 0, az = 0;
@@ -59,7 +70,14 @@ export function readInput(): InputState {
     if (m) { ax += m[0]; az += m[1]; }
   }
 
-  const pads = navigator.getGamepads?.() ?? [];
+  let pads: (Gamepad | null)[] = [];
+  if (!gamepadBlocked) {
+    try {
+      pads = navigator.getGamepads?.() ?? [];
+    } catch {
+      gamepadBlocked = true;
+    }
+  }
   const pad = pads[0];
   let padActNow = false, padCycleNow = false, padMenu = false, padCancel = false;
   if (pad) {

@@ -56,28 +56,30 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>In Washington's Shoes</title>
+<meta name="description" content="An American history, played from inside one man's decisions." />
 <style>
-  /* The game injects its own full-page stylesheet at boot (ui.ts CSS): it owns
-     html, body, #app, #stage and #overlay. This only paints the ground beneath,
-     so the frame is never a white flash before the plates arrive. */
-  html, body { margin: 0; height: 100%; background: #241C14; }
-  #app { position: relative; width: 100vw; height: 100vh; background: #241C14; }
+  /* The game injects its own full-page stylesheet at boot (ui/style.ts): it
+     owns html, body, #stage and #ui. This only paints the ground beneath, so
+     the frame is never a white flash before the first light bakes in. */
+  html, body { margin: 0; height: 100%; background: #07080a; }
+  #stage { position: fixed; inset: 0; background: #07080a; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   #boot {
     position: absolute; inset: 0; display: flex; align-items: center;
-    justify-content: center; color: #C0AE8D; background: #241C14;
+    justify-content: center; color: #cdc0a3; background: #07080a;
     font: italic 17px/1.5 Georgia, "Times New Roman", serif; letter-spacing: .02em;
   }
   /* Failure names itself rather than leaving a blank field. */
   #fault {
     position: fixed; inset: 0; z-index: 99999; display: flex;
     align-items: center; justify-content: center; padding: 24px;
-    background: #241C14; font: 16px/1.55 Georgia, "Times New Roman", serif;
+    background: #07080a; font: 16px/1.55 Georgia, "Times New Roman", serif;
   }
   #fault .card {
-    max-width: 640px; background: #EFE7D5; color: #3B2E22;
-    border: 1px solid #3B2E22; padding: 22px 26px;
+    max-width: 640px; background: #e9e0c9; color: #12100c;
+    border: 1px solid #2b1f16; padding: 22px 26px;
   }
   #fault h1 {
     margin: 0 0 10px; font-size: 21px; font-variant: small-caps;
@@ -85,16 +87,15 @@ const html = `<!doctype html>
   }
   #fault pre {
     margin: 12px 0 0; padding: 10px 12px; overflow-x: auto;
-    background: #DCD2BC; border: 1px solid #C3B79B;
-    font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #241C14;
+    background: #cdc0a3; border: 1px solid #a89468;
+    font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #12100c;
     white-space: pre-wrap; word-break: break-word;
   }
 </style>
 </head>
 <body>
-<div id="app">
-  <canvas id="stage" aria-hidden="true"></canvas>
-  <div id="overlay"></div>
+<div id="stage">
+  <canvas id="view" aria-hidden="true"></canvas>
   <div id="boot">Laying the ground&hellip;</div>
 </div>
 <script>

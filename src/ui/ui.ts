@@ -70,6 +70,8 @@ export class Ui {
   modal = false;
 
   private resolveKey: ((code: string) => void) | null = null;
+  /** Set only while `reveal()` is animating. See the constructor listener. */
+  private revealSkip: (() => void) | null = null;
 
   constructor(private hooks: UiHooks) {
     this.root = el('div');
@@ -144,12 +146,42 @@ export class Ui {
       this.reader, this.menu, this.curtain, this.toastEl, this.titleEl,
     );
 
+    /*
+     * The one keydown listener that decides whether a press belongs to a
+     * panel or to the world.
+     *
+     * It has to run before `installInput()`'s handler does (it does — this
+     * listener is attached here, in the constructor, and `installInput()` is
+     * only called once `Game.start()` runs, well after `new Ui(...)` has
+     * already returned), and it has to use `stopImmediatePropagation()`, NOT
+     * `stopPropagation()`.
+     *
+     * Both listeners sit on the exact same target — `window` — and
+     * `stopPropagation()` only stops an event from reaching OTHER nodes as it
+     * bubbles or captures; it does nothing at all to a second listener
+     * registered on that same node, which is exactly the case here. The first
+     * attempt at this fix used `stopPropagation()`, watched the bug happen
+     * again in a scripted repro, and that is why this comment now says
+     * `stopImmediatePropagation()` explicitly rather than leaving it to be
+     * gotten wrong the same way twice.
+     *
+     * With the right call: while a panel is modal, every key it consumes is
+     * stopped dead before `installInput()`'s handler ever runs, so it can
+     * never land in the movement/interact system's `PRESSED` set. Losing this
+     * meant the Space press that dismissed a line of dialogue also queued up
+     * as a fresh "interact" for the very next frame — the player was still
+     * standing next to whoever they were just talking to, so the same
+     * conversation restarted, forever, every time they tried to leave.
+     */
     window.addEventListener('keydown', (e) => {
+      if (!this.modal) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (this.revealSkip) { this.revealSkip(); return; }
       if (this.resolveKey) {
         const r = this.resolveKey;
         this.resolveKey = null;
         r(e.code);
-        e.preventDefault();
       }
     });
   }
@@ -191,8 +223,10 @@ export class Ui {
     node.append(cur);
     let i = 0;
     let done = false;
-    const skip = () => { done = true; };
-    window.addEventListener('keydown', skip, { once: true });
+    // Routed through the constructor's one listener rather than a private
+    // one here, so a key that fast-forwards the reveal is ALSO stopped from
+    // reaching the game world — the same leak that broke dialogue advance.
+    this.revealSkip = () => { done = true; };
     while (i < text.length && !done) {
       const step = Math.max(1, Math.round(REVEAL_CPS / 30));
       i = Math.min(text.length, i + step);
@@ -200,7 +234,7 @@ export class Ui {
       if (i % 3 === 0) sfxType();
       await sleep(1000 / 30);
     }
-    window.removeEventListener('keydown', skip);
+    this.revealSkip = null;
     cur.remove();
     node.textContent = text;
   }

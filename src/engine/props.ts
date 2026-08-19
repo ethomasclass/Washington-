@@ -100,7 +100,7 @@ function board(
 export const PROPS: Record<string, PropDef> = {
   /* --- trees and planting ------------------------------------------- */
   oak: {
-    w: 104, h: 136, block: 0.34, sink: 3,
+    w: 104, h: 136, block: 0.22, sink: 3,
     draw(g, w, h, v) {
       void v;
       trunk(g, w / 2, h * 0.46, h - 2, 15);
@@ -113,7 +113,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   elm: {
-    w: 92, h: 150, block: 0.30, sink: 3,
+    w: 92, h: 150, block: 0.20, sink: 3,
     draw(g, w, h, v) {
       trunk(g, w / 2, h * 0.34, h - 2, 12);
       canopy(g, w / 2, h * 0.22, w * 0.46, h * 0.22, [P.leafD, P.leaf, P.leafL], v * 11 + 1, 8);
@@ -122,7 +122,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   pineTree: {
-    w: 76, h: 140, block: 0.30, sink: 3,
+    w: 76, h: 140, block: 0.20, sink: 3,
     draw(g, w, h) {
       trunk(g, w / 2, h * 0.22, h - 2, 9);
       // Tiers, narrowing upward. Drawn bottom-first so upper tiers overlap.
@@ -137,14 +137,14 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   sapling: {
-    w: 40, h: 64, block: 0.25, sink: 2,
+    w: 40, h: 64, block: 0.16, sink: 2,
     draw(g, w, h, v) {
       trunk(g, w / 2, h * 0.44, h - 2, 5);
       canopy(g, w / 2, h * 0.28, w * 0.42, h * 0.24, [P.leafD, P.leaf, P.leafL], v + 5, 6);
     },
   },
   boxwood: {
-    w: 44, h: 34, block: 0.3, sink: 4,
+    w: 44, h: 34, block: 0.16, sink: 4,
     draw(g, w, h, v) {
       // Clipped, which is the whole point of it — nothing on the west front
       // grew where it chose to.
@@ -156,7 +156,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   shrub: {
-    w: 40, h: 30, block: 0.3, sink: 4,
+    w: 40, h: 30, block: 0.16, sink: 4,
     draw(g, w, h, v) {
       canopy(g, w / 2, h * 0.58, w * 0.44, h * 0.38, [P.leafD, P.leaf, P.leafL], v + 9, 6);
     },
@@ -217,7 +217,7 @@ export const PROPS: Record<string, PropDef> = {
 
   /* --- the building site --------------------------------------------- */
   scaffold: {
-    w: 96, h: 150, block: 0.6, sink: 3,
+    w: 96, h: 150, block: 0.42, sink: 3,
     draw(g, w, h) {
       const post = [P.pineD, P.pine, P.pineL] as const;
       for (const x of [6, w * 0.36, w * 0.68, w - 14]) {
@@ -238,7 +238,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   timberStack: {
-    w: 80, h: 46, block: 0.55, sink: 3,
+    w: 80, h: 46, block: 0.38, sink: 3,
     draw(g, w, h, v) {
       // Fresh-sawn yellow pine, stickered so it can season. It is the brightest
       // thing on the estate and the eye goes to it, which is correct: the
@@ -269,7 +269,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   sawpit: {
-    w: 88, h: 52, block: 0.5, sink: 2,
+    w: 88, h: 52, block: 0.4, sink: 2,
     draw(g, w, h, v) {
       rect(g, 4, h * 0.42, w - 8, h * 0.55, P.ink);
       rect(g, 6, h * 0.46, w - 12, h * 0.48, shade(P.dirtD, -0.2));
@@ -282,7 +282,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   sawhorse: {
-    w: 44, h: 34, block: 0.3, sink: 2,
+    w: 44, h: 34, block: 0.18, sink: 2,
     draw(g, w, h) {
       board(g, 2, 4, w - 4, 6, [P.woodD, P.wood, P.woodL], 1);
       for (const x of [6, w - 12]) {
@@ -294,7 +294,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   barrow: {
-    w: 52, h: 36, block: 0.25, sink: 2,
+    w: 52, h: 36, block: 0.16, sink: 2,
     draw(g, w, h) {
       rect(g, 8, 8, w - 20, 12, P.wood);
       hline(g, 8, 8, w - 20, P.woodL);
@@ -314,7 +314,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   stonePile: {
-    w: 60, h: 34, block: 0.45, sink: 3,
+    w: 60, h: 34, block: 0.30, sink: 3,
     draw(g, w, h, v) {
       for (let i = 0; i < 14; i++) {
         const x = 4 + Math.floor(hash(i, v, 1) * (w - 20));
@@ -327,7 +327,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   toolChest: {
-    w: 46, h: 30, block: 0.3, sink: 2,
+    w: 46, h: 30, block: 0.18, sink: 2,
     draw(g, w, h) {
       rect(g, 2, 8, w - 4, h - 10, P.woodD);
       rect(g, 3, 9, w - 6, h - 12, P.wood);
@@ -357,7 +357,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   crate: {
-    w: 34, h: 30, block: 0.28, sink: 2,
+    w: 34, h: 30, block: 0.18, sink: 2,
     draw(g, w, h) {
       rect(g, 2, 2, w - 4, h - 3, P.wood);
       for (let y = 2; y < h - 2; y += 6) hline(g, 2, y, w - 4, P.woodD);

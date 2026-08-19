@@ -69,9 +69,9 @@ function ground(): string[] {
   // walks either side of it. Nothing on this side of the house grew where it
   // chose to, and the map should say so by being obviously drawn.
   cv.rect(29, 44, 21, 15, ',');
-  cv.path([[26, 58], [23, 52], [24, 46], [29, 43]], 2.2, 'g');
-  cv.path([[52, 58], [55, 52], [54, 46], [49, 43]], 2.2, 'g');
-  cv.path([[39, 61], [39, 47]], 3.2, 'g');
+  cv.path([[26, 58], [23, 52], [24, 46], [29, 43]], 3.4, 'g');
+  cv.path([[52, 58], [55, 52], [54, 46], [49, 43]], 3.4, 'g');
+  cv.path([[39, 61], [39, 47]], 4.4, 'g');
 
   // Nothing on this estate has a machine-cut edge. Break every boundary the
   // painter just drew as a rectangle, or the forecourt reads as a diagram.
@@ -80,7 +80,7 @@ function ground(): string[] {
   cv.ragged(',', '.', 0.22, 53);
 
   // The north lane, past the building site, out to the Quarter.
-  cv.path([[32, 38], [24, 36], [16, 35]], 3.8, 'd');
+  cv.path([[32, 38], [24, 36], [16, 35]], 4.2, 'd');
   cv.rect(3, 28, 15, 14, 'd');
   cv.ragged('d', '.', 0.35, 21);
   cv.rect(4, 36, 6, 4, 'v');     // a garden plot, worked outside the working day
@@ -100,10 +100,10 @@ function ground(): string[] {
 
   // The path down to the landing, over the ha-ha and along the slope.
   // Round the south end of the house, because there is a house in the way.
-  cv.path([[50, 41], [55, 37], [55, 28], [50, 25], [45, 21], [41, 17], [40, 14]], 2.6, 'd');
+  cv.path([[50, 41], [55, 37], [55, 28], [50, 25], [45, 21], [41, 17], [40, 14]], 3.6, 'd');
   // And a second way down past the north wing, so the east lawn is not a
   // cul-de-sac reachable only from the kitchen yard.
-  cv.path([[22, 38], [21, 30], [24, 26], [30, 24]], 2.4, 'd');
+  cv.path([[22, 38], [21, 30], [24, 26], [30, 24]], 3.4, 'd');
 
   return cv.lines();
 }
@@ -156,14 +156,22 @@ function props(): PropInstance[] {
   );
 
   // Clipped boxwood round the circle, and the two flanking groves.
+  //
+  // Kept clear of the serpentine walks, not just close to them. The walks run
+  // [[26,58],[23,52],[24,46],[29,43]] west and its mirror east — a straight
+  // row of decor at a FIXED x, next to a path that CURVES, drifts onto the
+  // path's own swept width at whichever z the curve happens to bend toward
+  // it. That was the actual bug: trees planted "beside the path" that the
+  // path bent into. Everything here now sits outside the path's full x-range
+  // across the whole z-span it borders, not just outside it at one point.
   add(scatter('boxwood', [31, 36.6], [47, 36.6], 7, 0.5, 5));
   add(scatter('boxwood', [31, 45.4], [47, 45.4], 7, 0.5, 6));
-  add(scatter('oak', [24, 47], [24, 57], 4, 1.4, 7));
-  add(scatter('oak', [54, 47], [54, 57], 4, 1.4, 8));
-  add(scatter('elm', [21, 43], [21, 55], 3, 1.2, 9));
-  add(scatter('elm', [57, 43], [57, 55], 3, 1.2, 10));
-  add(scatter('shrub', [27, 44], [27, 58], 7, 0.8, 11));
-  add(scatter('shrub', [51, 44], [51, 58], 7, 0.8, 12));
+  add(scatter('oak', [17, 47], [17, 57], 4, 1.2, 7));
+  add(scatter('oak', [61, 47], [61, 57], 4, 1.2, 8));
+  add(scatter('elm', [14, 43], [14, 55], 3, 1.0, 9));
+  add(scatter('elm', [64, 43], [64, 55], 3, 1.0, 10));
+  add(scatter('shrub', [19, 44], [19, 58], 7, 0.7, 11));
+  add(scatter('shrub', [59, 44], [59, 58], 7, 0.7, 12));
 
   // Two grown trees on the axis of the forecourt, and planting against the
   // dependencies. Without them the circle is a green rectangle with a house

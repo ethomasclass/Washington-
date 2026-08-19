@@ -174,6 +174,17 @@ class Game {
     this.rig.snapTo(this.player.x, this.player.y, this.player.z);
   }
 
+  /** Dev only. What is chasing the player right now, and why. */
+  debug(): unknown {
+    return {
+      pos: [this.player.x, this.player.z],
+      busy: this.busy,
+      modal: this.ui.modal,
+      reach: this.reachList.map((t) => ('label' in t ? t.label : t.name)),
+      firedAmbient: [...this.firedAmbient],
+    };
+  }
+
   /* ---------------- objectives ---------------------------------------- */
 
   private refreshObjectives(): void {
@@ -599,6 +610,7 @@ void game.start();
   go: (id: string, x?: number, z?: number) =>
     game.loadMap(id, x !== undefined && z !== undefined ? [x, z] : undefined),
   warp: (x: number, z: number) => game.warp(x, z),
+  debug: () => game.debug(),
 };
 
 // The dev jump, kept from the old build because a teacher wants it too.

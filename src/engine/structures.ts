@@ -58,25 +58,45 @@ export interface FacadeOpts {
  * Wall surfaces
  * ---------------------------------------------------------------------- */
 
+/**
+ * Rustication, drawn as boards, not as a brick wall.
+ *
+ * The real thing at Mount Vernon is long horizontal boards, bevelled at the
+ * bottom edge to throw a shadow line and read as a course of cut stone from a
+ * distance — sand thrown into the wet paint on top of that. What it is NOT is
+ * masonry: no staggered joints, no unit smaller than the wall is wide. The
+ * first version of this function drew a broken-jointed block bond — the
+ * coursing pattern of a BRICK wall, not a board wall — and at this pixel
+ * count that pattern reads as the material, whatever the colour says. Every
+ * course here now runs the full width of the wall, the way a board does.
+ */
 function sidingRusticated(g: CanvasRenderingContext2D, w: number, h: number, seed: number): void {
   rect(g, 0, 0, w, h, P.rust);
-  // Blocks, coursed and broken-jointed, exactly like the ashlar it is imitating.
-  const bh = 11, bw = 44;
+  const bh = 11;
   for (let row = 0; row * bh < h; row++) {
     const y = row * bh;
-    const off = (row % 2) * (bw / 2);
-    for (let x = -bw; x < w; x += bw) {
-      const bx = x + off;
-      const tone = hash(bx, row, seed) < 0.4 ? shade(P.rust, -0.045) : P.rust;
-      rect(g, bx, y, bw - 1, bh - 1, tone);
-      hline(g, bx, y, bw - 1, P.rustL);
-      vline(g, bx, y, bh - 1, P.rustL);
+    const tone = hash(0, row, seed) < 0.3 ? shade(P.rust, -0.03) : P.rust;
+    rect(g, 0, y, w, bh - 1, tone);
+    // The lit top edge and the shadow the bevel throws underneath — this is
+    // what carries "board," and it runs the length of the course, unbroken.
+    hline(g, 0, y, w, P.rustL);
+    hline(g, 0, y + bh - 2, w, P.rustD);
+    // A rustication score: a shallow scribed line further down each board,
+    // the thing that makes a flat board read as a worked stone face without
+    // cutting the board itself into pieces.
+    if (bh > 8) hline(g, 0, y + Math.round(bh * 0.55), w, shade(P.rust, -0.02));
+    // Butt joints, at realistic board lengths and staggered a full board so
+    // no two rows joint at the same point — a broken bond in the LONG
+    // direction only, which real coursed siding also does.
+    const boardLen = 130 + Math.round(hash(row, seed, 3) * 40);
+    const off = (row % 2) * (boardLen / 2);
+    for (let x = -off; x < w; x += boardLen) {
+      if (x > 0) vline(g, x, y, bh - 1, P.rustD);
     }
-    hline(g, 0, y + bh - 1, w, P.rustD);
   }
   // The sand. This is the whole texture and it has to be visible at 80px.
-  speckle(g, 0, 0, w, h, P.rustD, 0.13, seed + 1);
-  speckle(g, 0, 0, w, h, shade(P.rustL, 0.1), 0.09, seed + 2);
+  speckle(g, 0, 0, w, h, P.rustD, 0.11, seed + 1);
+  speckle(g, 0, 0, w, h, shade(P.rustL, 0.1), 0.08, seed + 2);
 }
 
 function sidingClapboard(g: CanvasRenderingContext2D, w: number, h: number, seed: number): void {

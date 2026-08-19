@@ -65,23 +65,56 @@ function groundFloorWalls(): string[] {
   for (let c = 8; c < 17; c++) cv.set(c, 11, '#');
   for (let c = 22; c < 31; c++) cv.set(c, 11, '#');
 
-  // Doorways. A gap in a wall is a doorway; there is nothing else to it.
-  cv.set(17, 6, ' '); cv.set(17, 16, ' ');
-  cv.set(21, 6, ' '); cv.set(21, 16, ' ');
-  cv.set(31, 13, ' ');                       // dining room into the study
-  cv.set(7, 8, ' '); cv.set(7, 9, ' ');      // into the unfinished wing
-  cv.set(19, 20, ' ');                       // the west front door
-  cv.set(19, 2, ' ');                        // the river door
+  /*
+   * Doorways.
+   *
+   * Three tiles wide, every one of them, not one. A single-tile gap asks the
+   * player's whole collision box — corners and all — to land inside a window
+   * about a third of a tile across, or they clip the jamb trying. That was
+   * the actual bug behind "I can get in, but I have to walk through the
+   * wall a little" — it was never about reachability, `npm test`'s flood
+   * fill already proved every doorway was reachable; it was that reachable
+   * and comfortably walkable are different claims, and only the first one
+   * was being checked.
+   */
+  const opening = (axis: 'v' | 'h', at: number, from: number) => {
+    for (let i = 0; i < 3; i++) {
+      if (axis === 'v') cv.set(at, from + i, ' '); else cv.set(from + i, at, ' ');
+    }
+  };
+  opening('v', 17, 5);    // little parlour, into the passage
+  opening('v', 17, 15);   // west parlour, into the passage
+  opening('v', 21, 5);    // the chamber, into the passage
+  opening('v', 21, 15);   // dining room, into the passage
+  opening('v', 31, 12);   // dining room, into the study
+  opening('v', 7, 7);     // little parlour, into the unfinished wing — left
+                           // doorless on purpose: "a doorway with no door in
+                           // it yet" is a fact about 1775, not a placeholder.
+  opening('h', 20, 18);   // the west front door
+  opening('h', 2, 18);    // the river door
   return cv.lines();
 }
 
 function groundFloorProps(): PropInstance[] {
   return [
     // --- the passage: the stair, and almost nothing else ---------------
+    // Centred in the passage's own 3-tile width and clear of both flanking
+    // doorframes (17.5 and 21.5) with room either side, ascending toward the
+    // river door — real enough for a figure to be seen climbing it.
+    { id: 'staircase', x: 19.5, z: 7.4 },
     { id: 'chairSide', x: 18.6, z: 12.5 },
     { id: 'chairSide', x: 20.4, z: 12.5, flip: true },
     { id: 'candleStand', x: 20.4, z: 5.4 },
     { id: 'framedPortrait', x: 18.4, z: 3.4 },
+
+    // --- doorways, marked so a gap in a wall reads as a door ------------
+    // Centred in each three-tile opening, narrow enough to leave clear floor
+    // either side of it — a marker, never a second obstacle.
+    { id: 'doorFrame', x: 17.5, z: 6.5, flip: false },   // little parlour
+    { id: 'doorFrame', x: 17.5, z: 16.5, flip: true },   // west parlour
+    { id: 'doorFrame', x: 21.5, z: 6.5, flip: true },    // the chamber
+    { id: 'doorFrame', x: 21.5, z: 16.5, flip: false },  // dining room
+    { id: 'doorFrame', x: 31.5, z: 13.5, flip: false },  // into the study
 
     // --- the west parlour: the best room in the house -------------------
     { id: 'mantel', x: 12.5, z: 12.5, scale: 0.6 },
@@ -297,14 +330,14 @@ function groundFloorNpcs(): NpcDef[] {
         portrait: 'martha',
         voices: ['vanity', 'restraint', 'duty', 'temper'],
         interjections: {
-          vanity: 'A room full of lawyers in broadcloth and one man dressed as a soldier. They will not need to be told.',
-          restraint: 'To say it aloud is to have decided it. You have not decided it. Have you.',
-          duty: 'She has buried two children and she is not a woman who wants comfort instead of an answer.',
-          temper: 'Say it plainly or say nothing. She has earned better than a form of words.',
+          vanity: 'One soldier in a room of lawyers. They will notice without being told.',
+          restraint: "Saying it out loud means you've decided. Have you?",
+          duty: "She's buried two children. She wants an answer, not comfort.",
+          temper: "Say it straight, or don't say it. She deserves that much.",
         },
         rejoinders: {
-          restraint: 'Whatever you tell her now is what she will repeat to herself for eight years.',
-          vanity: 'The letter you write in June will be read for two hundred years. This will not.',
+          restraint: "What you tell her now, she'll carry for eight years.",
+          vanity: "The letter you write in June gets read for two centuries. This won't.",
         },
         /*
          * CHARACTERIZATION ONLY. Every option is `effects: {}`.
@@ -403,12 +436,12 @@ export const MANSION_GROUND: MapDef = {
   ],
   portals: [
     {
-      id: 'out-front', x: 19, z: 20, w: 1, d: 1,
+      id: 'out-front', x: 18, z: 20, w: 3, d: 1,
       to: 'MV-ESTATE', at: [38, 36], facing: 0,
       label: 'out to the west front', transition: 'cut',
     },
     {
-      id: 'out-river', x: 19, z: 2, w: 1, d: 1,
+      id: 'out-river', x: 18, z: 2, w: 3, d: 1,
       to: 'MV-ESTATE', at: [38, 26], facing: 3,
       label: 'out to the east lawn', transition: 'cut',
     },
@@ -444,9 +477,13 @@ function upperWalls(): string[] {
   for (let r = 3; r < 20; r++) { cv.set(17, r, '#'); cv.set(21, r, '#'); }
   for (let c = 8; c < 17; c++) cv.set(c, 11, '#');
   for (let c = 22; c < 31; c++) cv.set(c, 11, '#');
-  cv.set(17, 6, ' '); cv.set(17, 16, ' ');
-  cv.set(21, 6, ' '); cv.set(21, 16, ' ');
-  cv.set(31, 13, ' ');
+  // Three tiles wide, same as downstairs and for the same reason.
+  const opening = (at: number, from: number) => { for (let i = 0; i < 3; i++) cv.set(at, from + i, ' '); };
+  opening(17, 5);
+  opening(17, 15);
+  opening(21, 5);
+  opening(21, 15);
+  opening(31, 12);
   return cv.lines();
 }
 
@@ -484,10 +521,20 @@ export const MANSION_UPPER: MapDef = {
     { id: 'mantel', x: 12.5, z: 3.5, scale: 0.5 },
     { id: 'mantel', x: 26.5, z: 11.5, scale: 0.5 },
 
-    // The passage.
+    // The passage, and the head of the stair — the same flight, seen from
+    // the top, so the opening in the floor reads as a stairwell and not as
+    // an unexplained gap in the passage.
     { id: 'chairSide', x: 18.6, z: 4.4 },
     { id: 'framedPortrait', x: 20.4, z: 3.4 },
     { id: 'candleStand', x: 20.4, z: 17.6 },
+    { id: 'staircase', x: 19.5, z: 7.4, flip: true },
+
+    // Doorways, marked the same way the ground floor's are.
+    { id: 'doorFrame', x: 17.5, z: 6.5, flip: false },
+    { id: 'doorFrame', x: 17.5, z: 16.5, flip: true },
+    { id: 'doorFrame', x: 21.5, z: 6.5, flip: true },
+    { id: 'doorFrame', x: 21.5, z: 16.5, flip: false },
+    { id: 'doorFrame', x: 31.5, z: 13.5, flip: false },
   ],
   interactables: [
     {

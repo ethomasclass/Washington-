@@ -939,6 +939,64 @@ export const PROPS: Record<string, PropDef> = {
       for (let y = 9; y < 16; y += 3) hline(g, 6, y, w - 14, P.inkSoft);
     },
   },
+
+  /* --- interior doorways and the stair -------------------------------- *
+   * `buildInteriorWalls()` cuts a doorway by simply not drawing wall there
+   * — correct for collision, useless for a player's eye, since a gap in a
+   * repeating wall texture looks identical to more wall from a few tiles
+   * back. These two mark the two things a walked interior needs and did
+   * not have: a doorway you can SEE, and a stair you can see too.
+   */
+  doorFrame: {
+    // Deliberately narrower than the doorway gap it stands in (which is
+    // three tiles): this is a marker, not a second wall. `block: 0` — it
+    // must never re-narrow the very passage it exists to make legible.
+    w: 46, h: 78, sink: 0,
+    draw(g, w, h) {
+      // Architrave: jambs and a lintel in the trim colour, standing proud
+      // of the wall plane the way a fitted door casing actually does.
+      rect(g, 2, 0, 8, h, P.trimD);
+      vline(g, 2, 0, h, P.trimL);
+      rect(g, w - 10, 0, 8, h, P.trimD);
+      vline(g, w - 3, 0, h, P.trimL);
+      rect(g, 0, 0, w, 9, P.trim);
+      hline(g, 0, 0, w, P.trimL);
+      hline(g, 0, 8, w, P.trimD);
+      // The leaf, swung back against the near jamb — open, the way a house
+      // that is lived in and being walked through actually keeps its doors.
+      rect(g, 10, 9, 7, h - 11, P.greenD);
+      vline(g, 10, 9, h - 11, P.greenL);
+      vline(g, 16, 9, h - 11, shade(P.greenD, -0.2));
+      for (const y of [h * 0.28, h * 0.62]) px(g, 15, y, P.buffD);
+      // The sill.
+      rect(g, 0, h - 4, w, 4, P.floorD);
+      hline(g, 0, h - 4, w, P.floorL);
+    },
+  },
+  staircase: {
+    // The black walnut stair. Drawn ascending away from the camera, which
+    // is the only readable way to show a flight of stairs at this pitch —
+    // a run seen face-on is just a wall with lines on it.
+    w: 84, h: 96, block: 0, sink: 2,
+    draw(g, w, h) {
+      const step = 8;
+      for (let i = 0; i < 8; i++) {
+        const y = h - 10 - i * step;
+        const x0 = 6 + i * 2;
+        const ww = w - 16 - i * 3;
+        // Riser, then tread — the tread is the lighter, lit face.
+        rect(g, x0, y, ww, step + 2, P.brownD);
+        rect(g, x0, y, ww, 5, P.brown);
+        hline(g, x0, y, ww, P.brownL);
+        vline(g, x0, y, step + 2, shade(P.brownD, -0.15));
+      }
+      // A turned newel post at the foot and a plain rail climbing beside it.
+      rect(g, 4, h - 34, 6, 34, P.brownD);
+      ellipse(g, 7, h - 34, 5, 4, P.brownL);
+      line(g, 8, h - 30, w - 30, 8, P.brownD);
+      line(g, 9, h - 30, w - 29, 8, P.brown);
+    },
+  },
 };
 
 /* ---------------------------------------------------------------------- *

@@ -181,6 +181,7 @@ class Game {
       busy: this.busy,
       modal: this.ui.modal,
       reach: this.reachList.map((t) => ('label' in t ? t.label : t.name)),
+      reachIdx: this.reachIdx,
       firedAmbient: [...this.firedAmbient],
     };
   }

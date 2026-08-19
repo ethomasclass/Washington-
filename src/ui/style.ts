@@ -172,16 +172,25 @@ html, body {
 #text .cursor { color: var(--brass); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-#council { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; }
+/*
+ * The Council panel, tightened. Shorter lines (content rewrite, not CSS —
+ * see estate-people.ts / mansion.ts / departure.ts) mean most voices now fit
+ * one wrapped line instead of two or three, and this spacing is sized for
+ * that: a lower gap between rows, a lower line-height within one, and the
+ * voice's name folded onto the same line as what it says rather than reading
+ * as its own row. Font size is untouched on purpose — the ask was to read
+ * easier, and a smaller face fights that even while freeing up room.
+ */
+#council { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .voice {
-  display: flex; gap: 10px; align-items: flex-start;
-  font-size: 17px; line-height: 1.42;
+  display: flex; gap: 9px; align-items: flex-start;
+  font-size: 17px; line-height: 1.3;
   padding-left: 2px;
   animation: voiceIn .28s ease-out;
 }
 @keyframes voiceIn { from { opacity: 0; transform: translateY(5px); } }
-.voice img { width: 18px; height: 18px; image-rendering: pixelated; flex: 0 0 auto; margin-top: 3px; filter: brightness(1.5); }
-.voice .who { font-size: 12px; letter-spacing: .13em; text-transform: uppercase; opacity: .95; }
+.voice img { width: 16px; height: 16px; image-rendering: pixelated; flex: 0 0 auto; margin-top: 4px; filter: brightness(1.5); }
+.voice .who { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .9; margin-right: 2px; }
 .voice .said { color: var(--text); opacity: .95; }
 
 #choices { margin-top: 14px; display: flex; flex-direction: column; gap: 2px; }

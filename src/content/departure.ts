@@ -24,17 +24,15 @@ export const A1_D4_UNIFORM: Decision = {
   // The only decision in Act 1 where all four of the arguing voices are loud.
   voices: ['vanity', 'ambition', 'restraint', 'duty'],
   interjections: {
-    vanity:
-      'You will be the only man in that room wearing a coat that means something. They will not '
-      + 'have to be told what you are offering.',
-    ambition: 'Sixty-five delegates and one soldier. The arithmetic asks for you. You need not.',
-    restraint: 'A man who wants a thing should not dress as though he already has it.',
-    duty: 'Virginia sent you to deliberate, not to audition.',
+    vanity: "You'll be the only soldier in that room. No one will need it explained.",
+    ambition: "Sixty-five delegates, one soldier. The math points to you. You don't have to say it.",
+    restraint: "Don't dress for the job before it's offered to you.",
+    duty: 'Virginia sent you to deliberate. Not to audition.',
   },
   rejoinders: {
-    vanity: 'They will describe the coat in their letters home. Every one of them will.',
-    restraint: 'Wear it once and you cannot afterwards be a man who did not.',
-    duty: 'Whatever you put on this afternoon, you will be wearing it for eight years.',
+    vanity: "They'll describe that coat in every letter home.",
+    restraint: "Wear it once, and you can never claim you didn't want it.",
+    duty: "Whatever you put on this afternoon, you're wearing for eight years.",
   },
   options: [
     {

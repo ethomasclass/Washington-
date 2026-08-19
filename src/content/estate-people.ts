@@ -54,10 +54,10 @@ export function estateNpcs(): NpcDef[] {
         portrait: 'jenkins',
         voices: ['duty', 'vanity', 'restraint', 'temper'],
         interjections: {
-          duty: 'He is not a servant. He carries the correspondence of the Congress and he is owed the civility of the door.',
-          vanity: 'He will describe this house, and you in it, to men who have never seen either.',
-          restraint: 'Whatever is in that letter, it is already true. Another minute will not alter it.',
-          temper: 'Two days on the road and they could not spare a man who knows how to hand over a letter.',
+          duty: "He's carrying Congress's business. That earns him the door.",
+          vanity: "He'll describe this house — and you — to men who've never seen either.",
+          restraint: 'Whatever the letter says is already true. One more minute changes nothing.',
+          temper: 'Two days on the road, and no one taught him how to deliver a letter.',
         },
         options: [
           {
@@ -126,16 +126,16 @@ export function estateNpcs(): NpcDef[] {
         portrait: 'jenkins',
         voices: ['ambition', 'restraint', 'duty', 'vanity', 'temper'],
         interjections: {
-          ambition: 'No man in these colonies has held a field command like it. There will not be a second offer.',
-          restraint: 'You lost more men than you saved at the Monongahela, and you have never commanded above a regiment.',
-          duty: 'Virginia sent you. Whether you want it was never the question.',
-          vanity: 'Let them arrive at the name themselves. It is not asking if they say it first.',
-          temper: 'Twenty years they passed you over for a royal commission. Twenty years.',
+          ambition: "No one else in the colonies has held a command like this. It won't come twice.",
+          restraint: "You lost more men than you saved at the Monongahela. You've never led more than a regiment.",
+          duty: 'Virginia sent you. Wanting it was never the question.',
+          vanity: "Let them say your name first. That's not the same as asking.",
+          temper: 'Twenty years, they passed you over for a royal commission. Twenty years.',
         },
         rejoinders: {
-          restraint: 'You have commanded a regiment. They are offering you a continent.',
-          duty: 'They will vote tomorrow whether you answer or not.',
-          vanity: 'Say no slowly. Nobody remembers a quick refusal.',
+          restraint: "You've commanded a regiment. They're offering you a continent.",
+          duty: 'They vote tomorrow, with or without your answer.',
+          vanity: 'Say no slowly. A quick refusal is the one people remember.',
         },
         options: [
           {
@@ -247,14 +247,14 @@ export function estateNpcs(): NpcDef[] {
         portrait: 'lund',
         voices: ['restraint', 'duty', 'vanity', 'temper'],
         interjections: {
-          restraint: 'You are not there. A rule made at this distance is a rule made for a room you cannot see.',
-          duty: 'Whatever you tell him, he will do. That is not his conscience you are spending.',
-          vanity: 'They will ask, afterwards, what you said. Say something you would like read aloud.',
-          temper: 'Let them burn it. A house is a thing. There will be other houses.',
+          restraint: "You won't be there. A rule set now is a rule for a room you can't see.",
+          duty: "He'll do whatever you say. That's his conscience you're spending, not yours.",
+          vanity: "They'll ask later what you said. Make it something worth repeating.",
+          temper: 'Let it burn. A house is just a house. There will be others.',
         },
         rejoinders: {
-          duty: 'He is forty-eight and he has never once asked you for anything. He is asking now.',
-          restraint: 'Six years from now this exact question arrives, and you will be four hundred miles away.',
+          duty: "He's forty-eight and has never asked you for anything. He's asking now.",
+          restraint: "This exact question comes back in six years, and you'll be four hundred miles away.",
         },
         options: [
           {

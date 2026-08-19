@@ -158,10 +158,14 @@ export interface PostSettings {
 export const DEFAULT_POST: PostSettings = {
   bloom: 0.55,
   bloomThreshold: 0.58,
-  tilt: 1.0,
+  // Lessened, and rebalanced. The top band was under half the size of the
+  // bottom one (0.15 against 0.26), so the sky and the upper storeys were
+  // carrying nearly twice the blur the foreground was — both are wider now,
+  // and the top came up by more, since it was the worse-blurred of the two.
+  tilt: 0.82,
   focus: 0.62,
-  bandTop: 0.15,
-  bandBottom: 0.26,
+  bandTop: 0.24,
+  bandBottom: 0.32,
   vignette: 0.36,
   saturation: 1.06,
   lift: [0, 0, 0],

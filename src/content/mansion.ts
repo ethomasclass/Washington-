@@ -30,6 +30,24 @@ import { MARTHA, HOUSEMAID } from './people';
 
 const W = 40, H = 22;
 
+/*
+ * THE PASSAGE, five tiles wide, and the stair set into one side of it.
+ *
+ * It was three tiles wide with the stair across the whole width, which made
+ * the flight a dam: the only route to the two north rooms and the river door
+ * ran over the top of it, and the top of it was a three-step drop back to the
+ * floor. Widening the passage and pushing the stair against the west wall
+ * gives a flight that dead-ends at a landing the way a real one does, and a
+ * three-tile walkway past it that never changes height.
+ *
+ * The whole plan keys off these, so the rooms either side move with the
+ * passage walls rather than being re-typed in six places.
+ */
+const PASS_W = 17, PASS_E = 21;     // passage floor, inclusive
+const WALL_W = 16, WALL_E = 22;     // its two long walls
+const STAIR_W = 17, STAIR_E = 18;   // the flight, against the west wall
+const STAIR_FOOT = 10, STAIR_HEAD = 8;
+
 /* ---------------------------------------------------------------------- *
  * GROUND FLOOR
  * ---------------------------------------------------------------------- */
@@ -40,13 +58,39 @@ function groundFloorTiles(): string[] {
   cv.rect(7, 2, 25, 19, '.');
   // The passage takes a painted floorcloth, which is what a fine hall had
   // before anybody in Virginia owned a carpet big enough.
-  cv.rect(18, 3, 3, 17, 'p');
+  cv.rect(PASS_W, 3, PASS_E - PASS_W + 1, 17, 'p');
+  // But the flight itself is boards. This is the whole of why the stair did
+  // not read as a stair: the treads were inheriting the passage's painted
+  // floorcloth, so a climbing checkerboard was doing the work that only
+  // bare walnut can do, and the risers were the only timber in the picture.
+  cv.rect(STAIR_W, STAIR_HEAD, 2, STAIR_FOOT - STAIR_HEAD + 1, '.');
   // The west parlour is the best room in the house and gets the carpet.
-  cv.rect(8, 12, 9, 8, 'c');
+  cv.rect(8, 12, WALL_W - 8, 8, 'c');
   // The south wing: the study, finished this year.
   cv.rect(31, 7, 8, 12, '.');
   // The north wing shell: no floor laid, so it is the building site's ground.
   cv.rect(1, 5, 7, 13, 'x');
+  return cv.lines();
+}
+
+/**
+ * The stair, built as ground rather than drawn as a picture.
+ *
+ * The first attempt was a flat billboard standing on level floor: no
+ * collision and no rise, so the player walked straight through it and there
+ * was nothing to climb. Here the tiles themselves step, `buildGround()`
+ * draws the riser face at every height change (the same code that cuts the
+ * estate's terraces), and the player's own height comes from
+ * `grid.heightAt()` like everywhere else. The landing at the head carries
+ * the same elevation as the top tread so that the wall standing on it sits
+ * on the landing instead of sinking through it.
+ */
+function groundFloorElevation(): string[] {
+  const cv = new Canvas(W, H, '0');
+  cv.rect(STAIR_W, STAIR_FOOT, 2, 1, '1');
+  cv.rect(STAIR_W, STAIR_FOOT - 1, 2, 1, '2');
+  cv.rect(STAIR_W, STAIR_HEAD, 2, 1, '3');
+  cv.rect(STAIR_W, STAIR_HEAD - 1, 2, 1, '3');   // the landing under the head wall
   return cv.lines();
 }
 
@@ -61,9 +105,13 @@ function groundFloorWalls(): string[] {
   box(1, 5, 7, 13);           // the north wing shell
 
   // The passage walls, and the cross walls that make four rooms of the rest.
-  for (let r = 3; r < 20; r++) { cv.set(17, r, '#'); cv.set(21, r, '#'); }
-  for (let c = 8; c < 17; c++) cv.set(c, 11, '#');
-  for (let c = 22; c < 31; c++) cv.set(c, 11, '#');
+  for (let r = 3; r < 20; r++) { cv.set(WALL_W, r, '#'); cv.set(WALL_E, r, '#'); }
+  for (let c = 8; c < WALL_W; c++) cv.set(c, 11, '#');
+  for (let c = WALL_E + 1; c < 31; c++) cv.set(c, 11, '#');
+
+  // The head of the flight: a blank wall it turns against, so the top tread
+  // is a landing rather than a three-step drop into the north passage.
+  for (let c = STAIR_W; c <= STAIR_E; c++) cv.set(c, STAIR_HEAD - 1, '#');
 
   /*
    * Doorways.
@@ -82,39 +130,39 @@ function groundFloorWalls(): string[] {
       if (axis === 'v') cv.set(at, from + i, ' '); else cv.set(from + i, at, ' ');
     }
   };
-  opening('v', 17, 5);    // little parlour, into the passage
-  opening('v', 17, 15);   // west parlour, into the passage
-  opening('v', 21, 5);    // the chamber, into the passage
-  opening('v', 21, 15);   // dining room, into the passage
-  opening('v', 31, 12);   // dining room, into the study
-  opening('v', 7, 7);     // little parlour, into the unfinished wing — left
-                           // doorless on purpose: "a doorway with no door in
-                           // it yet" is a fact about 1775, not a placeholder.
-  opening('h', 20, 18);   // the west front door
-  opening('h', 2, 18);    // the river door
+  // North-room doorways sit at z 4-6, clear of the stair's landing wall at
+  // z 7 — a doorway opening onto the blank end of a staircase is a doorway
+  // into nothing.
+  opening('v', WALL_W, 4);    // little parlour, into the passage
+  opening('v', WALL_W, 15);   // west parlour, into the passage
+  opening('v', WALL_E, 4);    // the chamber, into the passage
+  opening('v', WALL_E, 15);   // dining room, into the passage
+  opening('v', 31, 12);       // dining room, into the study
+  opening('v', 7, 7);         // little parlour, into the unfinished wing — left
+                              // doorless on purpose: "a doorway with no door in
+                              // it yet" is a fact about 1775, not a placeholder.
+  opening('h', 20, 18);       // the west front door
+  opening('h', 2, 18);        // the river door
   return cv.lines();
 }
 
 function groundFloorProps(): PropInstance[] {
   return [
-    // --- the passage: the stair, and almost nothing else ---------------
-    // Centred in the passage's own 3-tile width and clear of both flanking
-    // doorframes (17.5 and 21.5) with room either side, ascending toward the
-    // river door — real enough for a figure to be seen climbing it.
-    { id: 'staircase', x: 19.5, z: 7.4 },
-    { id: 'chairSide', x: 18.6, z: 12.5 },
-    { id: 'chairSide', x: 20.4, z: 12.5, flip: true },
+    // --- the passage ------------------------------------------------------
+    // The stair itself is ground now, not a prop — see groundFloorElevation().
+    // No doorframe props either: a billboard always faces the camera, and
+    // every one of these doorways sits in a wall running the OTHER way, so
+    // the frame read as turned a quarter-turn from the opening it stood in.
+    // Fixing that properly means baking a door into the wall texture the way
+    // the exterior facades already do (`structures.ts`'s `doorLeaf`), which
+    // is a real piece of work for later. For now: no prop, just the opening.
+    // Well clear of the stair's own footprint (z 8-11) — they used to sit
+    // right at its foot and physically block the approach.
+    // Against the two walls, not stranded in the middle of the walkway.
+    { id: 'chairSide', x: 17.4, z: 15.5 },
+    { id: 'chairSide', x: 21.4, z: 15.5, flip: true },
     { id: 'candleStand', x: 20.4, z: 5.4 },
-    { id: 'framedPortrait', x: 18.4, z: 3.4 },
-
-    // --- doorways, marked so a gap in a wall reads as a door ------------
-    // Centred in each three-tile opening, narrow enough to leave clear floor
-    // either side of it — a marker, never a second obstacle.
-    { id: 'doorFrame', x: 17.5, z: 6.5, flip: false },   // little parlour
-    { id: 'doorFrame', x: 17.5, z: 16.5, flip: true },   // west parlour
-    { id: 'doorFrame', x: 21.5, z: 6.5, flip: true },    // the chamber
-    { id: 'doorFrame', x: 21.5, z: 16.5, flip: false },  // dining room
-    { id: 'doorFrame', x: 31.5, z: 13.5, flip: false },  // into the study
+    { id: 'framedPortrait', x: 14.4, z: 3.4 },
 
     // --- the west parlour: the best room in the house -------------------
     { id: 'mantel', x: 12.5, z: 12.5, scale: 0.6 },
@@ -130,22 +178,33 @@ function groundFloorProps(): PropInstance[] {
     { id: 'tableRound', x: 12.4, z: 7.4 },
     { id: 'chairSide', x: 10.2, z: 8.2 },
     { id: 'chairSide', x: 14.6, z: 8.2, flip: true },
-    { id: 'spinningWheel', x: 15.4, z: 5.2 },
+    { id: 'spinningWheel', x: 14.4, z: 5.2 },
 
     // --- the chamber below stairs ---------------------------------------
     { id: 'bedTester', x: 26.0, z: 5.4 },
-    { id: 'chestDrawers', x: 23.2, z: 9.0 },
+    { id: 'chestDrawers', x: 24.0, z: 9.0 },
     { id: 'candleStand', x: 29.4, z: 8.0 },
     { id: 'trunkBox', x: 29.0, z: 9.6 },
 
     // --- the small dining room -------------------------------------------
-    { id: 'mantel', x: 24.5, z: 12.5, scale: 0.6 },
-    { id: 'tableLong', x: 26.2, z: 16.4 },
-    { id: 'chairSide', x: 23.4, z: 17.4 },
-    { id: 'chairSide', x: 29.0, z: 17.4, flip: true },
-    { id: 'chairSide', x: 24.8, z: 14.6 },
-    { id: 'chairSide', x: 27.6, z: 14.6, flip: true },
-    { id: 'sideboard', x: 29.2, z: 12.6 },
+    /*
+     * Laid out around an L of clear floor: down the west side from the
+     * passage door, along the south wall, and up the east side to the study
+     * door.
+     *
+     * The room lost a tile when the passage widened, and the old arrangement
+     * — which had circulation to spare at nine tiles — closed to a solid
+     * rank of furniture at eight and sealed the study off behind it. Nothing
+     * here may occupy column 23, column 30, or row 19; those three runs are
+     * the only way through to the south wing.
+     */
+    { id: 'mantel', x: 25.5, z: 12.5, scale: 0.6 },
+    { id: 'tableLong', x: 26.5, z: 16.0 },
+    { id: 'chairSide', x: 24.6, z: 16.0 },
+    { id: 'chairSide', x: 28.6, z: 16.0, flip: true },
+    { id: 'chairSide', x: 26.5, z: 14.5 },
+    { id: 'chairSide', x: 26.5, z: 17.6, flip: true },
+    { id: 'sideboard', x: 27.0, z: 12.6 },
 
     // --- the study, one year old ------------------------------------------
     { id: 'mantel', x: 34.5, z: 7.5, scale: 0.55 },
@@ -396,7 +455,7 @@ function groundFloorNpcs(): NpcDef[] {
       id: 'maid',
       name: 'A housemaid',
       spec: HOUSEMAID,
-      x: 26, z: 16, facing: 3,
+      x: 24, z: 13, facing: 2,
       lines: [
         {
           speaker: 'A housemaid',
@@ -416,6 +475,7 @@ export const MANSION_GROUND: MapDef = {
   wallStyle: 'panelled',
   wallHeight: 2.15,
   ground: groundFloorTiles(),
+  elev: groundFloorElevation(),
   objects: groundFloorWalls(),
   legend: INDOOR_LEGEND,
   props: groundFloorProps(),
@@ -446,7 +506,9 @@ export const MANSION_GROUND: MapDef = {
       label: 'out to the east lawn', transition: 'cut',
     },
     {
-      id: 'upstairs', x: 18, z: 7, w: 3, d: 2,
+      // On the top tread, against the landing wall — you climb the flight
+      // and the prompt is waiting at the head of it, not halfway up.
+      id: 'upstairs', x: STAIR_W, z: STAIR_HEAD, w: 2, d: 1,
       to: 'MV-HOUSE-2', at: [19, 9], facing: 0,
       label: 'up the stair', transition: 'cut',
     },
@@ -460,7 +522,9 @@ export const MANSION_GROUND: MapDef = {
 function upperTiles(): string[] {
   const cv = new Canvas(W, H, ' ');
   cv.rect(7, 2, 25, 19, '.');
-  cv.rect(18, 3, 3, 17, 'p');
+  cv.rect(PASS_W, 3, PASS_E - PASS_W + 1, 17, 'p');
+  // Boards at the head of the flight, matching the treads below it.
+  cv.rect(STAIR_W, STAIR_HEAD, 2, 1, '.');
   cv.rect(31, 7, 8, 12, '.');
   cv.rect(32, 8, 6, 6, 'c');
   return cv.lines();
@@ -474,15 +538,23 @@ function upperWalls(): string[] {
   };
   box(7, 2, 25, 19);
   box(31, 7, 8, 12);
-  for (let r = 3; r < 20; r++) { cv.set(17, r, '#'); cv.set(21, r, '#'); }
-  for (let c = 8; c < 17; c++) cv.set(c, 11, '#');
-  for (let c = 22; c < 31; c++) cv.set(c, 11, '#');
+  for (let r = 3; r < 20; r++) { cv.set(WALL_W, r, '#'); cv.set(WALL_E, r, '#'); }
+  for (let c = 8; c < WALL_W; c++) cv.set(c, 11, '#');
+  for (let c = WALL_E + 1; c < 31; c++) cv.set(c, 11, '#');
+
+  // The stairwell. The two tiles the flight climbs through are floor on the
+  // ground plan and open air on this one, so they are closed here — which
+  // also gives the head of the stair the enclosing box a real one has.
+  for (let r = STAIR_HEAD + 1; r <= STAIR_FOOT; r++) {
+    for (let c = STAIR_W; c <= STAIR_E; c++) cv.set(c, r, '#');
+  }
+
   // Three tiles wide, same as downstairs and for the same reason.
   const opening = (at: number, from: number) => { for (let i = 0; i < 3; i++) cv.set(at, from + i, ' '); };
-  opening(17, 5);
-  opening(17, 15);
-  opening(21, 5);
-  opening(21, 15);
+  opening(WALL_W, 4);
+  opening(WALL_W, 15);
+  opening(WALL_E, 4);
+  opening(WALL_E, 15);
   opening(31, 12);
   return cv.lines();
 }
@@ -511,30 +583,21 @@ export const MANSION_UPPER: MapDef = {
 
     // Guest chambers, made up and empty.
     { id: 'bedSimple', x: 12.0, z: 5.0 },
-    { id: 'chestDrawers', x: 15.4, z: 8.4 },
+    { id: 'chestDrawers', x: 14.4, z: 8.4 },
     { id: 'bedSimple', x: 12.0, z: 13.6 },
     { id: 'washTub', x: 9.2, z: 17.4 },
     { id: 'bedSimple', x: 26.0, z: 5.0 },
     { id: 'chestDrawers', x: 29.2, z: 8.6 },
     { id: 'bedSimple', x: 26.0, z: 13.6 },
-    { id: 'candleStand', x: 23.0, z: 17.4 },
+    { id: 'candleStand', x: 23.7, z: 17.4 },
     { id: 'mantel', x: 12.5, z: 3.5, scale: 0.5 },
     { id: 'mantel', x: 26.5, z: 11.5, scale: 0.5 },
 
-    // The passage, and the head of the stair — the same flight, seen from
-    // the top, so the opening in the floor reads as a stairwell and not as
-    // an unexplained gap in the passage.
+    // The passage. No prop marks the stairwell here either — see the ground
+    // floor's note. The "down the stair" portal prompt carries it.
     { id: 'chairSide', x: 18.6, z: 4.4 },
     { id: 'framedPortrait', x: 20.4, z: 3.4 },
     { id: 'candleStand', x: 20.4, z: 17.6 },
-    { id: 'staircase', x: 19.5, z: 7.4, flip: true },
-
-    // Doorways, marked the same way the ground floor's are.
-    { id: 'doorFrame', x: 17.5, z: 6.5, flip: false },
-    { id: 'doorFrame', x: 17.5, z: 16.5, flip: true },
-    { id: 'doorFrame', x: 21.5, z: 6.5, flip: true },
-    { id: 'doorFrame', x: 21.5, z: 16.5, flip: false },
-    { id: 'doorFrame', x: 31.5, z: 13.5, flip: false },
   ],
   interactables: [
     {
@@ -574,8 +637,10 @@ export const MANSION_UPPER: MapDef = {
   ],
   portals: [
     {
-      id: 'downstairs', x: 18, z: 10, w: 3, d: 2,
-      to: 'MV-HOUSE-1', at: [19, 10], facing: 3,
+      // At the head of the flight, beside the closed-off stairwell. Lands
+      // at the foot of the stairs downstairs, not on them.
+      id: 'downstairs', x: STAIR_W, z: STAIR_HEAD, w: 2, d: 1,
+      to: 'MV-HOUSE-1', at: [19, 11], facing: 0,
       label: 'down the stair', transition: 'cut',
     },
   ],

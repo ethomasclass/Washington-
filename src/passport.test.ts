@@ -341,6 +341,25 @@ section('the Witness Register');
   ok((zone!.dist ?? 99) <= CAM_DIST_EXTERIOR - 6,
     `the camera comes in close in the Quarter (${zone!.dist} vs ${CAM_DIST_EXTERIOR})`);
 
+  /*
+   * The notice is not decoration and it is not optional. A future edit that
+   * drops it, empties it, or quietly strips its citations turns the Quarter
+   * back into scenery, and that is precisely the failure the whole Witness
+   * Register exists to prevent. So it is asserted, including the source line
+   * — §6.4's test is "that is what happened, and here is the source," and a
+   * claim of this weight without the second half does not ship.
+   */
+  const notice = zone!.notice;
+  ok(!!notice, 'the Quarter carries a notice in the game\'s own voice');
+  ok((notice?.body.length ?? 0) >= 3, 'the notice actually says something');
+  ok(!!notice?.source && notice.source.length > 40, 'the notice cites its sources');
+  const words = (notice?.body ?? []).join(' ');
+  ok(/enslav/i.test(words), 'the notice uses the word enslaved rather than a euphemism');
+  ok(/135|123|153/.test(words), 'the notice gives real numbers');
+  // R4 of the anti-textbook rules: no implication the player could fix it.
+  ok(/nothing you choose/i.test(words),
+    'the notice says plainly that the player cannot change any of it');
+
   // Nothing in the Quarter may grant a stat, and nothing may be a task.
   const inZone = (x: number, z: number) =>
     x >= zone!.x && x < zone!.x + zone!.w && z >= zone!.z && z < zone!.z + zone!.d;

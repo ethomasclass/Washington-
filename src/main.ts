@@ -417,10 +417,14 @@ class Game {
     this.player.setLight(this.light);
     for (const v of this.npcViews.values()) v.setLight(this.light);
 
-    if (active?.onEnter && !this.firedZones.has(active.id)) {
+    if (active && (active.notice || active.onEnter) && !this.firedZones.has(active.id)) {
       this.firedZones.add(active.id);
       this.busy = true;
-      await this.ui.narrate(active.onEnter);
+      // The notice first, and on its own. It is the game speaking as itself;
+      // the narration after it is Washington again, and the student has to be
+      // able to tell those two apart or the notice has failed.
+      if (active.notice) await this.ui.notice(active.notice);
+      if (active.onEnter) await this.ui.narrate(active.onEnter);
       this.busy = false;
     }
   }

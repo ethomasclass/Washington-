@@ -63,6 +63,7 @@ export class Ui {
   private tabsEl: HTMLDivElement;
   private pagesEl: HTMLDivElement;
   private curtain: HTMLDivElement;
+  private noticeEl: HTMLDivElement;
   private toastEl: HTMLDivElement;
   private titleEl: HTMLDivElement;
 
@@ -130,6 +131,9 @@ export class Ui {
 
     this.curtain = el('div');
     this.curtain.id = 'curtain';
+    this.noticeEl = el('div');
+    this.noticeEl.id = 'notice';
+    this.noticeEl.append(el('div', 'card'));
     this.toastEl = el('div');
     this.toastEl.id = 'toast';
 
@@ -143,7 +147,7 @@ export class Ui {
 
     this.root.append(
       this.banner, this.rail, this.reach, this.dialogue,
-      this.reader, this.menu, this.curtain, this.toastEl, this.titleEl,
+      this.reader, this.menu, this.noticeEl, this.curtain, this.toastEl, this.titleEl,
     );
 
     /*
@@ -395,6 +399,39 @@ export class Ui {
   }
 
   /* ---------------- documents ---------------------------------------- */
+
+  /**
+   * A note in the game's own voice, in the present tense, to the student.
+   *
+   * Distinct from `narrate()` on purpose: narration is Washington's interior,
+   * and a thing that must not be mistaken for his interior cannot be
+   * delivered in it. Distinct from `read()` too — a document is a primary
+   * source the student is meant to weigh, and this is not up for weighing.
+   */
+  async notice(n: { title: string; body: string[]; source?: string }): Promise<void> {
+    this.modal = true;
+    const card = this.noticeEl.querySelector('.card') as HTMLElement;
+    card.innerHTML =
+      `<h2>${n.title}</h2>` +
+      `<div class="body">` +
+      n.body.map((p) => `<p>${p}</p>`).join('') +
+      (n.source ? `<div class="src">${n.source}</div>` : '') +
+      `</div>` +
+      `<div class="go"><span class="key">&#8595;</span>read on` +
+      `<span class="key" style="margin-left:14px">SPACE</span>go on</div>`;
+    const body = card.querySelector('.body') as HTMLElement;
+    body.scrollTop = 0;
+    this.noticeEl.classList.add('on');
+    for (;;) {
+      const code = await this.waitKey();
+      if (['Space', 'Enter', 'KeyE', 'Escape'].includes(code)) break;
+      if (code === 'ArrowDown') body.scrollTop += 90;
+      if (code === 'ArrowUp') body.scrollTop -= 90;
+    }
+    sfxCancel();
+    this.noticeEl.classList.remove('on');
+    this.modal = false;
+  }
 
   async read(doc: DocumentDef): Promise<void> {
     this.modal = true;

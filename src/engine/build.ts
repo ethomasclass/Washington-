@@ -26,7 +26,7 @@ import type { Light } from '../palette';
 import type { MapDef, StructureDef } from '../types';
 import {
   TILE_LIQUID, TILE_PX, VARIANTS,
-  riserTexture, tileAtlas, tileUV,
+  riserTexture, tileAtlas, tileUV, type TileId,
 } from './tiles';
 import { propAtlas, PROPS } from './props';
 import { hash, parseHex } from './pixels';
@@ -199,13 +199,43 @@ function buildGround(map: MapDef, grid: Grid): { mesh: THREE.Mesh; risers: THREE
         u0, v0, uw, vh, colour,
       );
 
-      // Risers, on the two faces that can show: south (toward camera) and east.
+      /*
+       * Risers, on the two faces that can show: south (toward camera) and east.
+       *
+       * Every level exterior terrace descends as the row index grows, so a
+       * riser only ever had to face one way — this checked "is the south
+       * neighbour lower," found it true, and drew exactly one face per
+       * boundary. An interior stair climbing AWAY from the camera (the
+       * passage's own north end sits higher than its south end) needed the
+       * other case too: a north tile lower than its south neighbour is the
+       * same missing wall in reverse, and without it there is a real hole in
+       * the floor mesh at that row — not a texture mismatch, an unrendered
+       * gap a player can see through. Checking the difference rather than
+       * the sign covers both without drawing anything twice: each boundary
+       * is still visited from exactly one side, row r's own check of r+1.
+       */
       const south = grid.at(c, r + 1);
-      if (south >= 0 && grid.height[south] < y - 0.01) {
+      if (south >= 0 && Math.abs(grid.height[south] - y) > 0.01) {
         const y2 = grid.height[south];
-        const kind: 'earth' | 'stone' | 'timber' =
-          id === 'flag' || id === 'brickyard' ? 'stone' : id === 'deck' ? 'timber' : 'earth';
-        pushRiser(rb, c, r + 1, y, y2, kind, faceColour(map.light, 0.15, sh * 0.5));
+        pushRiser(rb, c, r + 1, Math.max(y, y2), Math.min(y, y2),
+          riserKind(id, grid.tile[south]), faceColour(map.light, 0.15, sh * 0.5));
+      }
+
+      /*
+       * And the same on the east face.
+       *
+       * Every exterior terrace steps along z only, so for a long time this
+       * case genuinely did not arise and its absence cost nothing. A stair
+       * set into ONE SIDE of a passage steps along x as well, and without
+       * this there is an open seam running the length of the flight where
+       * the treads meet the floor beside them — not a wrong texture, a hole
+       * you can see the background through.
+       */
+      const east = grid.at(c + 1, r);
+      if (east >= 0 && Math.abs(grid.height[east] - y) > 0.01) {
+        const y2 = grid.height[east];
+        pushRiserEW(rb, c + 1, r, Math.max(y, y2), Math.min(y, y2),
+          riserKind(id, grid.tile[east]), faceColour(map.light, 0.55, sh * 0.5));
       }
     }
   }
@@ -218,7 +248,12 @@ function buildGround(map: MapDef, grid: Grid): { mesh: THREE.Mesh; risers: THREE
 
   const risers = new THREE.Mesh(
     toGeometry(rb),
-    new THREE.MeshBasicMaterial({ map: riserAtlasTexture(), vertexColors: true }),
+    // DoubleSide: a south riser and an east riser wind opposite ways, and an
+    // east one flips again depending on which of the two tiles is the higher.
+    // Rather than branch the winding four ways, draw both faces.
+    new THREE.MeshBasicMaterial({
+      map: riserAtlasTexture(), vertexColors: true, side: THREE.DoubleSide,
+    }),
   );
   risers.frustumCulled = false;
   return { mesh, risers };
@@ -245,6 +280,21 @@ function riserAtlasTexture(): THREE.Texture {
   return t;
 }
 
+/**
+ * What a step between two tiles is made of. Either side of the boundary can
+ * name the material — a board floor stepping down to a board floor is timber
+ * whichever tile the loop happened to be standing on when it noticed.
+ */
+function riserKind(a: TileId, b: TileId): 'earth' | 'stone' | 'timber' {
+  const stone = (t: TileId) => t === 'flag' || t === 'brickyard' || t === 'kitchenfloor';
+  const timber = (t: TileId) =>
+    t === 'deck' || t === 'board' || t === 'painted' || t === 'carpet';
+  if (stone(a) || stone(b)) return 'stone';
+  if (timber(a) || timber(b)) return 'timber';
+  return 'earth';
+}
+
+/** A step whose face lies along z — the estate's terraces, and a stair's treads. */
 function pushRiser(
   b: Buf, c: number, r: number, yTop: number, yBot: number,
   kind: 'earth' | 'stone' | 'timber', colour: THREE.Color,
@@ -256,6 +306,23 @@ function pushRiser(
     new THREE.Vector3(c + 1, yBot, r),
     new THREE.Vector3(c + 1, yTop, r),
     new THREE.Vector3(c, yTop, r),
+    0, v0, 1, (1 / 3) * Math.min(1, (yTop - yBot) / STEP),
+    colour,
+  );
+}
+
+/** A step whose face lies along x — the open flank of a stair in a passage. */
+function pushRiserEW(
+  b: Buf, c: number, r: number, yTop: number, yBot: number,
+  kind: 'earth' | 'stone' | 'timber', colour: THREE.Color,
+): void {
+  const v0 = RISER_ROW[kind] / 3;
+  quad(
+    b,
+    new THREE.Vector3(c, yBot, r + 1),
+    new THREE.Vector3(c, yBot, r),
+    new THREE.Vector3(c, yTop, r),
+    new THREE.Vector3(c, yTop, r + 1),
     0, v0, 1, (1 / 3) * Math.min(1, (yTop - yBot) / STEP),
     colour,
   );

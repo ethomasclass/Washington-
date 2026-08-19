@@ -227,6 +227,17 @@ export interface MapDef {
     light: Light;
     /** Camera distance inside the zone. Lower is closer and more level. */
     dist?: number;
+    /**
+     * A note in the game's own voice, shown once before anything else when
+     * the player first crosses in.
+     *
+     * This is NOT narration and not a character speaking — it is the only
+     * place in the game that steps out of 1775 and addresses the student
+     * directly, in the present. It exists so that walking into the quarter
+     * where the people Washington enslaved lived cannot be experienced as
+     * scenery. Anything using it owes a source.
+     */
+    notice?: { title: string; body: string[]; source?: string };
     /** Fired once, the first time the player crosses in. */
     onEnter?: string[];
   }>;

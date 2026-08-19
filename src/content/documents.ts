@@ -144,9 +144,15 @@ export const DOCUMENTS: Record<string, DocumentDef> = {
       '&mdash;&mdash;',
       'The last line is the uniform. It is on the same invoice as the shoes, and it costs more '
       + 'than all of them together.',
-      'The word on the ledger is <em>the People</em>. It is what this estate&rsquo;s paperwork calls the '
-      + 'hundred and thirty-five human beings on it, and it is worth noticing that the paperwork '
-      + 'says people and the law says property, and both of those are this house&rsquo;s handwriting.',
+      // 135 is the 1774 TITHABLE count — the people taxed — and it excludes
+      // children under sixteen and the Custis dower slaves entirely. Quoting
+      // it as the population of the estate understates it badly while
+      // sounding exact, so it is named here as what it actually is.
+      'The word on the ledger is <em>the People</em>. It is what this estate&rsquo;s paperwork calls '
+      + 'the men, women and children it is buying cloth for &mdash; more of them than the '
+      + 'hundred and thirty-five the tax list counts, because the tax list does not count '
+      + 'children. The paperwork says people and the law says property, and both of those are '
+      + 'this house&rsquo;s handwriting.',
     ],
     grants: 'doc.a1.osnaburg',
   },

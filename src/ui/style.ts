@@ -296,6 +296,65 @@ html, body {
   border: 1px solid rgba(200,161,63,.3); word-break: break-all;
 }
 
+/* ---------- the historical notice ------------------------------------- */
+/*
+ * Deliberately the only thing in this game that does not look like 1775.
+ *
+ * Every other panel is wood, brass and a period register. This one is a plain
+ * modern card in a plain modern face, because it is not Washington thinking,
+ * not a person speaking, and not a document out of the archive — it is us,
+ * now, telling a student something true before they walk into it. The break
+ * in register IS the content, and it must not be decorated back into the
+ * game's own furniture.
+ */
+#notice {
+  position: absolute; inset: 0;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(6,5,4,.9);
+  padding: 24px;
+}
+#notice.on { display: flex; }
+/*
+ * Header and footer are pinned; only the middle scrolls. On a 768px
+ * Chromebook panel — the machine this has to be good on — the whole notice
+ * does not fit, and the first build let it overflow a plain scrolling box:
+ * the student saw four paragraphs, pressed SPACE, and never knew the last
+ * paragraph or the source line existed. A claim of this weight cannot have
+ * its citations below the fold.
+ */
+#notice .card {
+  width: min(700px, 100%); max-height: calc(100% - 40px);
+  display: flex; flex-direction: column;
+  background: #14161a;
+  border: 1px solid #394049;
+  border-left: 3px solid var(--brass);
+  border-radius: 2px;
+  padding: 24px 30px 18px;
+}
+#notice h2 {
+  flex: 0 0 auto;
+  margin: 0 0 14px; font-size: 14px; letter-spacing: .15em;
+  text-transform: uppercase; color: var(--brass); font-weight: 600;
+}
+#notice .body { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+#notice p {
+  margin: 0 0 12px; font-size: 17px; line-height: 1.5;
+  color: #e9eaec; max-width: 64ch;
+}
+#notice .src {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid #2a2f36;
+  font-size: 13.5px; line-height: 1.5; color: #878d95; max-width: 64ch;
+}
+#notice .go {
+  flex: 0 0 auto;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid #2a2f36;
+  font-size: 14px; color: #878d95; letter-spacing: .04em;
+}
+#notice .go .key {
+  font-size: 12px; padding: 2px 8px; border-radius: 2px; margin-right: 6px;
+  background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
+}
+
 /* ---------- transitions ---------------------------------------------- */
 
 #curtain {

@@ -422,6 +422,59 @@ export const ESTATE: MapDef = {
       x: 0, z: 24, w: 19, d: 18,
       light: LIGHT.witness,
       dist: 22,
+
+      /*
+       * REVIEW GATE. This text is R5 material and carries the §7.6 sign-off
+       * requirement along with the three people it introduces. It is drafted.
+       * It is not approved.
+       *
+       * Written against the standard the project already set for itself in
+       * `reference/reference-game-analysis.md` §6.4: could a teacher project
+       * this on a classroom wall and defend it to a parent in one sentence?
+       * The sentence here is "because that is what happened, and here is the
+       * source," which is why every number in it is cited and why none of
+       * them is rounded in the flattering direction.
+       *
+       * On the count: 135 is the 1774 tithable list — the people Washington
+       * paid tax on. Tithables excluded children under sixteen, excluded some
+       * of the elderly, and excluded the Custis dower slaves entirely. Quoting
+       * 135 as the population of this place would therefore be understating
+       * it by a wide margin while sounding precise, which is the exact failure
+       * mode this notice exists to refuse. It is given as what it is, and what
+       * it leaves out is the point.
+       */
+      notice: {
+        title: 'A note before you go on',
+        body: [
+          'The people who lived here were enslaved by the man you are playing. That is not '
+          + 'background to this story, and this game will not move it to one side.',
+
+          'In 1774 Washington paid tax on 135 enslaved people at Mount Vernon. That is a tax '
+          + 'record, not a count of the community &mdash; it leaves out every child under sixteen, '
+          + 'and all the people who came through Martha&rsquo;s first marriage, whom he directed '
+          + 'but did not legally own. The real number was higher. The counting was built around '
+          + 'property.',
+
+          'They worked sunrise to sunset, six days a week, and were issued coarse cloth by the '
+          + 'yard. Families were split among five farms. Washington authorised whipping. In 1766 '
+          + 'he shipped a man named Tom to the West Indies to be sold, and asked for rum and '
+          + 'molasses in return.',
+
+          'He wrote, in this house, that submission to Parliament would make Virginians &ldquo;as '
+          + 'tame and abject slaves as the blacks we rule over with such arrogant power.&rdquo; He '
+          + 'saw the comparison. He did not act on it. His will freed the 123 people he legally '
+          + 'owned &mdash; after his death, and after Martha&rsquo;s. The other 153 here were '
+          + 'never his to free.',
+
+          'Nothing you choose in this game changes any of that, because nothing he chose did. '
+          + 'There is nothing to collect here and nobody to rescue. Walk around as long as you like.',
+        ],
+        source:
+          'Sources: Washington&rsquo;s tithable lists for Truro and Fairfax parishes, 1774; '
+          + 'Washington to Joseph Thompson, 2 July 1766; Washington to Bryan Fairfax, 24 August '
+          + '1774; the Mount Vernon slave census of June 1799; Washington&rsquo;s will, July 1799.',
+      },
+
       onEnter: [
         'The lane runs out past the last of the timber and there is nothing laid out here. '
         + 'Nobody planted anything to be looked at from a window.',

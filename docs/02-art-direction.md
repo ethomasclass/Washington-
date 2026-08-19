@@ -1,3 +1,9 @@
+> **PARTIALLY SUPERSEDED — `11-the-lit-diorama.md`, 19 August 2026.** §1 (the thesis) and
+> §4 (line and wash) are dead and have been since 16 August. §3 (the mood system) is now
+> light rather than nine shader uniforms — see `11 §2`. §5.7's canonical view is replaced
+> by a following camera, `11 §3`. STILL IN FORCE: §2 the palette structure, §5.1-5.6
+> composition, §6 the portrait system, §7 typography, §8 UI principles, §9 anti-references.
+
 # Art Direction Bible
 ### *In Washington's Shoes* — the binding statement of the game's visual language
 **Version 1.0 · 14 August 2026**

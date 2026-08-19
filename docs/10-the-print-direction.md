@@ -1,3 +1,9 @@
+> **SUPERSEDED — `11-the-lit-diorama.md`, 19 August 2026.** The print direction had no
+> acceptance test outside its own author, and `§0.2` below concedes it could not carry the
+> brief's mood system. Both are why it fell. What survives from it: the archive is still
+> print, the four typographic registers still stand, and `§1.6`'s pigment list is still
+> where the palette comes from. The WORLD is no longer an engraving. Kept for the record.
+
 # The Print Direction
 ### *In Washington's Shoes* — the medium, settled. Supersedes `09-painterly-direction.md` entirely.
 **Version 1.0 — 16 August 2026**

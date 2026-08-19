@@ -62,6 +62,12 @@ export const PASSPORT_FLAGS: string[] = [
   'doc.a2.knox',
   'doc.a2.congress',
   'doc.a2.returns',
+  // --- appended for the rebuilt Act 1. APPEND-ONLY: never reorder. ---------
+  'doc.a1.necessity',
+  'doc.a1.resolves',
+  'doc.a1.osnaburg',
+  'doc.a1.fairfax',
+  'doc.a1.diary',
 ];
 
 export const FLAG_REGISTRY: string[] = [
@@ -143,6 +149,31 @@ export const FLAG_REGISTRY: string[] = [
   'task.a2.knox_sent',
   'task.a2.firewood',
   'obs.a2.hq_done',
+  // --- appended for the rebuilt Act 1. APPEND-ONLY: never reorder. ---------
+  'doc.a1.necessity',
+  'doc.a1.resolves',
+  'doc.a1.osnaburg',
+  'doc.a1.fairfax',
+  'doc.a1.diary',
+  'obs.a1.northwing',
+  'obs.a1.venetian',
+  'obs.a1.limepit',
+  'obs.a1.haha',
+  'obs.a1.cellar',
+  'obs.a1.pot',
+  'obs.a1.garden',
+  'obs.a1.fiddle',
+  'heard.a1.billy',
+  'heard.a1.jenkins',
+  'heard.a1.frank',
+  'heard.a1.doll',
+  'heard.a1.harry',
+  'heard.a1.simms',
+  'obs.a1.study',
+  'obs.a1.peale',
+  'obs.a1.spectacles',
+  'obs.a1.quarter_contradiction',
+
 ];
 
 class BitWriter {

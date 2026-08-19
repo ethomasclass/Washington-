@@ -21,14 +21,11 @@ export default defineConfig({
       input: {
         // The game.
         main: 'index.html',
-        // A comparison bench for picking a decision-UI direction. Not the game.
-        variants: 'variants.html',
-        // Every facing against every phase of the walk cycle, large enough to
-        // judge. A gait cannot be assessed one frame at a time, and certainly
+        // Every figure, every facing, every phase of the walk, plus the prop
+        // library and the tile set, at a size where the drawing can actually be
+        // judged. A gait cannot be assessed one frame at a time, and certainly
         // not inside the game at eighty pixels while it is moving.
         sprites: 'sprites.html',
-        // The environment medium bake-off. A bench, not the game.
-        bakeoff: 'bakeoff.html',
       },
     },
   },

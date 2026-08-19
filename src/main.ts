@@ -1,941 +1,612 @@
 /**
- * In Washington's Shoes — playable prototype.
+ * The game.
  *
- * Scope: one scene, one act, placeholder art. It exists to prove the loop that
- * every act is built from — walk a composed view, examine things, talk, decide,
- * and have the decision register in the world rather than on a scoreboard.
+ * Boot, one loop, and the interaction model. Everything else is in `engine/`
+ * (which knows nothing about Washington) or `content/` (which knows nothing
+ * about WebGL).
  *
- * What is deliberately real here: the layer stack and parallax, the walk-plane,
- * the wash-mood shader driven by hidden stats, the documents-unlock-options
- * rule, the two-beat council decision, and the passport save.
- *
- * What is deliberately fake: all art, and everything past scene MV-01.
+ * The loop is deliberately small. Read input, move a man, follow him with a
+ * camera, blend the light toward whatever zone he is standing in, find what is
+ * in reach, and draw. Every panel that opens is an `await`, so there is no
+ * dialogue state machine anywhere in this file.
  */
 
-import { DioramaRenderer, type GroundPos, type PropPlacement } from './renderer';
-import { setPlateLight, type PropKind } from './art';
-import { FIRST_SCENE, SCENES, ledgerFor, type Decision, type NpcThread, type Scene } from './content';
-import { reckon } from './ledger';
-import { THEATRES } from './theatre';
-import { CSS, mountSheet, Overlay, type OptionView } from './ui';
-import { SCENE_ORDER } from './scene-order';
-import type { VoiceId } from './palette';
-import { councilFor, lockOn, rejoinderFor } from './council';
-import { timePasses } from './transition';
+import * as THREE from 'three';
+
+import { installStyle } from './ui/style';
+import { Ui } from './ui/ui';
 import {
-  applyDelta,
-  initialState,
-  loudness,
-  moodScalar,
-  takeSnapshot,
-  type GameState,
-  type StatId,
-} from './state';
-import { autosave, encode, loadAutosave } from './passport';
+  applyFog, ActorView, makeRenderer, Rig, CAM_DIST_EXTERIOR, CAM_DIST_INTERIOR,
+} from './engine/view';
+import { buildMap, TILE, type BuiltMap } from './engine/build';
+import { Post, postFor, type PostSettings } from './engine/post';
+import { endFrameInput, installInput, readInput } from './engine/input';
+import { sfxDoor, sfxExamine, sfxStep, unlockAudio } from './engine/audio';
+import { mix, parseHex } from './engine/pixels';
+import type { Dir } from './engine/actors';
 
-const style = document.createElement('style');
-style.textContent = CSS;
-document.head.appendChild(style);
-mountSheet();
+import { LIGHT, type Light, type VoiceId } from './palette';
+import { applyDelta, initialState, loudness, takeSnapshot, type GameState } from './state';
+import { encode } from './passport';
+import type { Interactable, MapDef, NpcDef, Portal } from './types';
 
-const canvas = document.getElementById('stage') as HTMLCanvasElement;
-const overlayRoot = document.getElementById('overlay') as HTMLElement;
+import { ESTATE } from './content/estate';
+import { MANSION_GROUND, MANSION_UPPER } from './content/mansion';
+import { DOCUMENTS } from './content/documents';
+import { portraitOf, WASHINGTON, WASHINGTON_REGIMENTALS } from './content/people';
+import { STEP_SOUND } from './content/legend';
+import { A1_D4_UNIFORM, DEPARTURE_LINES } from './content/departure';
 
-const resumed = loadAutosave();
-const state: GameState = resumed ?? initialState();
-takeSnapshot(state);
+/* ---------------------------------------------------------------------- *
+ * Constants
+ * ---------------------------------------------------------------------- */
 
-/** The composed view currently on screen. */
-let scene: Scene = SCENES[state.scene] ?? SCENES[FIRST_SCENE];
-state.scene = scene.id;
-
-/** Everything the renderer needs to stand a figure up, from the scene data. */
-const actorsFor = (sc: Scene) => [
-  ...sc.npcs.map((n, i) => ({
-    x: n.x,
-    z: n.z,
-    seed: n.lines[0]?.portraitSeed ?? 200 + i * 97,
-    coat: n.look?.coat ?? n.lines[0]?.coat ?? '#6B4F35',
-    hat: n.look?.hat,
-    build: n.look?.build,
-    tall: n.look?.tall,
-    gown: n.look?.gown,
-    skin: n.look?.skin,
-    hair: n.look?.hair,
-    facings: n.look?.facings,
-    cap: n.look?.cap,
-  })),
-  // Extras are drawn by the same path as the threads, so they take their size
-  // and position from depth for free and cannot drift out of scale.
-  ...(sc.extras ?? []),
-];
-
-/**
- * Everything with something drawn under it.
- *
- * Interactables and tasks both carry an optional prop; anything that is a view
- * rather than an object leaves it off. The seed is derived from the id so a
- * given kettle looks the same every time the scene loads.
- */
-const seedOf = (id: string): number =>
-  [...id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 9973, 7);
-
-/**
- * What a station puts on the ground under its things.
- *
- * A cluster of objects with nothing holding them is still a cluster of objects
- * lying on grass — tidier than a scatter and no more believable. The furniture
- * is what turns four documents into a quartermaster's trestle, and it is the
- * difference between a place and a pile.
- *
- * A fire needs nothing: the scenes that have one author the fire itself as a
- * findable object, and two fires at one station is a fire with a fire on it.
- * A wall is painted into the plate, and open ground is open ground.
- */
-const FURNITURE: Partial<Record<string, PropKind>> = { table: 'table', stack: 'barrel' };
-
-/**
- * How far a surface holds its things off the ground, in man-heights.
- *
- * Only a table. A wall station was lifted too at first, on the reasoning that
- * things hang on walls — but a `wall` station stands where the business is, not
- * where the masonry is, and the parlour's chimney breast sits well out into the
- * room. Lifting its papers half a man off the floor hung them in mid-air with
- * nothing behind them. A wall is painted into the plate and cannot hold
- * anything the engine puts down.
- */
-const LIFT: Partial<Record<string, number>> = { table: 0.42 };
-
-const propsFor = (sc: Scene): PropPlacement[] => {
-  const surfaceOf = new Map((sc.stations ?? []).map((s) => [s.id, s.surface]));
-  const out: PropPlacement[] = [];
-
-  // Furniture first, so the things standing on it are drawn over it. A plate
-  // has no depth buffer and neither does this: order of insertion is the only
-  // thing deciding what covers what.
-  for (const s of sc.stations ?? []) {
-    const kind = FURNITURE[s.surface];
-    if (kind) out.push({ x: s.x, z: s.z, kind, seed: seedOf(s.id) });
-  }
-
-  for (const o of [...sc.interactables, ...sc.tasks]) {
-    if (!o.prop) continue;
-    out.push({
-      x: o.x,
-      z: o.z,
-      kind: o.prop,
-      seed: seedOf(o.id),
-      lift: (o.at && LIFT[surfaceOf.get(o.at) ?? '']) || 0,
-    });
-  }
-  return out;
+const MAPS: Record<string, MapDef> = {
+  [ESTATE.id]: ESTATE,
+  [MANSION_GROUND.id]: MANSION_GROUND,
+  [MANSION_UPPER.id]: MANSION_UPPER,
 };
 
-/*
- * Point the key light before the plates are painted, not after: the lighting
- * is baked into the strokes, so it has to be set while they are being laid.
- * The third term is how much of a key there is at all — Cambridge in July is
- * flat overcast (sun y 0.05, no shadow worth the name) and gets a weak one.
- */
-const lightFor = (sc: Scene): void =>
-  setPlateLight(sc.sun[0], sc.sun[1], sc.sun[1] < 0.1 ? 0.45 : 1);
+const WALK_SPEED = 4.2;
+const REACH = 1.9;
+/** The player's collision radius. Small: he is a man, not a barrel. */
+const BODY = 0.32;
 
-lightFor(scene);
-const renderer = new DioramaRenderer(canvas, scene.plates, actorsFor(scene), propsFor(scene));
-renderer.setSun(scene.sun[0], scene.sun[1]);
-const headOf = (sc: Scene) => ({ when: sc.when, title: sc.title, purpose: sc.purpose });
-const returnOf = (sc: Scene) => ({
-  strength: sc.strength,
-  noStrength: sc.noStrength,
-  expiring: sc.expiring,
-});
+/* ---------------------------------------------------------------------- *
+ * Light blending
+ * ---------------------------------------------------------------------- */
 
-const overlay = new Overlay(overlayRoot, headOf(scene));
-overlay.setReturn(returnOf(scene));
-
-/** Interactables looked at this session, for the journal. */
-const seen = new Set<string>();
-/** Ambient voices already spoken, so none repeats. */
-const heardAmbient = new Set<string>();
-
-/*
- * The interjection budget. Without it, a player who walks the diagonal across a
- * camp collects four interior thoughts in six seconds and the Council reads as
- * a tooltip system rather than as a man thinking.
- */
-const AMBIENT_GAP = 40_000; // ms between any two interjections
-const VOICE_GAP = 120_000; // ms before the same voice speaks again
-const AMBIENT_PER_SCENE = 4;
-let lastAmbientAt = -Infinity;
-let spokenThisScene = 0;
-const lastVoiceAt = new Map<string, number>();
-
-/** Player position on the ground plane. */
-const pos: GroundPos = { x: 0.5, z: 0.34 };
-const held = { left: false, right: false, up: false, down: false };
-let busy = false;
-
-const WALK_X = 0.30; // frame-widths per second
-const WALK_Z = 0.22; // depth is slower; it covers less apparent ground
-const REACH = 0.085;
-
-/**
- * Walkable bounds. The far edge is derived per scene from the plates — see
- * walkFar() — because it is the nearest solid thing painted across the ground,
- * not a number somebody picked.
- */
-const BOUND = { x0: 0.05, x1: 0.95, z0: 0.10, z1: scene.walkTo ?? 0.82 };
-
-/**
- * Ground distance. Depth counts for slightly less than width because the
- * walkable area is much wider than it is deep, so a metre "into" the frame
- * reads as a shorter step than a metre across it.
- */
-const groundDist = (a: GroundPos, b: GroundPos): number =>
-  Math.hypot(a.x - b.x, (a.z - b.z) * 0.75);
-
-interface Target {
-  kind: 'thing' | 'npc' | 'task';
-  id: string;
-  label: string;
-  pos: GroundPos;
-}
-
-/**
- * Everything the player could address from where they are standing, nearest
- * first.
- *
- * This used to return one thing — the closest — and that was the hidden rule
- * that made every scene in the game look the way it did. If only the nearest
- * object is reachable then no two objects may ever be close together, and if no
- * two objects may be close together then the only legal layout is an even
- * scatter across the whole floor. The art direction asked for clusters and the
- * interaction model forbade them, and the interaction model won for a year.
- *
- * So it returns the set. A cook fire with a kettle, a canteen and a shirt on a
- * line is now a place a player walks up to once and reads through, which is
- * both what the composition wants and what walking up to a cook fire is like.
- */
-function inReach(): Target[] {
-  const found: { t: Target; d: number }[] = [];
-  const add = (t: Target, d: number): void => {
-    if (d < REACH) found.push({ t, d });
+function lerpLight(a: Light, b: Light, t: number): Light {
+  return {
+    key: mix(a.key, b.key, t),
+    fill: mix(a.fill, b.fill, t),
+    haze: mix(a.haze, b.haze, t),
+    sun: a.sun + (b.sun - a.sun) * t,
+    contrast: a.contrast + (b.contrast - a.contrast) * t,
+    bloom: a.bloom + (b.bloom - a.bloom) * t,
+    saturation: a.saturation + (b.saturation - a.saturation) * t,
   };
-  for (const it of scene.interactables) {
-    add({ kind: 'thing', id: it.id, label: it.label, pos: { x: it.x, z: it.z } },
-      groundDist(pos, it));
+}
+
+/* ---------------------------------------------------------------------- *
+ * The game
+ * ---------------------------------------------------------------------- */
+
+class Game {
+  private renderer: THREE.WebGLRenderer;
+  private post: Post;
+  private scene = new THREE.Scene();
+  private rig: Rig;
+  private ui: Ui;
+  private state: GameState = initialState();
+
+  private built!: BuiltMap;
+  private mapId = '';
+  private player!: ActorView;
+  private npcViews = new Map<string, ActorView>();
+
+  /** The light we are actually rendering, blended toward the active zone. */
+  private light: Light = LIGHT.vernonMorning;
+  private targetLight: Light = LIGHT.vernonMorning;
+  private targetDist = CAM_DIST_EXTERIOR;
+  private postSettings: PostSettings;
+
+  private reachList: Array<Interactable | NpcDef | Portal> = [];
+  private reachIdx = 0;
+  private stepClock = 0;
+  private busy = false;
+  private firedAmbient = new Set<string>();
+  private firedZones = new Set<string>();
+  private lastTime = 0;
+  private actOver = false;
+
+  constructor(private canvas: HTMLCanvasElement) {
+    this.renderer = makeRenderer(canvas);
+    this.post = new Post(this.renderer);
+    this.rig = new Rig(1);
+    this.postSettings = postFor(this.light);
+    this.ui = new Ui({
+      portraitFor: (id) => (id ? portraitOf(id) : null),
+      passport: () => encode(this.state),
+    });
+    document.getElementById('stage')!.append(this.ui.root);
   }
-  for (const t of scene.tasks) {
-    if (state.knowledge.has(t.grants)) continue; // done; nothing left to do here
-    add({ kind: 'task', id: t.id, label: t.label, pos: { x: t.x, z: t.z } }, groundDist(pos, t));
+
+  /* ---------------- map loading -------------------------------------- */
+
+  private clearScene(): void {
+    for (const child of [...this.scene.children]) this.scene.remove(child);
+    for (const v of this.npcViews.values()) v.dispose();
+    this.npcViews.clear();
   }
-  for (const n of scene.npcs) {
-    add({ kind: 'npc', id: n.id, label: `speak to ${n.name}`, pos: { x: n.x, z: n.z } },
-      groundDist(pos, n));
-  }
-  found.sort((a, b) => a.d - b.d);
-  return found.map((f) => f.t);
-}
 
-/**
- * Which of them is under the cursor, so to speak.
- *
- * Sticky by id rather than by index: the player picks the powder horn out of a
- * group of three, takes half a step while reading the prompt, and the selection
- * stays on the powder horn instead of jumping to whatever is now marginally
- * closer. It falls back to the nearest thing the moment the chosen one goes out
- * of reach, which is what walking away is supposed to mean.
- */
-let picked: string | null = null;
+  loadMap(id: string, at?: [number, number], facing: Dir = 0): void {
+    const def = MAPS[id];
+    if (!def) throw new Error(`no such map: ${id}`);
+    this.clearScene();
+    this.mapId = id;
+    this.built = buildMap(def);
+    this.scene.add(this.built.root);
 
-function selected(): Target | null {
-  const list = inReach();
-  if (list.length === 0) {
-    picked = null;
-    return null;
-  }
-  const held = list.find((t) => t.id === picked);
-  if (held) return held;
-  picked = list[0].id;
-  return list[0];
-}
+    this.light = def.light;
+    this.targetLight = def.light;
+    this.targetDist = def.interior ? CAM_DIST_INTERIOR : CAM_DIST_EXTERIOR;
+    this.rig.dist = this.targetDist;
+    applyFog(this.scene, this.light, def.interior ? 14 : 34, def.interior ? 46 : 110);
+    this.postSettings = postFor(this.light, def.interior ? { vignette: 0.55 } : {});
 
-/** Step to the next thing within reach. Wraps. */
-function cycle(): void {
-  const list = inReach();
-  if (list.length < 2) return;
-  const i = list.findIndex((t) => t.id === picked);
-  picked = list[(i + 1) % list.length].id;
-}
-
-const refreshCode = (): void => overlay.setCode(encode(state));
-
-function anchorSpeech(): void {
-  if (!speaking) return;
-  const p = renderer.screenPos({ x: speaking.x, z: speaking.z });
-  overlay.setSpeechAnchor(p.x, p.y);
-}
-
-/** Business still owed. Optional discoveries are deliberately not listed. */
-const owed = (): string[] =>
-  scene.business.filter((b) => !state.decisions.has(b.decision)).map((b) => b.pending);
-
-function refreshIntent(): void {
-  const left = owed();
-  if (!left.length) {
-    overlay.setIntent(scene.settled);
-    return;
-  }
-  // Sentence-case the first clause, join with "and", end with a full stop.
-  const joined = left.length === 1 ? left[0] : `${left[0]}, and ${left[1]}`;
-  overlay.setIntent(`${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`);
-}
-
-function openJournal(): void {
-  busy = true;
-  const read = scene.interactables.filter((i) => seen.has(i.id)).map((i) => i.label);
-  const noticed = scene.interactables
-    .filter((i) => i.contradicts && state.knowledge.has(i.contradicts.grants))
-    .map((i) => i.contradicts!.note);
-  const doneTasks = scene.tasks
-    .filter((t) => state.knowledge.has(t.grants))
-    .map((t) => t.note);
-  // The same three facts as the corner of the screen, in sentences, because a
-  // student reading the journal on Thursday has lost the habit of the form.
-  const count = scene.strength
-    ? `Return of ${scene.strength.dated}: ${scene.strength.fit.toLocaleString()} present and ` +
-      `fit for duty, of ${scene.strength.onRolls.toLocaleString()} on the rolls.`
-    : scene.noStrength;
-  const clock = scene.expiring
-    ? ` The contracts of ${
-        scene.expiring.count === undefined
-          ? scene.expiring.who
-          : `${scene.expiring.count.toLocaleString()} ${scene.expiring.who}`
-      } end on ${scene.expiring.date}. After that they may lawfully go home.`
-    : '';
-  const strength = count + clock;
-  overlay.showJournal(
-    { where: scene.where, when: scene.when, objectives: scene.objectives },
-    scene.purpose, strength, read, owed(), noticed, doneTasks, () => {
-    busy = false;
-  });
-}
-
-/**
- * Interior voices, spoken as he passes. Each fires once, and only if that voice
- * is loud enough to speak — so which thoughts a player hears at all depends on
- * the man they are building.
- */
-function checkAmbient(): void {
-  if (busy) return;
-  // The interior is a presence, not a broadcast. Four thoughts is a scene's
-  // whole ration, and a player who crosses three zones at a run hears one of
-  // them and carries the other two as something almost said.
-  if (spokenThisScene >= AMBIENT_PER_SCENE) return;
-  const now = performance.now();
-  if (now - lastAmbientAt < AMBIENT_GAP) return;
-
-  for (const a of scene.ambient) {
-    if (heardAmbient.has(a.id)) continue;
-    if (groundDist(pos, a) > a.r) continue;
-
-    /*
-     * The opportunity is spent on arrival, whether or not anyone speaks.
-     *
-     * Marking it heard before testing the voices is deliberate: a player who
-     * walks past the graves in silence has walked past them, and should not be
-     * able to pace back and forth until some part of him is loud enough to
-     * comment. The thought that did not come is the readout.
-     */
-    heardAmbient.add(a.id);
-
-    // The loudest voice authored here that clears the threshold and is not
-    // still cooling down, so no one part of him narrates a whole scene by
-    // virtue of standing nearest the door.
-    let pick: { voice: VoiceId; line: string; l: number } | null = null;
-    for (const [voice, line] of Object.entries(a.variants) as [VoiceId, string][]) {
-      if (!line) continue;
-      if (now - (lastVoiceAt.get(voice) ?? -Infinity) < VOICE_GAP) continue;
-      const l = loudness(voice, state.stats);
-      if (l < a.minLoudness) continue;
-      if (!pick || l > pick.l) pick = { voice, line, l };
-    }
-    if (!pick) return; // nobody here had it in them today
-
-    overlay.showThought(pick.voice, pick.line);
-    const me = renderer.screenPos(pos);
-    overlay.setThoughtAnchor(me.x, me.y - 6);
-    lastAmbientAt = now;
-    lastVoiceAt.set(pick.voice, now);
-    spokenThisScene++;
-    return;
-  }
-}
-
-function runDecision(d: Decision, after: () => void): void {
-  const voices = councilFor(d, state.stats);
-  const options: OptionView[] = d.options.map((o) => {
-    const lock = lockOn(o, state.stats, state.knowledge);
-    return {
-      id: o.id,
-      label: o.label,
-      full: o.full,
-      favoured: o.favoured,
-      locked: lock.locked,
-      lockNote: lock.locked && lock.kind === 'knowledge' ? lock.note : undefined,
-      // The voice's own emblem replaces the letter glyph, so the two kinds of
-      // lock are told apart at a glance and before either is read.
-      lockVoice: lock.locked && lock.kind === 'voice' ? lock.voice : undefined,
+    // The camera is clamped inside the map, so it never shows the void past
+    // the edge — cheaper and more reliable than a skirt of filler tiles.
+    const margin = def.interior ? 5 : 9;
+    this.rig.bounds = {
+      x0: margin, x1: this.built.grid.cols - margin,
+      z0: margin, z1: this.built.grid.rows - margin,
     };
-  });
 
-  const portrait = { seed: d.portraitSeed, coat: d.coat, id: d.portrait };
+    // People.
+    for (const n of def.npcs ?? []) {
+      const view = new ActorView(`${id}:${n.id}`, n.spec);
+      view.face((n.facing ?? 0) as Dir);
+      view.place(n.x + 0.5, this.built.grid.heightAt(n.x, n.z), n.z + 0.5);
+      view.setLight(this.light);
+      this.npcViews.set(n.id, view);
+      this.scene.add(view.group);
+    }
 
-  // Beat 1: the council argues. Beat 2: you decide.
-  overlay.showCouncil(portrait, voices, rejoinderFor(d, voices, state.stats), () => {
-    overlay.showDecision(d.speaker, d.prompt, portrait, voices, options, (id) => {
-      const picked = d.options.find((o) => o.id === id)!;
-      // Decisions move stats. Documents never do.
-      for (const [stat, delta] of Object.entries(picked.effects)) {
-        applyDelta(state, stat as StatId, delta as number);
+    // Him.
+    const spec = this.state.decisions.get('A1-D4') === 'plain' ? WASHINGTON : WASHINGTON;
+    if (!this.player) this.player = new ActorView('player', spec);
+    this.scene.add(this.player.group);
+    const px = (at?.[0] ?? def.spawn.x) + 0.5;
+    const pz = (at?.[1] ?? def.spawn.z) + 0.5;
+    this.player.face((at ? facing : (def.spawn.facing ?? 0)) as Dir);
+    this.player.place(px, this.built.grid.heightAt(px, pz), pz);
+    this.player.setLight(this.light);
+    this.rig.snapTo(px, this.player.y, pz);
+
+    this.ui.setPlace(def.title, def.when);
+    this.refreshObjectives();
+  }
+
+  /** Put him somewhere. Dev only; nothing in the game calls it. */
+  warp(x: number, z: number): void {
+    this.player.place(x + 0.5, this.built.grid.heightAt(x, z), z + 0.5);
+    this.rig.snapTo(this.player.x, this.player.y, this.player.z);
+  }
+
+  /* ---------------- objectives ---------------------------------------- */
+
+  private refreshObjectives(): void {
+    if (this.actOver) { this.ui.setObjectives([]); return; }
+    const has = (k: string) => this.state.knowledge.has(k);
+    this.ui.setObjectives([
+      { text: 'Answer Martha. She asked you a week ago.', done: this.state.decisions.has('A1-D1') },
+      { text: 'See Lund about the north end.', done: this.state.decisions.has('A1-D2') },
+      { text: 'Give Jenkins something to carry back.', done: this.state.decisions.has('A1-D3') },
+      { text: 'Walk down to the landing when you are ready.', done: this.actOver },
+      ...(has('doc.a1.fairfax') && !has('heard.a1.harry')
+        ? [{ text: 'The lane past the timber goes somewhere.', done: false }]
+        : []),
+    ]);
+  }
+
+  /* ---------------- movement ------------------------------------------ */
+
+  private canStand(x: number, z: number): boolean {
+    const g = this.built.grid;
+    return !(
+      g.blocked(x - BODY, z - BODY) || g.blocked(x + BODY, z - BODY) ||
+      g.blocked(x - BODY, z + BODY) || g.blocked(x + BODY, z + BODY)
+    );
+  }
+
+  private move(dt: number, ax: number, az: number): boolean {
+    if (ax === 0 && az === 0) return false;
+    const len = Math.hypot(ax, az) || 1;
+    const nx = (ax / len) * WALK_SPEED * dt;
+    const nz = (az / len) * WALK_SPEED * dt;
+    let { x, z } = this.player;
+    // Axis-separated, so sliding along a wall works rather than sticking.
+    if (this.canStand(x + nx, z)) x += nx;
+    if (this.canStand(x, z + nz)) z += nz;
+    const y = this.built.grid.heightAt(x, z);
+    this.player.place(x, y, z);
+
+    // Facing follows the dominant axis, and prefers to keep the current one
+    // on a diagonal so a figure walking north-east does not flicker.
+    const cur = this.player.facing;
+    if (Math.abs(ax) > Math.abs(az) * 1.15) this.player.face(ax < 0 ? 1 : 2);
+    else if (Math.abs(az) > Math.abs(ax) * 1.15) this.player.face(az < 0 ? 3 : 0);
+    else if (cur === 0 || cur === 3) this.player.face(az < 0 ? 3 : 0);
+    else this.player.face(ax < 0 ? 1 : 2);
+
+    this.stepClock += dt;
+    if (this.stepClock > 0.26) {
+      this.stepClock = 0;
+      const g = this.built.grid;
+      const i = g.at(Math.floor(x), Math.floor(z));
+      sfxStep(STEP_SOUND[g.tile[i] ?? 'grass'] ?? 'grass');
+    }
+    return true;
+  }
+
+  /* ---------------- what is in reach ----------------------------------- */
+
+  private gatherReach(): void {
+    const def = this.built.def;
+    const px = this.player.x, pz = this.player.z;
+    const near: Array<{ t: Interactable | NpcDef | Portal; d: number }> = [];
+
+    for (const it of def.interactables ?? []) {
+      const d = Math.hypot(it.x + 0.5 - px, it.z + 0.5 - pz);
+      if (d < REACH) near.push({ t: it, d });
+    }
+    for (const n of def.npcs ?? []) {
+      const d = Math.hypot(n.x + 0.5 - px, n.z + 0.5 - pz);
+      if (d < REACH + 0.4) near.push({ t: n, d });
+    }
+    for (const p of def.portals ?? []) {
+      const cx = p.x + (p.w ?? 1) / 2, cz = p.z + (p.d ?? 1) / 2;
+      const d = Math.hypot(cx - px, cz - pz);
+      if (d < REACH) near.push({ t: p, d });
+    }
+    near.sort((a, b) => a.d - b.d);
+    const list = near.map((n) => n.t);
+    // Keep the cursor on whatever it was on, if that is still in reach.
+    const held = this.reachList[this.reachIdx];
+    this.reachList = list;
+    const hi = held ? list.indexOf(held) : -1;
+    this.reachIdx = hi >= 0 ? hi : 0;
+  }
+
+  private reachLabel(t: Interactable | NpcDef | Portal): string {
+    if ('examine' in t) return `look at ${t.label}`;
+    if ('lines' in t) return `speak to ${t.name}`;
+    return t.label;
+  }
+
+  /* ---------------- interaction ---------------------------------------- */
+
+  private async act(): Promise<void> {
+    const t = this.reachList[this.reachIdx];
+    if (!t) return;
+    this.busy = true;
+    try {
+      if ('examine' in t) await this.examine(t);
+      else if ('lines' in t) await this.talk(t);
+      else await this.usePortal(t);
+    } finally {
+      this.busy = false;
+      this.refreshObjectives();
+    }
+  }
+
+  private async examine(it: Interactable): Promise<void> {
+    sfxExamine();
+    await this.ui.narrate(it.examine);
+    if (it.grants) this.state.knowledge.add(it.grants);
+
+    // R3: the contradiction, when the player has the other half of it.
+    if (it.contradicts && this.state.knowledge.has(it.contradicts.heard)) {
+      await this.ui.narrate(it.contradicts.line);
+      if (it.contradicts.grants) this.state.knowledge.add(it.contradicts.grants);
+      if (it.contradicts.note) this.ui.toast(it.contradicts.note);
+    }
+
+    if (it.document) {
+      const doc = DOCUMENTS[it.document];
+      if (doc) {
+        await this.ui.read(doc);
+        if (doc.grants) {
+          const fresh = !this.state.knowledge.has(doc.grants);
+          this.state.knowledge.add(doc.grants);
+          if (fresh) this.ui.toast(`Read: ${doc.title}`);
+        }
       }
-      state.decisions.set(d.id, id);
-      autosave(state);
-      refreshCode();
-      overlay.showExamine('the room', picked.result, () => {
-        // The world re-reads the snapshot at act boundaries. The prototype
-        // takes it immediately so the wash visibly answers the choice.
-        takeSnapshot(state);
-        refreshIntent();
-        busy = false;
-        after();
-      });
-    });
-  });
-}
-
-/** Where the open speech bubble is pointing, if any. */
-let speaking: NpcThread | null = null;
-
-function runThread(n: NpcThread): void {
-  busy = true;
-  speaking = n;
-  const settled = !!n.decision && state.decisions.has(n.decision.id);
-  const lines = settled ? (n.after ?? []) : n.lines;
-  let i = 0;
-
-  const step = (): void => {
-    if (i < lines.length) {
-      const line = lines[i++];
-      overlay.showSpeech(line.speaker, line.text, step);
-      anchorSpeech();
-      return;
     }
-    // Their claim has now been made, so documents can contradict it.
-    if (n.hearFlag) {
-      state.knowledge.add(n.hearFlag);
-      autosave(state);
-      refreshCode();
-    }
-    if (n.decision && !state.decisions.has(n.decision.id)) {
-      // Deliberation is not speech: the council and the choice get the panel,
-      // with the portrait, because there is no body on screen to look at.
-      speaking = null;
-      runDecision(n.decision, () => {});
-      return;
-    }
-    speaking = null;
-    busy = false;
-  };
-
-  /*
-   * The warm-up runs first, before a word is spoken, so that the first decision
-   * panel a student ever sees is one where nothing can go wrong. By the time
-   * the real question arrives they have already used the interface once.
-   *
-   * It has to sit BELOW `step`, not above it: `step` is a const arrow function,
-   * so calling it from a callback declared earlier in the body is a temporal
-   * dead zone error. It threw on the very first playthrough after the result
-   * card, which is the one place a student would certainly have hit it.
-   */
-  if (n.warmup && !state.decisions.has(n.warmup.id)) {
-    speaking = null;
-    runDecision(n.warmup, () => {
-      busy = true;
-      speaking = n;
-      step();
-    });
-    return;
   }
 
-  step();
-}
+  private async talk(n: NpcDef): Promise<void> {
+    const view = this.npcViews.get(n.id);
+    if (view) {
+      // Turn to face him. Small, and the first thing anybody notices.
+      const dx = this.player.x - view.x, dz = this.player.z - view.z;
+      view.face(Math.abs(dx) > Math.abs(dz) ? (dx < 0 ? 1 : 2) : (dz < 0 ? 3 : 0));
+    }
 
-function interact(): void {
-  if (busy) return;
-  const near = selected();
-  if (!near) return;
+    const first = !n.hearFlag || !this.state.knowledge.has(n.hearFlag);
 
-  if (near.kind === 'npc') {
-    runThread(scene.npcs.find((x) => x.id === near.id)!);
-    return;
+    if (first && n.warmup) await this.runDecision(n.warmup);
+    if (first) {
+      await this.ui.say(n.lines, n.id);
+      if (n.hearFlag) this.state.knowledge.add(n.hearFlag);
+      if (n.decision && !this.state.decisions.has(n.decision.id)) await this.runDecision(n.decision);
+      if (n.after) await this.ui.say(n.after, n.id);
+    } else if (n.decision && !this.state.decisions.has(n.decision.id)) {
+      await this.runDecision(n.decision);
+      if (n.after) await this.ui.say(n.after, n.id);
+    } else {
+      await this.ui.say([n.after?.[0] ?? n.lines[n.lines.length - 1]], n.id);
+    }
   }
 
-  if (near.kind === 'task') {
-    const t = scene.tasks.find((x) => x.id === near.id)!;
-    busy = true;
-    // Gated tasks say why rather than going quiet — nothing here refuses the
-    // player without explaining itself.
-    if (t.requires && !state.knowledge.has(t.requires)) {
-      overlay.showExamine(t.label, `Not yet — ${t.requiresNote ?? 'not now'}.`, () => {
-        busy = false;
-      });
+  private async runDecision(d: Parameters<Ui['decide']>[0]): Promise<void> {
+    const id = await this.ui.decide(d, this.state);
+    const chosen = d.options.find((o) => o.id === id)!;
+    this.state.decisions.set(d.id, id);
+    for (const [k, v] of Object.entries(chosen.effects)) {
+      applyDelta(this.state, k as never, v as number, !!d.sealed);
+    }
+    await this.ui.narrate(chosen.result);
+  }
+
+  private async usePortal(p: Portal): Promise<void> {
+    if (p.requires && !this.state.knowledge.has(p.requires)) {
+      await this.ui.narrate(p.lockedNote ?? 'Not yet.');
       return;
     }
-    state.knowledge.add(t.grants);
-    let text = t.done;
-    if (scene.tasks.every((x) => state.knowledge.has(x.grants))) {
-      state.knowledge.add(scene.allTasksFlag);
-      text += '\n\nThat is the last of it. The place is in order, and there is nothing ' +
-        'left to do here but go.';
+    sfxDoor();
+    await this.ui.fadeOut();
+    this.loadMap(p.to, p.at, (p.facing ?? 0) as Dir);
+    await this.ui.fadeIn();
+    const def = this.built.def;
+    if (def.arrival && !this.firedZones.has(`arr:${def.id}`)) {
+      this.firedZones.add(`arr:${def.id}`);
+      await this.ui.narrate(def.arrival);
     }
-    autosave(state);
-    refreshCode();
-    overlay.showExamine(t.label, text, () => {
-      busy = false;
-    });
-    return;
   }
 
-  const it = scene.interactables.find((x) => x.id === near.id)!;
-  busy = true;
-  seen.add(it.id);
-  // Documents unlock options. They never grant stats.
-  if (it.grants) state.knowledge.add(it.grants);
-  autosave(state);
-  refreshCode();
+  /* ---------------- ambient interior voices ----------------------------- */
 
-  /*
-   * A look-and-name instrument. Re-opens itself after each bearing, so a player
-   * sweeping the glass stays in the glass rather than being dropped back onto
-   * the parapet between one position and the next.
-   */
-  if (it.survey) {
-    const openGlass = (): void => {
-      const rows = it.survey!.map((t) => ({
-        id: t.id,
-        at: t.at,
-        y: t.y ?? 0.3,
-        bearing: t.bearing,
-        name: t.name,
-        done: state.knowledge.has(t.grants),
-      }));
-      overlay.showSurvey(
-        it.label,
-        // A still of the frame on screen. Grabbed through snapshot() rather
-        // than read off the canvas, because a WebGL buffer is gone by the time
-        // any later code could look at it.
-        renderer.snapshot(),
-        rows,
-        (id) => {
-          const t = it.survey!.find((v) => v.id === id)!;
-          state.knowledge.add(t.grants);
-          autosave(state);
-          refreshCode();
-          overlay.showExamine(t.name, t.text, openGlass);
+  private async checkAmbient(): Promise<void> {
+    for (const a of this.built.def.ambient ?? []) {
+      if (this.firedAmbient.has(a.id)) continue;
+      if (Math.hypot(a.x + 0.5 - this.player.x, a.z + 0.5 - this.player.z) > a.r) continue;
+      // Pick the loudest authored voice that clears the floor. If none does,
+      // the thought does not arrive, and the silence is the readout.
+      const ranked = (Object.keys(a.variants) as VoiceId[])
+        .map((v) => ({ v, l: loudness(v, this.state.stats) }))
+        .sort((x, y) => y.l - x.l);
+      const top = ranked[0];
+      if (!top || top.l < (a.minLoudness ?? 0.3)) { this.firedAmbient.add(a.id); continue; }
+      this.firedAmbient.add(a.id);
+      this.busy = true;
+      await this.ui.say([{ speaker: '—', text: a.variants[top.v]! }]);
+      this.busy = false;
+      return;
+    }
+  }
+
+  /* ---------------- zones ------------------------------------------------ */
+
+  private async updateZones(dt: number): Promise<void> {
+    const def = this.built.def;
+    let active: NonNullable<MapDef['zones']>[number] | null = null;
+    for (const z of def.zones ?? []) {
+      if (
+        this.player.x >= z.x && this.player.x < z.x + z.w &&
+        this.player.z >= z.z && this.player.z < z.z + z.d
+      ) { active = z; break; }
+    }
+    this.targetLight = active?.light ?? def.light;
+    this.targetDist = active?.dist ?? (def.interior ? CAM_DIST_INTERIOR : CAM_DIST_EXTERIOR);
+
+    // Two and a half seconds to cross over, which is about eight paces. Slow
+    // enough that nobody sees a switch and fast enough that nobody misses it.
+    const k = 1 - Math.exp(-dt * 0.9);
+    this.light = lerpLight(this.light, this.targetLight, k);
+    this.rig.dist += (this.targetDist - this.rig.dist) * (1 - Math.exp(-dt * 1.2));
+
+    const [r, g, b] = parseHex(this.light.haze);
+    (this.scene.fog as THREE.Fog).color.setRGB(r / 255, g / 255, b / 255);
+    (this.scene.background as THREE.Color).setRGB(r / 255 * 0.92, g / 255 * 0.92, b / 255 * 0.92);
+    this.postSettings.bloom = this.light.bloom;
+    this.postSettings.saturation = this.light.saturation;
+    this.player.setLight(this.light);
+    for (const v of this.npcViews.values()) v.setLight(this.light);
+
+    if (active?.onEnter && !this.firedZones.has(active.id)) {
+      this.firedZones.add(active.id);
+      this.busy = true;
+      await this.ui.narrate(active.onEnter);
+      this.busy = false;
+    }
+  }
+
+  /* ---------------- the letterbook ---------------------------------------- */
+
+  private async openBook(): Promise<void> {
+    this.busy = true;
+    const docs = Object.values(DOCUMENTS);
+    await this.ui.openBook([
+      {
+        id: 'documents',
+        label: 'Documents',
+        render: () => {
+          const read = docs.filter((d) => d.grants && this.state.knowledge.has(d.grants));
+          if (!read.length) return `<h3>Read</h3><div class="empty">Nothing yet. They are lying about the place.</div>`;
+          return `<h3>Read &mdash; ${read.length} of ${docs.length}</h3>` +
+            read.map((d) => `<div class="row"><span>${d.title}</span><span class="sub">${d.cite}</span></div>`).join('');
         },
-        () => {
-          busy = false;
+      },
+      {
+        id: 'people',
+        label: 'People',
+        render: () => {
+          const met = [
+            ['Martha Washington', 'heard.a1.martha', 'His wife. She ran an estate of her own before this one.'],
+            ['Lund Washington', 'heard.a1.lund', 'A cousin, and the man who will hold this place for eight years.'],
+            ['Jenkins', 'heard.a1.jenkins', 'Of the Alexandria post. Two days on the road.'],
+            ['William Lee', 'heard.a1.billy', 'Enslaved. He goes with you, and he is in every act of this.'],
+            ['Frank Lee', 'heard.a1.frank', 'Enslaved. William&rsquo;s brother. He stays.'],
+            ['Doll', 'heard.a1.doll', 'Enslaved. Cook at the Mansion House since 1759.'],
+            ['Harry', 'heard.a1.harry', 'Enslaved. He worked the Dismal Swamp survey.'],
+            ['Simms', 'heard.a1.simms', 'Runs the boat down to the ferry.'],
+          ].filter(([, flag]) => this.state.knowledge.has(flag as string));
+          if (!met.length) return `<h3>Spoken to</h3><div class="empty">Nobody yet.</div>`;
+          return `<h3>Spoken to</h3>` + met
+            .map(([n, , s]) => `<div class="row"><span>${n}</span><span class="sub">${s}</span></div>`)
+            .join('');
         },
-      );
-    };
-    openGlass();
-    return;
+      },
+      {
+        id: 'decided',
+        label: 'Decided',
+        render: () => {
+          const rows = [...this.state.decisions.entries()];
+          if (!rows.length) return `<h3>Settled</h3><div class="empty">Nothing yet.</div>`;
+          return `<h3>Settled</h3>` + rows
+            .map(([k, v]) => `<div class="row"><span>${k}</span><span class="sub">${v.replace(/_/g, ' ')}</span></div>`)
+            .join('');
+        },
+      },
+      {
+        id: 'code',
+        label: 'Save code',
+        render: () =>
+          `<h3>Carry this to the next lesson</h3>` +
+          `<div class="code">${encode(this.state)}</div>` +
+          `<div class="row"><span class="sub">Write it down. It is the whole of your run, and it will '
+          + 'fit on the corner of a page.</span></div>`,
+      },
+    ]);
+    this.busy = false;
   }
 
-  // The exit reports what is still owed rather than refusing to open. Nothing
-  // in this game blocks the player; it only tells them what they are leaving.
-  if (it.id === scene.exit) {
-    const left = owed();
-    const onward = scene.exitTo;
-    const ends = scene.endsAct;
-    const text = left.length
-      ? `${it.examine} But ${left.join(', and ')}.`
-      : `${it.examine}\n\n${
-          onward || ends !== undefined ? scene.exitPrompt : 'Nothing here is unfinished.'
-        }`;
-    overlay.showExamine(it.label, text, () => {
-      if (left.length) {
-        busy = false;
-        return;
+  /* ---------------- the end of the act ------------------------------------ */
+
+  private async maybeEndAct(): Promise<void> {
+    if (this.actOver || this.mapId !== ESTATE.id) return;
+    // The wharf. He has to have answered Philadelphia first, or there is
+    // nothing to leave for.
+    const onWharf = this.player.z < 15 && this.player.x > 34 && this.player.x < 45;
+    if (!onWharf) return;
+    if (!this.state.decisions.has('A1-D3')) {
+      if (!this.firedZones.has('nudge:wharf')) {
+        this.firedZones.add('nudge:wharf');
+        this.busy = true;
+        await this.ui.narrate(
+          'Simms has the boat ready and the tide serves at two. There is a man up at the drive who '
+          + 'has ridden two days and has not been given anything to carry back.',
+        );
+        this.busy = false;
       }
-      // Closing the act is a thing that happens ON the way out, not instead of
-      // it: the books are shut here and the fade carries him to whatever is
-      // next, in that order.
-      if (ends !== undefined) {
-        closeAct(ends, onward);
-        return;
-      }
-      if (onward) {
-        enterScene(onward);
-        return;
-      }
-      busy = false;
-    });
-    return;
+      return;
+    }
+    if (this.state.decisions.has('A1-D4')) return;
+
+    this.busy = true;
+    await this.runDecision(A1_D4_UNIFORM);
+    const pick = this.state.decisions.get('A1-D4')!;
+    if (pick === 'wear_it' || pick === 'wear_and_own_it') {
+      this.scene.remove(this.player.group);
+      this.player.dispose();
+      this.player = new ActorView('player-regimentals', WASHINGTON_REGIMENTALS);
+      this.player.place(this.player.x, this.player.y, this.player.z);
+      this.scene.add(this.player.group);
+      this.player.setLight(this.light);
+    }
+    await this.ui.narrate(DEPARTURE_LINES[pick] ?? DEPARTURE_LINES.wear_it);
+    this.actOver = true;
+    takeSnapshot(this.state);
+    this.refreshObjectives();
+    await this.ui.narrate([
+      `Act One is done. Your code is ${encode(this.state)} — write it down; the next lesson starts from it.`,
+    ]);
+    this.busy = false;
   }
 
-  // A document that answers back to something a person said. The extra line
-  // only appears once the claim has actually been heard — an inconsistency you
-  // were not present for is not a discovery.
-  let text = it.examine;
-  const c = it.contradicts;
-  if (c && state.knowledge.has(c.heard)) {
-    text = `${text}\n\n${c.line}`;
-    state.knowledge.add(c.grants);
-    autosave(state);
-    refreshCode();
+  /* ---------------- the loop ------------------------------------------------ */
+
+  resize(): void {
+    const w = this.canvas.clientWidth || window.innerWidth;
+    const h = this.canvas.clientHeight || window.innerHeight;
+    this.renderer.setSize(w, h, false);
+    this.post.resize(w, h);
+    this.rig.resize(w / h);
   }
 
-  overlay.showExamine(it.label, text, () => {
-    busy = false;
-  });
+  async start(): Promise<void> {
+    installInput();
+    window.addEventListener('resize', () => this.resize());
+    this.loadMap(ESTATE.id);
+    this.resize();
+    await this.ui.title();
+    unlockAudio();
+    await this.ui.narrate(ESTATE.arrival!);
+    this.lastTime = performance.now();
+    requestAnimationFrame((t) => this.frame(t));
+  }
+
+  private frame(now: number): void {
+    const dt = Math.min(0.05, (now - this.lastTime) / 1000);
+    this.lastTime = now;
+    const input = readInput();
+
+    if (!this.busy && !this.ui.modal) {
+      const moving = this.move(dt, input.ax, input.az);
+      this.player.animate(dt, moving);
+      this.gatherReach();
+
+      if (input.cycle && this.reachList.length > 1) {
+        this.reachIdx = (this.reachIdx + 1) % this.reachList.length;
+      }
+      if (input.act) void this.act();
+      else if (input.cancel || input.menu) void this.openBook();
+      else {
+        void this.checkAmbient();
+        void this.maybeEndAct();
+      }
+
+      const t = this.reachList[this.reachIdx];
+      this.ui.setReach(t ? this.reachLabel(t) : null, Math.max(0, this.reachList.length - 1));
+    } else {
+      this.player.animate(dt, false);
+      this.ui.setReach(null);
+    }
+
+    void this.updateZones(dt);
+    this.rig.follow(this.player.x, this.player.y, this.player.z, dt);
+
+    this.renderer.setRenderTarget(this.post.target);
+    this.renderer.clear();
+    this.renderer.render(this.scene, this.rig.camera);
+    this.post.run(this.postSettings);
+
+    endFrameInput();
+    requestAnimationFrame((t) => this.frame(t));
+  }
 }
 
-const KEYS: Record<string, keyof typeof held> = {
-  ArrowLeft: 'left', a: 'left', A: 'left',
-  ArrowRight: 'right', d: 'right', D: 'right',
-  ArrowUp: 'up', w: 'up', W: 'up',
-  ArrowDown: 'down', s: 'down', S: 'down',
+/* ---------------------------------------------------------------------- *
+ * Boot
+ * ---------------------------------------------------------------------- */
+
+installStyle();
+const stage = document.getElementById('stage') as HTMLDivElement;
+const canvas = document.getElementById('view') as HTMLCanvasElement;
+if (!stage || !canvas) throw new Error('index.html is missing #stage / #view');
+
+const game = new Game(canvas);
+void game.start();
+
+/*
+ * The dev handle. `__game.warp(x, z)` and `__game.go('MV-HOUSE-1')` from the
+ * console. It is how the walkability of a 76x62 estate gets checked without
+ * walking it, and how a teacher jumps to the room they want to show a class.
+ */
+(window as unknown as { __game: unknown }).__game = {
+  go: (id: string, x?: number, z?: number) =>
+    game.loadMap(id, x !== undefined && z !== undefined ? [x, z] : undefined),
+  warp: (x: number, z: number) => game.warp(x, z),
 };
 
-addEventListener('keydown', (e) => {
-  const k = KEYS[e.key];
-  if (k && !busy) {
-    held[k] = true;
-    e.preventDefault();
-  }
-  if (!busy && (e.key === 'j' || e.key === 'J')) {
-    e.preventDefault();
-    openJournal();
-    return;
-  }
-  if (!busy && (e.key === 'e' || e.key === 'E' || e.key === ' ')) {
-    e.preventDefault();
-    interact();
-  }
-  if (!busy && e.key === 'Tab') {
-    e.preventDefault();
-    cycle();
-  }
-  // Backtick is the convention, F2 is the one that exists on every keyboard.
-  if (e.key === '`' || e.key === '~' || e.key === 'F2') {
-    e.preventDefault();
-    toggleDevBar();
-  }
-});
-addEventListener('keyup', (e) => {
-  const k = KEYS[e.key];
-  if (k) held[k] = false;
-});
-/** A panel stealing focus must not leave the player walking into a wall. */
-addEventListener('blur', () => {
-  held.left = held.right = held.up = held.down = false;
+// The dev jump, kept from the old build because a teacher wants it too.
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'F2' && e.code !== 'Backquote') return;
+  const order = [ESTATE.id, MANSION_GROUND.id, MANSION_UPPER.id];
+  const cur = order.indexOf((game as unknown as { mapId: string }).mapId);
+  game.loadMap(order[(cur + 1) % order.length]);
 });
 
-let last = performance.now();
-function frame(now: number): void {
-  const dt = Math.min((now - last) / 1000, 0.05);
-  last = now;
-
-  if (!busy) {
-    let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-    let dz = (held.up ? 1 : 0) - (held.down ? 1 : 0);
-    if (dx && dz) {
-      // Normalise the diagonal so cutting a corner is not the fast route.
-      const k = Math.SQRT1_2;
-      dx *= k;
-      dz *= k;
-    }
-    const px = pos.x;
-    const pz = pos.z;
-    pos.x = Math.max(BOUND.x0, Math.min(BOUND.x1, pos.x + dx * WALK_X * dt));
-    pos.z = Math.max(BOUND.z0, Math.min(BOUND.z1, pos.z + dz * WALK_Z * dt));
-    // Gait is driven by ground actually covered, so walking into a bound stops
-    // the legs instead of leaving them running on the spot.
-    renderer.setFacing(pos.x - px, pos.z - pz);
-    renderer.setGait(Math.hypot(pos.x - px, pos.z - pz), dt);
-  } else {
-    renderer.setGait(0, dt);
-  }
-
-  renderer.setPlayerPos(pos, dt);
-  renderer.setMood(moodScalar(state.snapshot));
-
-  const near = busy ? null : selected();
-  if (near) {
-    const p = renderer.screenPos(near.pos);
-    /*
-     * Where more than one thing is in reach, the prompt says so and says how to
-     * get at the rest. A player who is not told cannot know, and a cluster the
-     * player cannot read all of is worse than the scatter it replaced.
-     */
-    const n = inReach().length;
-    const i = inReach().findIndex((t) => t.id === near.id);
-    overlay.showPrompt(n > 1 ? `${near.label}  ·  Tab ${i + 1}/${n}` : near.label, p.x, p.y - 14);
-  } else {
-    overlay.hidePrompt();
-  }
-
-  anchorSpeech();
-  if (!busy) checkAmbient();
-  const me = renderer.screenPos(pos);
-  overlay.setThoughtAnchor(me.x, me.y - 6);
-  // Nothing is drawing the world while the map is up: it covers the frame
-  // completely, and a WebGL diorama rendering at full rate behind an opaque
-  // panel is pure heat. It also starves the arrival animation, which shares the
-  // same frame budget — measured at under four frames a second in a headless
-  // browser with the diorama running, which is a fair proxy for a Chromebook.
-  if (!covered) renderer.render();
-  requestAnimationFrame(frame);
-}
-
-/**
- * Shut the books on an act.
- *
- * The reckoning is assembled from the decision record at the moment it is
- * shown — never accumulated as the act runs — so a player who resumes from a
- * passport code on another machine gets the identical page. That is also why
- * nothing here writes to state: there is nothing to write.
- *
- * An act with no reckoning authored yet is not an error. It walks straight
- * through to the next scene, which is what the last seven acts do today.
- */
-function closeAct(act: number, onward: string | undefined): void {
-  const done = (): void => {
-    if (onward) {
-      enterScene(onward);
-      return;
-    }
-    // Nothing is built past here. He stays on the parapet, and the exit will
-    // hand him the page again if he wants to read it twice — it is a document,
-    // not a results screen, and re-reading a document is allowed.
-    busy = false;
-  };
-
-  const r = reckon(act, state, ledgerFor);
-  if (!r) {
-    done();
-    return;
-  }
-  overlay.showReckoning(r, done);
-}
-
-/**
- * Move to another composed view.
- *
- * Everything scene-scoped resets: position, what has been looked at, which
- * interior voices have spoken. What persists is the state — the stats, the
- * knowledge, the decisions — which is the whole point of the passport.
- */
-/**
- * Move to another scene, announced by its engraved plate.
- *
- * The plate comes first and the transition second, so the player reads where
- * they are going while the old place is still the last thing they saw — and the
- * fade or cut then lands them in it. A scene with no legend authored yet goes
- * straight through rather than showing an empty card.
- */
-function enterScene(id: string): void {
-  const from = scene;
-  const to = SCENES[id];
-  const go = (): void => {
-    if (to && from !== to && timePasses(from, to)) {
-      busy = true;
-      overlay.fadeThrough(() => loadScene(id), () => {});
-      return;
-    }
-    loadScene(id);
-  };
-
-  if (to && to !== from && to.arrival?.length) {
-    busy = true;
-    overlay.showPlate(to.plates, `${to.title} · ${to.subtitle}`, to.arrival, go);
-    return;
-  }
-  go();
-}
-
-function loadScene(id: string): void {
-  scene = SCENES[id];
-  state.scene = scene.id;
-  state.act = scene.act;
-  // A new act reads the world's mood from where the last one left the man.
-  takeSnapshot(state);
-  autosave(state);
-
-  seen.clear();
-  heardAmbient.clear();
-  // The budget is per scene, and the cooldowns do not follow him through a door.
-  spokenThisScene = 0;
-  lastAmbientAt = -Infinity;
-  lastVoiceAt.clear();
-  speaking = null;
-  pos.x = 0.5;
-  pos.z = 0.34;
-  held.left = held.right = held.up = held.down = false;
-
-  lightFor(scene);
-  BOUND.z1 = scene.walkTo ?? 0.82;
-  renderer.setFigureScale(scene.figureScale ?? 1);
-  renderer.loadScene(scene.plates, actorsFor(scene), propsFor(scene));
-  renderer.setSun(scene.sun[0], scene.sun[1]);
-  overlay.setPlate(headOf(scene));
-  overlay.setReturn(returnOf(scene));
-  refreshCode();
-  refreshIntent();
-
-  busy = true;
-  openAct(scene.act, () => arrive(scene));
-}
-
-/**
- * The arrival card. Where, when, what has happened, what he is here to do.
- */
-function arrive(sc: Scene): void {
-  busy = true;
-  overlay.showOpening(
-    {
-      where: sc.where,
-      when: sc.when,
-      situation: sc.situation,
-      objectives: sc.objectives,
-      opening: sc.opening,
-    },
-    () => {
-      busy = false;
-    },
-  );
-}
-
-/**
- * The theatre map, once per act, before anything else.
- *
- * The ORDER is the argument and it is worth stating: the war, then the errand.
- * A student sees four hundred miles of coast with six marks on it, most of them
- * nothing to do with them and one of them eight weeks old, and only then are
- * they told which hill they are standing on this morning. Reverse those two and
- * the map becomes a decoration on a briefing; in this order the briefing is a
- * detail of the map.
- *
- * Once per act, tracked here rather than in `state`, because it is a thing this
- * session has shown and not a thing the player has done — it has no business in
- * the passport, and a student resuming mid-act should not sit through it twice.
- */
-let theatreAct = -1;
-
-/** True while a full-screen panel hides the world entirely. */
-let covered = false;
-
-function openAct(act: number, then: () => void): void {
-  const sheet = THEATRES[act];
-  if (theatreAct === act || !sheet) {
-    then();
-    return;
-  }
-  // The page the player last saw, so the new one can arrive out of it. Absent
-  // on a fresh start, and the map simply is what it is.
-  const prev = theatreAct >= 0 ? THEATRES[theatreAct] : undefined;
-  theatreAct = act;
-  covered = true;
-  overlay.showTheatre(sheet, prev, () => {
-    covered = false;
-    then();
-  });
-}
-
-refreshCode();
-refreshIntent();
-requestAnimationFrame(frame);
-
-// The map and the arrival card run once per fresh start. A student resuming on
-// a new Chromebook next period should not sit through the scene-setting again —
-// and marking the act as shown is what stops the map arriving one scene late,
-// the first time they cross a threshold inside the act they resumed into.
-if (resumed) {
-  theatreAct = state.act;
-} else {
-  busy = true;
-  openAct(scene.act, () => arrive(scene));
-}
-
-
-/* ------------------------------------------------------------------ dev bar
- *
- * A scene picker.
- *
- * Reaching Act 2 means settling two threads and walking to the chariot, which
- * is right for a player and unbearable for anybody checking whether a tree
- * looks correct. This jumps straight to any scene.
- *
- * It has a visible handle, and that is the point of this note. The first cut
- * opened on the backtick key and nothing else — no button, no hint, nothing on
- * screen — so the only way to know it existed was to be told, and being told is
- * not a feature. A tool nobody can find is a tool that does not exist. There is
- * a tab in the corner now; the key still works for anyone who prefers it.
- *
- * Deliberately not behind a build flag either. A teacher who finds this has
- * found a way to show a class the camp without playing to it, which is useful
- * rather than dangerous — there is nothing to cheat at in a game with no fail
- * state.
- */
-let devBar: HTMLDivElement | null = null;
-
-/** The always-visible handle. Small, quiet, and unmistakably a tool. */
-function mountDevTab(): void {
-  const tab = document.createElement('button');
-  tab.className = 'devtab';
-  tab.textContent = 'dev';
-  tab.title = 'Jump to any scene (` or F2)';
-  tab.onclick = () => toggleDevBar();
-  document.body.append(tab);
-}
-
-function toggleDevBar(): void {
-  if (devBar) {
-    devBar.remove();
-    devBar = null;
-    return;
-  }
-  devBar = document.createElement('div');
-  devBar.className = 'devbar';
-  const label = document.createElement('span');
-  label.textContent = 'dev · jump to scene';
-  devBar.append(label);
-
-  for (const id of SCENE_ORDER) {
-    const sc = SCENES[id];
-    const b = document.createElement('button');
-    b.textContent = `${id} — ${sc ? sc.title : 'not built'}`;
-    b.disabled = !sc;
-    if (id === scene.id) b.className = 'here';
-    b.onclick = () => {
-      if (!sc) return;
-      toggleDevBar();
-      pos.x = 0.5;
-      pos.z = 0.34;
-      seen.clear();
-      heardAmbient.clear();
-      enterScene(id);
-    };
-    devBar.append(b);
-  }
-
-  const note = document.createElement('span');
-  note.className = 'note';
-  note.textContent = '` or F2 to close · stats and flags are kept';
-  devBar.append(note);
-  document.body.append(devBar);
-}
-
-mountDevTab();
+export { TILE };

@@ -18,10 +18,13 @@ import { ESTATE } from './content/estate';
 import { MANSION_GROUND, MANSION_UPPER } from './content/mansion';
 import { DOCUMENTS } from './content/documents';
 import { A1_D4_UNIFORM } from './content/departure';
-import { LEGEND, INDOOR_LEGEND } from './content/legend';
 import { PROPS } from './engine/props';
 import { makeGrid, reachable, withinReach } from './engine/collision';
 import { CAM_DIST_EXTERIOR } from './engine/view';
+import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
+import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
+import { A2_D3_ENLISTMENT, ACT2_DECISIONS } from './content/act2-decisions';
+import { reckon, RECKONED_ACTS } from './ledger';
 
 let failures = 0;
 let checks = 0;
@@ -35,7 +38,26 @@ function section(name: string): void {
   console.log(`\n${name}`);
 }
 
-const MAPS: MapDef[] = [ESTATE, MANSION_GROUND, MANSION_UPPER];
+const MAPS: MapDef[] = [
+  ESTATE, MANSION_GROUND, MANSION_UPPER,
+  CAMBRIDGE_SUMMER, HQ_AUTUMN, HQ_UP_AUTUMN,
+  CAMBRIDGE_WINTER, HQ_WINTER, HQ_UP_WINTER,
+];
+
+/**
+ * Which maps belong to which act.
+ *
+ * Several rules are per-act rather than per-map — a locked option has to be
+ * openable inside ITS OWN act, not anywhere in the game — and getting that
+ * wrong is how a lock that is satisfiable only in Act 1 ends up gating an
+ * option in Act 2 and dead-ending a student who came in on a save code.
+ */
+const ACT_OF: Record<string, number> = {
+  [ESTATE.id]: 1, [MANSION_GROUND.id]: 1, [MANSION_UPPER.id]: 1,
+  [CAMBRIDGE_SUMMER.id]: 2, [HQ_AUTUMN.id]: 2, [HQ_UP_AUTUMN.id]: 2,
+  [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
+};
+const mapsOfAct = (a: number) => MAPS.filter((m) => ACT_OF[m.id] === a);
 
 function decisionsOf(m: MapDef): Decision[] {
   const out: Decision[] = [];
@@ -45,7 +67,25 @@ function decisionsOf(m: MapDef): Decision[] {
   }
   return out;
 }
-const ALL_DECISIONS = [...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM];
+/*
+ * Every decision, deduplicated.
+ *
+ * Act 2's decisions are authored in one file and attached to NPCs on two
+ * seasonal maps, so walking the maps finds some of them twice. Deduplicating
+ * by id rather than by object identity also catches the real mistake this
+ * guards against: two different decisions accidentally sharing an id, which
+ * would silently make the second one unreachable because the first is
+ * already in `state.decisions`.
+ */
+const SEEN_DECISIONS = new Map<string, Decision>();
+for (const d of [...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM, ...ACT2_DECISIONS]) {
+  const prior = SEEN_DECISIONS.get(d.id);
+  if (prior && prior !== d) {
+    failures++; console.error(`  FAIL  two different decisions share the id ${d.id}`);
+  }
+  SEEN_DECISIONS.set(d.id, d);
+}
+const ALL_DECISIONS = [...SEEN_DECISIONS.values()];
 
 /* ---------------------------------------------------------------------- */
 section('passport codec');
@@ -143,21 +183,39 @@ section('R6 — interjections are short, and never offer a choice');
 section('every locked option is openable inside this act');
 
 {
-  const grantable = new Set<string>();
-  for (const m of MAPS) {
-    for (const it of m.interactables ?? []) {
-      if (it.grants) grantable.add(it.grants);
-      if (it.contradicts?.grants) grantable.add(it.contradicts.grants);
-      if (it.document && DOCUMENTS[it.document]?.grants) grantable.add(DOCUMENTS[it.document].grants!);
+  const grantsOf = (maps: MapDef[]) => {
+    const g = new Set<string>();
+    for (const m of maps) {
+      for (const it of m.interactables ?? []) {
+        if (it.grants) g.add(it.grants);
+        if (it.contradicts?.grants) g.add(it.contradicts.grants);
+        if (it.document && DOCUMENTS[it.document]?.grants) g.add(DOCUMENTS[it.document].grants!);
+      }
+      for (const n of m.npcs ?? []) if (n.hearFlag) g.add(n.hearFlag);
+      for (const mk of m.marks ?? []) if (mk.grants) g.add(mk.grants);
     }
-    for (const n of m.npcs ?? []) if (n.hearFlag) grantable.add(n.hearFlag);
-  }
+    return g;
+  };
+  const byAct = new Map<number, Set<string>>([[1, grantsOf(mapsOfAct(1))], [2, grantsOf(mapsOfAct(2))]]);
+  const actOfDecision = new Map<string, number>();
+  for (const m of MAPS) for (const d of decisionsOf(m)) actOfDecision.set(d.id, ACT_OF[m.id]);
+  actOfDecision.set('A1-D4', 1);
+  const grantable = new Set([...byAct.get(1)!, ...byAct.get(2)!]);
 
   for (const d of ALL_DECISIONS) {
+    /*
+     * 07 §2.1.3 — no knowledge lock may reference a document not findable in
+     * the act where the lock appears. Checked per act, not globally, because
+     * a global check passes happily on a lock in Act 2 whose only key is on
+     * the estate — and a student who joined the class in week two would find
+     * the option permanently shut with nothing on the map to open it.
+     */
+    const act = actOfDecision.get(d.id) ?? 0;
+    const inAct = byAct.get(act) ?? grantable;
     for (const o of d.options) {
       if (!o.requires) continue;
-      ok(grantable.has(o.requires),
-        `${d.id}/${o.id} needs "${o.requires}", which something in Act 1 grants`);
+      ok(inAct.has(o.requires),
+        `${d.id}/${o.id} needs "${o.requires}", which something in Act ${act || '?'} grants`);
       ok(!!o.lockNote, `${d.id}/${o.id} says why it is shut`);
     }
     // A voice lock has to be reachable from somewhere in the stat space.
@@ -226,7 +284,10 @@ section('maps');
     if (m.elev) ok(m.elev.length === rows, `${m.id}: the elevation layer matches the ground`);
     if (m.objects) ok(m.objects.length === rows, `${m.id}: the object layer matches the ground`);
 
-    const legend = m.interior ? INDOOR_LEGEND : LEGEND;
+    // Each map's OWN legend, not one of two globals. Cambridge brought its
+    // own alphabet — snow, slush, turf, ice — and a global lookup here would
+    // have quietly reported every winter tile as an unknown character.
+    const legend = m.legend;
     const unknown = new Set<string>();
     for (const row of m.ground) for (const ch of row) if (ch !== ' ' && !legend[ch]) unknown.add(ch);
     ok(unknown.size === 0, `${m.id}: no unknown ground characters (${[...unknown].join('') || 'none'})`);
@@ -245,7 +306,7 @@ section('maps');
       const dest = MAPS.find((x) => x.id === p.to);
       ok(!!dest, `${m.id}/${p.id}: leads to a map that exists`);
       if (!dest) continue;
-      const dlegend = dest.interior ? INDOOR_LEGEND : LEGEND;
+      const dlegend = dest.legend;
       const ch = dest.ground[p.at[1]]?.[p.at[0]] ?? ' ';
       ok(!!dlegend[ch], `${m.id}/${p.id}: lands on a tile that exists`);
       const dobj = dest.objects?.[p.at[1]]?.[p.at[0]] ?? ' ';
@@ -381,6 +442,224 @@ section('R20 — the act contains a loss the player cannot prevent');
   const finishes = ALL_DECISIONS.some((d) =>
     d.options.some((o) => /finish|complete/i.test(o.full) && /wing|house/i.test(o.full)));
   ok(!finishes, 'no decision anywhere offers to finish the house');
+}
+
+/* ---------------------------------------------------------------------- */
+section('A2-D3 — the binding production note');
+
+/*
+ * The four clauses of the production note at the head of `A2_D3_ENLISTMENT`,
+ * asserted rather than trusted.
+ *
+ * A comment saying "do not soften this" survives exactly as long as the next
+ * person who reads it. These do not care whether anybody read it. If a future
+ * edit adds a conscience to that room, or lets a student vote for the bar, or
+ * quietly hands out a Character point for the humane-sounding branch, `npm
+ * test` goes red and says which clause was broken.
+ */
+{
+  const d = A2_D3_ENLISTMENT;
+
+  // 2. Three voices. Not four, not five. The silence of Temper and Vanity is
+  //    the design: the loudest parts of him are simply not interested.
+  ok(d.voices.length === 3, `A2-D3 has exactly three voices (has ${d.voices.length})`);
+  ok(!d.voices.includes('temper') && !d.voices.includes('vanity'),
+    'A2-D3: Temper and Vanity have nothing to say about this, and do not');
+
+  // 1. No voice argues it on moral grounds, because none did in that room.
+  //    The council of 8 October voted it down unanimously; the reversal on 30
+  //    December was argued on manpower and on Dunmore.
+  const MORAL = /\b(moral|conscience|right thing|justice|humanity|wicked|wrong to|ought not|cruel)\b/i;
+  for (const [v, l] of Object.entries(d.interjections)) {
+    ok(!MORAL.test(l ?? ''), `A2-D3/${v}: argues manpower or authority, never morals`);
+  }
+
+  // 3. Personal Character does not move on any branch. No option here is a
+  //    moral improvement, because none of them was.
+  for (const o of d.options) {
+    ok(o.effects.character === undefined,
+      `A2-D3/${o.id}: does not move Personal Character`);
+  }
+
+  // 4. The player can NEVER choose to exclude. The bar is already in force
+  //    when they arrive; their only agency is in ending it, formalising it,
+  //    or handing it to somebody else.
+  /*
+   * The verb has to be the player's, and it has to be doing the excluding.
+   * An earlier version of this test matched the bare noun "bar" and failed
+   * the option that STRIKES the bar — which is exactly the kind of false
+   * positive that gets a rule switched off. It matches an act of exclusion,
+   * not the word for the thing being removed.
+   */
+  const EXCLUDE =
+    /\b(exclude|reject|forbid|prohibit)\b|\b(bar|turn away|turn them away|keep out)\b\s+(them|him|these|the free|negroes|any)/i;
+  for (const o of d.options) {
+    ok(!EXCLUDE.test(o.label) && !EXCLUDE.test(o.full),
+      `A2-D3/${o.id}: is not an option to exclude anybody`);
+  }
+  ok(d.options.some((o) => o.historical),
+    'A2-D3: the order actually issued on 30 December is on the page and marked');
+}
+
+/* ---------------------------------------------------------------------- */
+section('sealed decisions, and the flags a decision may set');
+
+{
+  const sealed = ALL_DECISIONS.filter((d) => d.sealed);
+  ok(sealed.length >= 1, 'the game has at least one sealed decision');
+  for (const d of sealed) {
+    /*
+     * A sealed decision bypasses the soft shoulder, so its deltas are the
+     * ones that actually land whatever the run has already spent — and a
+     * sealed decision that moved nothing much would be a wax seal on an
+     * empty envelope. Five, not eight: Act 1's sealed decision is authored
+     * at six and the balance of it has been played, and a linter that
+     * demands a content change to satisfy a number the linter itself
+     * invented is a linter that gets switched off.
+     */
+    const biggest = Math.max(...d.options.flatMap((o) =>
+      Object.values(o.effects).map((v) => Math.abs(v as number))));
+    ok(biggest >= 5, `${d.id}: a sealed decision moves something by at least 5 (max ${biggest})`);
+  }
+
+  /*
+   * The rule from `types.ts`: a decision may tell the WORLD what was settled
+   * and may never tell another DECISION. Crossing that would make one
+   * decision the key to another's locked option, which is the exact thing
+   * R2 exists to prevent — the only key to a locked option is a primary
+   * source the student went and found.
+   */
+  const decisionGrants = new Set(ALL_DECISIONS.flatMap((d) => d.options.flatMap((o) => o.grants ?? [])));
+  for (const d of ALL_DECISIONS) {
+    for (const o of d.options) {
+      if (!o.requires) continue;
+      ok(!decisionGrants.has(o.requires),
+        `${d.id}/${o.id}: its key is a source, not another decision`);
+    }
+  }
+  for (const f of decisionGrants) ok(FLAG_REGISTRY.includes(f), `decision flag is registered: ${f}`);
+}
+
+/* ---------------------------------------------------------------------- */
+section('the ledger');
+
+{
+  for (const act of RECKONED_ACTS) {
+    const s = initialState();
+    // The worst case for the arithmetic: every decision in the act settled
+    // the way that costs the most men.
+    for (const d of ALL_DECISIONS) {
+      const worst = [...d.options].sort((a, b) =>
+        (a.ledger ?? []).reduce((t, l) => t + l.n, 0) - (b.ledger ?? []).reduce((t, l) => t + l.n, 0))[0];
+      s.decisions.set(d.id, worst.id);
+    }
+    const r = reckon(act, s, (id, opt) => {
+      const d = ALL_DECISIONS.find((x) => x.id === id);
+      return d?.options.find((o) => o.id === opt)?.ledger ?? [];
+    });
+    ok(!!r, `act ${act} has a reckoning authored`);
+    if (!r) continue;
+
+    // Rule 3: at least one line is always something the player could not
+    // have changed. R20, on the accounting page.
+    ok(r.lines.some((l) => !l.earned), `act ${act}: the reckoning carries a loss nobody could prevent`);
+    // Rule 1: every line names its cause in plain English, past tense, and
+    // never a stat name.
+    for (const l of r.lines) {
+      ok(l.cause.length > 8, `act ${act}: "${l.cause}" is a cause, not a label`);
+      ok(!/judgment|legitimacy|loyalty|character|morale|penalt/i.test(l.cause),
+        `act ${act}: "${l.cause}" names a fact, not a mechanic`);
+    }
+    // And an army cannot end an act below zero however badly it goes.
+    ok(r.closedWith > 0, `act ${act}: the worst run still leaves an army (${r.closedWith})`);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+section('Act 2 — the shape of the act');
+
+{
+  const a2 = mapsOfAct(2);
+
+  // The seasons are the same PLACE. If the two Cambridge maps ever stop
+  // agreeing tile for tile on where the ground is, a student who walked this
+  // camp in July cannot recognise the spot in December, and the whole point
+  // of building two states rather than two levels is gone.
+  ok(CAMBRIDGE_SUMMER.ground.length === CAMBRIDGE_WINTER.ground.length,
+    'the two Cambridges are the same size');
+  const sameShape = CAMBRIDGE_SUMMER.ground.every((row, r) =>
+    row.length === CAMBRIDGE_WINTER.ground[r].length);
+  ok(sameShape, 'the two Cambridges agree row for row');
+  ok(JSON.stringify(CAMBRIDGE_SUMMER.elev) === JSON.stringify(CAMBRIDGE_WINTER.elev),
+    'the hill is the same hill in both seasons');
+
+  // The season is reached by a door, not by a menu, and the flag that opens
+  // it is set by the decision that ends the autumn.
+  const out = (HQ_AUTUMN.portals ?? []).find((p) => p.alt);
+  ok(!!out, 'the headquarters door carries the season');
+  ok(out?.alt?.to === CAMBRIDGE_WINTER.id, 'and it leads into the winter');
+  const setsWinter = ALL_DECISIONS.some((d) =>
+    d.options.every((o) => (o.grants ?? []).includes(out!.alt!.requires)));
+  ok(setsWinter, 'and every branch of one decision sets it, so the winter cannot be dodged');
+
+  // R3 on the new ground.
+  for (const m of [CAMBRIDGE_SUMMER, HQ_AUTUMN]) {
+    ok((m.interactables ?? []).some((i) => i.contradicts),
+      `${m.id}: carries at least one source contradiction`);
+  }
+
+  // The survey. Seven positions across the water, learned by looking.
+  const marks = CAMBRIDGE_SUMMER.marks ?? [];
+  const granting = marks.filter((m) => m.grants);
+  ok(granting.length === 7, `seven British positions are named by survey (${granting.length})`);
+  ok(granting.every((m) => m.overWater),
+    'all seven are across the water, or the sightline test would refuse them');
+  for (const m of granting) ok(FLAG_REGISTRY.includes(m.grants!), `survey flag registered: ${m.grants}`);
+  // And the winter map keeps them, so a student who missed them in July can
+  // still take them in January.
+  ok((CAMBRIDGE_WINTER.marks ?? []).filter((m) => m.grants).length === 7,
+    'the seven are still there in the winter');
+
+  // Exactly one object in the game opens a screen of its own.
+  const opens = MAPS.flatMap((m) => (m.interactables ?? []).filter((i) => i.opens));
+  ok(opens.length === 2, `only the map table opens a screen, in each season (${opens.length})`);
+  ok(opens.every((i) => i.opens === 'survey'), 'and it is the survey sheet');
+
+  // The Witness Register followed the army north.
+  const witnesses = a2.flatMap((m) => (m.npcs ?? []).filter((n) => n.sensitive));
+  ok(witnesses.length >= 2, 'Act 2 carries the Witness Register forward');
+  for (const n of witnesses) {
+    ok(!n.decision, `${n.id}: has no decision — there is nothing to transact here`);
+    ok(!n.warmup, `${n.id}: has no warmup decision either`);
+  }
+
+  // R20 for Act 2: there is no powder, and nothing anywhere produces any.
+  const makesPowder = ALL_DECISIONS.some((d) =>
+    d.options.some((o) => /\b(find|obtain|buy|make|import|more)\b[^.]{0,30}powder/i.test(o.full)));
+  ok(!makesPowder, 'no decision anywhere conjures powder');
+  const saysSo = (CAMBRIDGE_SUMMER.interactables ?? []).filter((i) =>
+    /thirty-six|three hundred|not enough|would not fill/i.test(i.examine)).length;
+  ok(saysSo >= 1, 'at least one object on the ground states the fixed loss');
+
+  // Both seasons have to be worth walking.
+  for (const m of [CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER]) {
+    ok((m.interactables ?? []).length >= 18,
+      `${m.id}: at least 18 things to look at (has ${(m.interactables ?? []).length})`);
+    ok((m.npcs ?? []).length >= 4, `${m.id}: at least four people (has ${(m.npcs ?? []).length})`);
+  }
+
+  /*
+   * Charlestown is UNREACHABLE, on purpose, and this is the assertion that
+   * makes that an intention rather than a tolerated 6% of marooned ground.
+   * The whole act is about a mile of water you cannot cross, and a player who
+   * can walk over to the enemy's works has been handed the answer to the
+   * council of war by the collision grid.
+   */
+  for (const m of [CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER]) {
+    const grid = makeGrid(m);
+    const seen = reachable(grid, [m.spawn.x, m.spawn.z]);
+    ok(!withinReach(grid, seen, 30, 1, 2.5), `${m.id}: Charlestown cannot be walked to`);
+  }
 }
 
 /* ---------------------------------------------------------------------- */

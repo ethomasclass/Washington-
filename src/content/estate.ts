@@ -534,6 +534,30 @@ export const ESTATE: MapDef = {
     },
   ],
 
+  /*
+   * The estate, surveyed.
+   *
+   * Act 2 built the surveyor's overlay and this list is what gives Act 1 it
+   * retroactively — which is the right way round, because he was a surveyor
+   * for twenty-seven years before he was a general. Standing on the bowling
+   * green with the survey key held, watching the six terraces of the east
+   * lawn draw themselves as contours off ground he laid out himself, is the
+   * clearest thing this game says about who he was before any of this.
+   *
+   * Nothing here grants anything. There is no knowledge to collect on your
+   * own farm.
+   */
+  marks: [
+    { x: 38, z: 31, label: 'the house' },
+    { x: 28, z: 31, label: 'the north wing' },
+    { x: 40, z: 11, label: 'the landing' },
+    { x: 40, z: 24, label: 'the ha-ha' },
+    { x: 39, z: 51, label: 'the bowling green' },
+    { x: 55, z: 43, label: 'the kitchen' },
+    { x: 64, z: 33, label: 'the stable' },
+    { x: 10, z: 34, label: 'the quarter' },
+  ],
+
   npcs: estateNpcs(),
   interactables: estateThings(),
 

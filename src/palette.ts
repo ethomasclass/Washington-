@@ -103,6 +103,21 @@ export const P = {
   verdigrisD: '#3E6B54', verdigris: '#54886B', verdigrisL: '#6FA486',
   ochreWallD: '#A6864C', ochreWall: '#C2A468', ochreWallL: '#D8BE88',
   fireD: '#8A4418', fire: '#C4732A', fireL: '#E8A94A', ember: '#F2D089',
+
+  // --- Cambridge, 1775-76 ------------------------------------------------
+  // Snow is never white. A white tile at this bloom level blows out and takes
+  // the sprite standing on it with it, so the lit value tops out well short of
+  // paper and the shadow side goes blue.
+  snowD: '#9FAEBE', snow: '#C6D2DE', snowL: '#E2E9F0',
+  slushD: '#6E7480', slush: '#8B9099', slushL: '#A6AAB0',
+  // Turf cut and stacked: the parapet, the gabions, the graves.
+  turfD: '#4A4A33', turf: '#63614A', turfL: '#7E7A5E',
+  // Canvas. Officers' marquees were bleached; a private's tent was not.
+  canvasD: '#A79B80', canvasM: '#C8BDA1', canvasL: '#E0D7BC',
+  // Iron: gun barrels, kettles, the trail of a carriage.
+  ironD: '#2E3236', iron: '#464B50', ironL: '#646A70',
+  // The gun carriages at Ticonderoga were painted with red ochre and lampblack.
+  carriageD: '#5E3A28', carriage: '#7C4E34', carriageL: '#986344',
 } as const;
 
 /** A three-step ramp, for anything that has a lit face and a shadow face. */
@@ -123,6 +138,12 @@ export const RAMPS = {
   rust: ramp(P.rustD, P.rust, P.rustL),
   floor: ramp(P.floorD, P.floorB, P.floorL),
   plaster: ramp(P.plasterD, P.plaster, P.plasterL),
+  snow: ramp(P.snowD, P.snow, P.snowL),
+  slush: ramp(P.slushD, P.slush, P.slushL),
+  turf: ramp(P.turfD, P.turf, P.turfL),
+  canvas: ramp(P.canvasD, P.canvasM, P.canvasL),
+  iron: ramp(P.ironD, P.iron, P.ironL),
+  carriage: ramp(P.carriageD, P.carriage, P.carriageL),
 } as const;
 
 /**
@@ -182,5 +203,62 @@ export const LIGHT: Record<string, Light> = {
   witness: {
     key: '#E6E4DE', fill: '#9EA0A4', haze: '#B4B4B0',
     sun: -2.90, contrast: 0.34, bloom: 0.0, saturation: 0.16,
+  },
+
+  /* --------------------------------------------------------------------
+   * CAMBRIDGE, 1775-76.
+   *
+   * Act 1 is a May morning in Virginia and every light in it is generous.
+   * Act 2 is New England going into winter, and the whole act's arc is a
+   * light arc: the camp opens in a hard July glare, the lines are a low
+   * November sun with no warmth left in it, and by the end the key and the
+   * fill are nearly the same colour, which is what a snow day looks like.
+   * Nothing else has to say the season out loud.
+   * ------------------------------------------------------------------ */
+
+  /** July on the common. Hard, high, dusty — a summer camp on beaten ground. */
+  campSummer: {
+    key: '#FFF6E2', fill: '#AEBCCE', haze: '#D2DCE4',
+    sun: -2.20, contrast: 0.84, bloom: 0.52, saturation: 1.04,
+  },
+  /** The lane up to headquarters, under elms. Cooler, greener, quieter. */
+  campLane: {
+    key: '#FCEFD2', fill: '#98AABE', haze: '#C4D0D8',
+    sun: -2.20, contrast: 0.66, bloom: 0.62, saturation: 1.00,
+  },
+  /**
+   * November on the works. The sun is round to the south-west and weak with
+   * it — `sun: 0.72` is lifted straight off the recovered CB-03 file, where
+   * the number was chosen for exactly this hour.
+   */
+  linesNovember: {
+    key: '#F2E2C2', fill: '#8C9AAE', haze: '#B8C2CC',
+    sun: 0.72, contrast: 0.58, bloom: 0.44, saturation: 0.88,
+  },
+  /** December. Key and fill within a few values of each other; no warmth. */
+  campWinter: {
+    key: '#E8EEF4', fill: '#B0BCCA', haze: '#D6DDE4',
+    sun: -1.90, contrast: 0.40, bloom: 0.30, saturation: 0.70,
+  },
+  /** The works in January. The coldest frame in the game so far. */
+  linesWinter: {
+    key: '#DEE8F2', fill: '#9AA8BA', haze: '#C6CFD8',
+    sun: 0.72, contrast: 0.34, bloom: 0.22, saturation: 0.58,
+  },
+  /** Inside the Vassall House: a good room, borrowed, with the fires lit. */
+  hqParlour: {
+    key: '#FFEFC8', fill: '#6E7A92', haze: '#241C18',
+    sun: -2.40, contrast: 0.86, bloom: 0.38, saturation: 1.02,
+  },
+  /**
+   * The council room, when the council is sitting.
+   *
+   * Fourteen men round a table and one candle-branch. The fill goes almost
+   * black so the only thing lit in the frame is the table, which is the only
+   * thing in the room that matters.
+   */
+  hqCouncil: {
+    key: '#FFE2A2', fill: '#3A4256', haze: '#160F0C',
+    sun: -2.40, contrast: 0.94, bloom: 0.52, saturation: 1.06,
   },
 };

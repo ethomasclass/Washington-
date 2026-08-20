@@ -12,6 +12,7 @@
 
 import { INK, type VoiceId } from '../palette';
 import type { Decision, DocumentDef, Line } from '../types';
+import type { Reckoning } from '../ledger';
 import { councilFor, lockOn, rejoinderFor } from '../council';
 import type { GameState } from '../state';
 import { emblem, sealMark } from './emblems';
@@ -36,6 +37,36 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Named HTML entities, decoded, for the panels that type rather than set HTML.
+ *
+ * Most of this interface renders through `innerHTML`, so `&rsquo;` in an
+ * authored string becomes a curly apostrophe and nobody thinks about it. But
+ * the reveal animation types one character at a time into `textContent` — it
+ * has to, or a half-typed `<em>` would be a half-typed tag — and `textContent`
+ * does not decode anything. So every line of dialogue written with entities
+ * came out reading `Dunmore&rsquo;s proclamation` on screen, in the middle of
+ * a decision, in front of a class.
+ *
+ * Decoding here rather than rewriting the content is the right fix twice
+ * over: it is one place instead of seventy-nine, and it means a writer can go
+ * on using whichever form they find easier to type without having to know
+ * which panel their sentence will end up in.
+ */
+const ENTITIES: Record<string, string> = {
+  '&rsquo;': '\u2019', '&lsquo;': '\u2018',
+  '&rdquo;': '\u201d', '&ldquo;': '\u201c',
+  '&mdash;': '\u2014', '&ndash;': '\u2013',
+  '&hellip;': '\u2026', '&nbsp;': '\u00a0',
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&minus;': '\u2212',
+};
+const ENTITY_RE = /&(?:rsquo|lsquo|rdquo|ldquo|mdash|ndash|hellip|nbsp|amp|lt|gt|quot|minus);/g;
+
+/** Plain text for a node that is set by `textContent` rather than `innerHTML`. */
+function plain(text: string): string {
+  return text.replace(ENTITY_RE, (m) => ENTITIES[m] ?? m);
+}
 
 export interface UiHooks {
   /** Portrait data URL for a speaker id, or null for a narrator block. */
@@ -193,8 +224,8 @@ export class Ui {
   /* ---------------- banner, rail, reach ---------------------------- */
 
   setPlace(place: string, when: string): void {
-    (this.banner.querySelector('.place') as HTMLElement).textContent = place;
-    (this.banner.querySelector('.when') as HTMLElement).textContent = when;
+    (this.banner.querySelector('.place') as HTMLElement).textContent = plain(place);
+    (this.banner.querySelector('.when') as HTMLElement).textContent = plain(when);
     this.banner.classList.remove('away');
     window.setTimeout(() => this.banner.classList.add('away'), 3600);
   }
@@ -205,7 +236,7 @@ export class Ui {
     ul.innerHTML = '';
     for (const it of items) {
       const li = el('li', it.done ? 'done' : '');
-      li.textContent = it.text;
+      li.textContent = plain(it.text);
       ul.append(li);
     }
     this.rail.classList.toggle('hide', items.length === 0);
@@ -221,7 +252,8 @@ export class Ui {
 
   /* ---------------- text ------------------------------------------- */
 
-  private async reveal(node: HTMLElement, text: string): Promise<void> {
+  private async reveal(node: HTMLElement, raw: string): Promise<void> {
+    const text = plain(raw);
     node.textContent = '';
     const cur = el('span', 'cursor', '&#9646;');
     node.append(cur);
@@ -269,7 +301,7 @@ export class Ui {
       } else {
         this.portrait.classList.add('empty');
       }
-      this.speaker.textContent = line.speaker === '—' ? '' : line.speaker;
+      this.speaker.textContent = line.speaker === '—' ? '' : plain(line.speaker);
       this.hintEl.innerHTML = `<span style="opacity:.7">SPACE to continue</span>`;
       await this.reveal(this.textEl, line.text);
       await this.waitKey(['Space', 'Enter', 'KeyE']);
@@ -312,7 +344,7 @@ export class Ui {
     } else {
       this.portrait.classList.add('empty');
     }
-    this.speaker.textContent = d.speaker ?? '';
+    this.speaker.textContent = plain(d.speaker ?? '');
     await this.reveal(this.textEl, d.prompt);
 
     const voices = councilFor(d, state.stats);
@@ -433,6 +465,56 @@ export class Ui {
     this.modal = false;
   }
 
+  /**
+   * THE RECKONING — what the act cost, in men, and why.
+   *
+   * `docs/08` §3, and the four rules are enforced by the shape of this
+   * panel as much as by the data: every line names its cause in plain
+   * English and the past tense; there is no total labelled as a score; there
+   * is no comparison with any other run; and the historical figure is not
+   * here, because arguing with it belongs in the epilogue where there is
+   * room to argue.
+   *
+   * The one piece of presentation that carries an argument: the losses the
+   * player caused and the losses nobody could have prevented are set in the
+   * SAME type, in one column, in order of size. Marking the earned ones
+   * would turn the page into a report card, and the whole point is that from
+   * where he is standing you cannot tell them apart either.
+   */
+  async reckoning(r: Reckoning): Promise<void> {
+    this.modal = true;
+    sfxSeal();
+    const card = this.noticeEl.querySelector('.card') as HTMLElement;
+    const num = (n: number) =>
+      `<span class="n ${n < 0 ? 'loss' : 'gain'}">${n < 0 ? '&minus;' : '+'}${Math.abs(n).toLocaleString('en-US')}</span>`;
+    card.innerHTML =
+      `<h2>The reckoning &mdash; Act ${r.act}</h2>`
+      + `<div class="body reckon">`
+      + `<div class="row head"><span>Opened, ${r.openedOn}</span>`
+      + `<span class="n">${r.openedWith.toLocaleString('en-US')}</span></div>`
+      + r.lines.map((l) => `<div class="row"><span>${l.cause}</span>${num(l.n)}</div>`).join('')
+      + `<div class="row total"><span>Standing, ${r.closedOn}</span>`
+      + `<span class="n">${r.closedWith.toLocaleString('en-US')}</span></div>`
+      + '<div class="src">Every line here is a thing that happened. Some of them happened '
+      + 'because of what you decided and some of them would have happened whatever you '
+      + 'decided, and this page does not tell you which is which.</div>'
+      + `</div>`
+      + `<div class="go"><span class="key">&#8595;</span>read on`
+      + `<span class="key" style="margin-left:14px">SPACE</span>go on</div>`;
+    const body = card.querySelector('.body') as HTMLElement;
+    body.scrollTop = 0;
+    this.noticeEl.classList.add('on');
+    for (;;) {
+      const code = await this.waitKey();
+      if (['Space', 'Enter', 'KeyE', 'Escape'].includes(code)) break;
+      if (code === 'ArrowDown') body.scrollTop += 90;
+      if (code === 'ArrowUp') body.scrollTop -= 90;
+    }
+    sfxCancel();
+    this.noticeEl.classList.remove('on');
+    this.modal = false;
+  }
+
   async read(doc: DocumentDef): Promise<void> {
     this.modal = true;
     sfxDocument();
@@ -489,7 +571,7 @@ export class Ui {
   /* ---------------- odds and ends -------------------------------------- */
 
   toast(text: string): void {
-    this.toastEl.textContent = text;
+    this.toastEl.textContent = plain(text);
     this.toastEl.classList.add('on');
     window.setTimeout(() => this.toastEl.classList.remove('on'), 3200);
   }

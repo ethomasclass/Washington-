@@ -68,6 +68,10 @@ export const PASSPORT_FLAGS: string[] = [
   'doc.a1.osnaburg',
   'doc.a1.fairfax',
   'doc.a1.diary',
+  // --- Act 2's documents. APPEND-ONLY: never reorder. ---------------------
+  'doc.a2.black_enlistment',
+  'doc.a2.lund_letter',
+  'doc.a2.powder_return',
 ];
 
 export const FLAG_REGISTRY: string[] = [
@@ -174,6 +178,79 @@ export const FLAG_REGISTRY: string[] = [
   'obs.a1.spectacles',
   'obs.a1.quarter_contradiction',
 
+  /* --------------------------------------------------------------------
+   * ACT 2 — Cambridge and the lines before Boston.
+   *
+   * APPEND-ONLY, like everything above it. Several of these replace flags
+   * of the same NAME that the pre-rebuild Act 2 registered and that no
+   * shipped code has ever set — they are left in place above rather than
+   * removed, because removing a line from this list renumbers every bit
+   * after it and invalidates every save code in every classroom. A dead
+   * flag costs one bit. A renumbering costs an afternoon of somebody's
+   * lesson.
+   * ------------------------------------------------------------------ */
+  'doc.a2.black_enlistment',
+  'doc.a2.lund_letter',
+  'doc.a2.powder_return',
+  'heard.a2.billy',
+  'heard.a2.bragg',
+  'heard.a2.campwoman',
+  'heard.a2.campwoman_w',
+  'heard.a2.drummer',
+  'heard.a2.drummer_w',
+  'heard.a2.gates_w',
+  'heard.a2.greene_w',
+  'heard.a2.harrison',
+  'heard.a2.martha',
+  'heard.a2.reed',
+  'heard.a2.salem',
+  'heard.a2.sentry',
+  'heard.a2.sentry_w',
+  'heard.a2.whitcomb',
+  'heard.a2.whitcomb_w',
+  'obs.a2.camp_bed',
+  'obs.a2.camp_women',
+  'obs.a2.charlestown',
+  'obs.a2.council_abided',
+  'obs.a2.council_overruled',
+  'obs.a2.council_pressed',
+  'obs.a2.dinner',
+  'obs.a2.dispatch',
+  'obs.a2.dunmore_named',
+  'obs.a2.empty_ground',
+  'obs.a2.enlistment_opened',
+  'obs.a2.enlistment_wide',
+  'obs.a2.express',
+  'obs.a2.field_desk',
+  'obs.a2.firewood',
+  'obs.a2.garret',
+  'obs.a2.glass',
+  'obs.a2.guns',
+  'obs.a2.hunting_shirt',
+  'obs.a2.huts',
+  'obs.a2.kettle',
+  'obs.a2.knox_gone',
+  'obs.a2.knox_train',
+  'obs.a2.letter_home',
+  'obs.a2.magazine',
+  'obs.a2.martha_came',
+  'obs.a2.necessary',
+  'obs.a2.no_bayonet',
+  'obs.a2.noble_train',
+  'obs.a2.orders',
+  'obs.a2.orders_book',
+  'obs.a2.parade',
+  'obs.a2.parapet',
+  'obs.a2.plate',
+  'obs.a2.plates',
+  'obs.a2.ration_return',
+  'obs.a2.reasons_written',
+  'obs.a2.returns',
+  'obs.a2.spyglass',
+  'obs.a2.unfinished',
+  'obs.a2.upper_window',
+  'obs.a2.vassall',
+  'obs.a2.winter_came',
 ];
 
 class BitWriter {

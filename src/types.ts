@@ -12,6 +12,8 @@ import type { TileId } from './engine/tiles';
 import type { Opening, WallStyle } from './engine/structures';
 import type { Light } from './palette';
 import type { Mood } from './engine/actors';
+import type { LedgerLine } from './ledger';
+import type { Mark } from './engine/overlay';
 
 export type StatKey = 'judgment' | 'legitimacy' | 'loyalty' | 'character';
 
@@ -36,6 +38,28 @@ export interface DecisionOption {
   result: string;
   /** Set on the option that is what the historical man did. */
   historical?: boolean;
+  /**
+   * Knowledge flags this option sets.
+   *
+   * Decisions write to `stats` and documents write to `knowledge`, and those
+   * two paths deliberately never cross — see the header of `state.ts`. This
+   * is not a crossing: nothing here may ever be the `requires` of another
+   * option, and the linter checks it. It exists so the WORLD can know what
+   * was settled — the season that follows the council of war, the order that
+   * is now standing at the guard post — without main.ts growing a special
+   * case per decision.
+   */
+  grants?: string[];
+  /**
+   * What this cost, in men, with the cause named in plain English.
+   *
+   * Rule 2 of the ledger (`ledger.ts`): at least one line on the reckoning is
+   * always something the player did, phrased so they recognise their own
+   * decision in it. These are those lines. The fixed losses live in
+   * `ledger.ts` and are not authored here, because the player did not cause
+   * them.
+   */
+  ledger?: LedgerLine[];
 }
 
 export interface Decision {
@@ -112,6 +136,17 @@ export interface Interactable {
   };
   /** Opens the document reader rather than the examine panel. */
   document?: string;
+  /**
+   * Opens a purpose-built screen instead of, or after, the examine panel.
+   *
+   * There is exactly one of these and there should stay that way. The Knox
+   * map table is not a document and not a conversation: it is a plan of the
+   * country between Ticonderoga and Cambridge with tokens on it, and the
+   * only honest way to put a logistics problem in front of a student is to
+   * let them move the tokens. Everything else in this game that looks like a
+   * special case turned out not to need one.
+   */
+  opens?: 'survey';
 }
 
 export type DocRegister = 'printed' | 'secretary' | 'engrossed' | 'rough';
@@ -187,6 +222,16 @@ export interface Portal {
   /** Held shut until this flag is known. */
   requires?: string;
   lockedNote?: string;
+  /**
+   * A different destination once a flag is held.
+   *
+   * This is how one door serves two seasons. The Vassall House is the same
+   * house in November and in January; what changes is the Cambridge outside
+   * it. Rather than duplicating the interior, its door out carries an
+   * alternative, and the flag that switches it is set by the decision that
+   * ends the autumn.
+   */
+  alt?: { requires: string; to: string; at: [number, number] };
 }
 
 export interface MapDef {
@@ -241,6 +286,15 @@ export interface MapDef {
     /** Fired once, the first time the player crosses in. */
     onEnter?: string[];
   }>;
+  /**
+   * What a surveyor would triangulate on from this ground.
+   *
+   * Deliberately a short, authored list rather than every interactable on
+   * the map: a survey names the fixed points you take bearings to, and a
+   * survey with a bearing to every barrel in the camp is not a survey. See
+   * `engine/overlay.ts`.
+   */
+  marks?: Mark[];
   /** Shown once, on arrival, in the place banner. */
   arrival?: string[];
   /** Ambient interior-voice lines, fired by proximity, once each. */

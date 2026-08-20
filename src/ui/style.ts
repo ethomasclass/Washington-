@@ -350,10 +350,192 @@ html, body {
   margin-top: 14px; padding-top: 12px; border-top: 1px solid #2a2f36;
   font-size: 14px; color: #878d95; letter-spacing: .04em;
 }
+/* The reckoning uses the notice's card and its own rows. Losses and gains
+ * are the same weight of type on purpose — see the note in ui.ts. */
+#notice .reckon .row {
+  display: flex; align-items: baseline; gap: 14px;
+  padding: 5px 0; border-bottom: 1px solid #23272d;
+  font-size: 15.5px; color: #d8dade; line-height: 1.4;
+}
+#notice .reckon .row > span:first-child { flex: 1 1 auto; }
+#notice .reckon .row .n {
+  flex: 0 0 auto; font-variant-numeric: tabular-nums; font-size: 15.5px; color: #e9eaec;
+}
+#notice .reckon .row .n.loss { color: #d99a8e; }
+#notice .reckon .row .n.gain { color: #9ac9a4; }
+#notice .reckon .row.head,
+#notice .reckon .row.total {
+  color: var(--brass); border-bottom-color: #3a4049;
+  letter-spacing: .04em; text-transform: uppercase; font-size: 12.5px;
+}
+#notice .reckon .row.head .n,
+#notice .reckon .row.total .n { color: var(--brass); font-size: 17px; }
+#notice .reckon .row.total { border-bottom: none; border-top: 1px solid #3a4049; margin-top: 6px; }
+
 #notice .go .key {
   font-size: 12px; padding: 2px 8px; border-radius: 2px; margin-right: 6px;
   background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
 }
+
+/* ---------- the map table -------------------------------------------- *
+ *
+ * The one screen in the game that is a THING rather than a panel: a survey
+ * sheet on a table, lit from one side, with the rest of the room dark. It is
+ * the only place the interface pretends to be an object, and it earns that by
+ * being the only place the player manipulates one.
+ *
+ * It is laid out to fit a 1024x600 Chromebook panel without scrolling: the
+ * sheet takes what is left after a fixed head, ask, options and footer, and
+ * the options collapse to a column under 900px.
+ * ------------------------------------------------------------------- */
+
+#survey {
+  position: absolute; inset: 0;
+  display: none; align-items: center; justify-content: center;
+  background: radial-gradient(120% 100% at 30% 0%, #241a12 0%, #0a0806 70%);
+  padding: 18px;
+}
+#survey.on { display: flex; }
+#survey .frame {
+  width: min(1040px, 100%); max-height: 100%;
+  display: flex; flex-direction: column; gap: 10px;
+}
+/* A label near the right edge hangs its text back over the sheet instead of
+ * off it. Four place names out of eight sit past two-thirds across. */
+#survey .board .place.right { transform: translate(-9px, -15px); text-align: right; }
+#survey .board .place.right::after { content: ''; }
+#survey .head {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  border-bottom: 1px solid #3a2f22; padding-bottom: 7px;
+}
+#survey .head .ttl {
+  font-family: var(--serif); font-size: 19px; color: var(--parch); letter-spacing: .02em;
+}
+#survey .head .sub {
+  font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--brass-dim);
+}
+
+/* The sheet keeps the proportions it was drawn at.
+ * Stretched to whatever height was left over it read as a strip of wallpaper;
+ * a survey is a sheet of paper and it has to look like one. */
+#survey .board {
+  position: relative; flex: 0 1 auto;
+  width: 100%; max-width: min(100%, 62vh * 1.6);
+  aspect-ratio: 8 / 5; margin: 0 auto;
+  background-size: 100% 100%; background-repeat: no-repeat;
+  border: 1px solid #57452e;
+  border-radius: 2px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.65), inset 0 0 60px rgba(90,60,20,.22);
+  filter: saturate(.95);
+  image-rendering: pixelated;
+}
+#survey .board .place {
+  position: absolute; transform: translate(9px, -15px);
+  font-family: var(--serif); font-size: 12.5px; font-style: italic;
+  color: #2a2118; white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255,255,255,.5);
+}
+#survey .board .scale,
+#survey .board .north {
+  position: absolute; transform: translate(0, 10px);
+  font-size: 10.5px; letter-spacing: .1em; color: #3b3025;
+}
+#survey .board .north {
+  transform: translate(-4px, 0); font-family: var(--serif); font-size: 14px; color: #7a2f22;
+}
+/* The train, as a token you can watch move. Two pixels of brass on a sheet
+ * of paper is the whole of the animation budget and it is enough. */
+#survey .board .token {
+  position: absolute; width: 15px; height: 15px; margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0d68a, #a37f26 60%, #5c4412);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 2px 5px rgba(0,0,0,.5);
+  transition: left .55s cubic-bezier(.4,0,.2,1), top .55s cubic-bezier(.4,0,.2,1);
+}
+
+#survey .ask {
+  font-family: var(--serif); font-size: 17px; line-height: 1.4; color: var(--parch);
+}
+#survey .ask .n {
+  display: inline-block; margin-right: 10px;
+  font-family: var(--ui); font-size: 10.5px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--brass-dim);
+}
+
+#survey .opts { display: flex; gap: 10px; }
+#survey .opt {
+  flex: 1 1 0; min-width: 0; text-align: left;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 13px; border-radius: 2px; cursor: default;
+  font: inherit; color: var(--text-dim);
+  background: rgba(20,15,10,.72);
+  border: 1px solid #3a2f22; border-left: 3px solid #3a2f22;
+}
+#survey .opt.on {
+  color: var(--text); background: rgba(48,36,20,.9);
+  border-color: var(--brass-dim); border-left-color: var(--brass);
+}
+#survey .opt.locked { opacity: .45; }
+#survey .opt .lab { font-size: 14.5px; letter-spacing: .01em; }
+#survey .opt .det { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+#survey .opt .lock { font-size: 11.5px; font-style: italic; color: var(--sealed); }
+
+/* The dispatches. Deliberately a different object from the sheet: a folded
+ * paper that came in on a horse, not part of the drawing. */
+#survey .wire {
+  display: none;
+  background: rgba(233,224,201,.94); color: #201a12;
+  border-radius: 2px; padding: 12px 16px;
+  box-shadow: 0 8px 26px rgba(0,0,0,.55);
+  max-height: 34vh; overflow-y: auto;
+}
+#survey .wire.on { display: block; }
+#survey .wire .hdr {
+  display: block; margin-bottom: 6px;
+  font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: #7a5c1e;
+}
+#survey .wire p { margin: 0 0 8px; font-family: var(--serif); font-size: 15.5px; line-height: 1.5; }
+#survey .wire p:last-child { margin-bottom: 0; }
+#survey .wire .cite { font-size: 13px; font-style: italic; color: #5d5240; }
+
+#survey .foot { font-size: 13px; color: var(--text-dim); letter-spacing: .04em; }
+#survey .foot .key {
+  font-size: 11px; padding: 2px 7px; border-radius: 2px; margin-right: 5px;
+  background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  #survey .opts { flex-direction: column; }
+  #survey .opt .det { display: none; }
+}
+/* A short window (a 1024x600 Chromebook in landscape) gives the sheet less
+ * room rather than squashing it: the options and the dispatch are the part
+ * that must never scroll. */
+@media (max-height: 700px) {
+  #survey .board { max-width: min(100%, 44vh * 1.6); }
+  #survey .head .sub { display: none; }
+}
+
+/* ---------- the surveyor's overlay ------------------------------------ *
+ *
+ * Held, not toggled. It draws over the frame and it never takes the
+ * keyboard: you can walk with it up, which is the entire point — a man who
+ * has run a chain over ground reads the ground while he is crossing it.
+ * ------------------------------------------------------------------- */
+
+#survey-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+  opacity: 0; transition: opacity .14s linear;
+}
+#survey-overlay.on { opacity: 1; }
+#survey-overlay canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#survey-overlay .legend {
+  position: absolute; left: 20px; bottom: 20px;
+  padding: 9px 13px; border-radius: 2px;
+  background: rgba(10,14,12,.82); border-left: 3px solid #6fd3a6;
+  font-size: 12px; letter-spacing: .05em; color: #cfe9dd; line-height: 1.6;
+}
+#survey-overlay .legend b { color: #8fe8bf; font-weight: 600; }
 
 /* ---------- transitions ---------------------------------------------- */
 

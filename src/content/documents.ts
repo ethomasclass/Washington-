@@ -12,6 +12,7 @@
  */
 
 import type { DocumentDef } from '../types';
+import { ACT2_DOCUMENTS } from './act2-documents';
 
 export const DOCUMENTS: Record<string, DocumentDef> = {
 
@@ -205,6 +206,13 @@ export const DOCUMENTS: Record<string, DocumentDef> = {
     ],
     grants: 'doc.a1.diary',
   },
+
+  /* --------------------------------------------------------------------
+   * ACT 2. Kept in their own file — seven documents is enough weight to
+   * want a table of contents above them, and this registry is already the
+   * longest thing in the project a writer has to scroll past.
+   * ------------------------------------------------------------------ */
+  ...ACT2_DOCUMENTS,
 };
 
 export function documentById(id: string): DocumentDef | undefined {

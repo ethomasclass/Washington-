@@ -15,8 +15,8 @@
  */
 
 import {
-  disc, ellipse, hash, hline, line, outline, px, rect, shade, speckle, stroke,
-  surface, vline, type Surface,
+  cylinder, disc, ellipse, hash, hline, line, outline, px, rect, shade, speckle,
+  stroke, surface, vline, type Surface,
 } from './pixels';
 import { P } from '../palette';
 
@@ -937,6 +937,640 @@ export const PROPS: Record<string, PropDef> = {
       vline(g, w / 2 - 3, 8, h - 10, P.woodL);
       board(g, 2, 6, w - 4, 12, [P.woodD, P.wood, P.woodL], 1);
       for (let y = 9; y < 16; y += 3) hline(g, 6, y, w - 14, P.inkSoft);
+    },
+  },
+
+
+  /* ====================================================================== *
+   * CAMBRIDGE, 1775-76
+   *
+   * The camp is made of canvas, brush, turf and iron, and every one of those
+   * is a different drawing problem from anything Act 1 needed. Two rules
+   * carried over and they carried the whole set: three values or it reads as
+   * a sticker, and nothing is symmetrical. A row of identical wedge tents is
+   * a texture; a row of wedge tents where each one sags differently is a
+   * camp.
+   * ==================================================================== */
+
+  /** A private's wedge tent. Canvas over a ridge pole, sagging between pegs. */
+  tentWedge: {
+    w: 52, h: 40, block: 0.5, sink: 2,
+    draw(g, w, h, v) {
+      const ridge = 6;
+      // The two slopes, drawn line by line so the canvas can sag.
+      for (let y = ridge; y < h - 2; y++) {
+        const t = (y - ridge) / (h - 2 - ridge);
+        const half = Math.round(2 + t * (w / 2 - 3) + Math.sin(t * Math.PI) * 1.5);
+        hline(g, w / 2 - half, y, half, P.canvasM);
+        hline(g, w / 2, y, half, P.canvasD);
+      }
+      // Lit slope, shadowed slope, and the ridge itself catching the light.
+      for (let y = ridge; y < h - 2; y++) {
+        const t = (y - ridge) / (h - 2 - ridge);
+        const half = Math.round(2 + t * (w / 2 - 3) + Math.sin(t * Math.PI) * 1.5);
+        if (hash(y, v, 1) < 0.35) hline(g, w / 2 - half, y, 2, P.canvasL);
+      }
+      hline(g, w / 2 - 2, ridge, 5, P.canvasL);
+      // The ridge pole ends poking out either end.
+      hline(g, w / 2 - 3, ridge - 1, 7, P.woodD);
+      // The dark mouth of it, which is the only thing that makes it a shelter.
+      for (let y = h - 16; y < h - 2; y++) {
+        const t = (y - (h - 16)) / 14;
+        const half = Math.round(3 + t * 5);
+        hline(g, w / 2 - half, y, half * 2, shade(P.ink, 0.10));
+      }
+      // Pegs and guy lines.
+      for (const s of [-1, 1] as const) {
+        line(g, w / 2 + s * 4, ridge + 1, w / 2 + s * (w / 2 - 1), h - 3, P.canvasD);
+        px(g, w / 2 + s * (w / 2 - 1), h - 2, P.woodD);
+      }
+      speckle(g, 4, ridge, w - 8, h - ridge - 3, P.canvasD, 0.05, v + 3);
+    },
+  },
+
+  /**
+   * The general's marquee. Bigger, walled, with a fly over the door.
+   *
+   * He lived in one of these until the Vassall House was made ready, and then
+   * kept it for the field. It is the largest single object in the camp and
+   * the scene should let it be — this is where the army looks when it wants
+   * to know whether anybody is in charge.
+   */
+  tentMarquee: {
+    w: 96, h: 66, block: 0.9, sink: 3,
+    draw(g, w, h, v) {
+      const eave = 30;
+      // Walls.
+      rect(g, 8, eave, w - 16, h - eave - 3, P.canvasM);
+      rect(g, w - 26, eave, 18, h - eave - 3, P.canvasD);
+      vline(g, 8, eave, h - eave - 3, P.canvasL);
+      // Hipped canvas roof.
+      for (let y = 8; y < eave; y++) {
+        const t = (y - 8) / (eave - 8);
+        const half = Math.round(6 + t * (w / 2 - 7));
+        hline(g, w / 2 - half, y, half, P.canvasL);
+        hline(g, w / 2, y, half, P.canvasM);
+        if (hash(y, v, 5) < 0.3) hline(g, w / 2 - half, y, 3, shade(P.canvasL, 0.06));
+      }
+      hline(g, w / 2 - 8, 8, 17, P.canvasL);
+      // The door: a fly held open on two poles, and darkness behind it.
+      rect(g, w / 2 - 12, h - 30, 24, 27, shade(P.ink, 0.12));
+      for (const s of [-1, 1] as const) {
+        vline(g, w / 2 + s * 13, h - 34, 31, P.woodD);
+        line(g, w / 2 + s * 13, h - 34, w / 2 + s * 20, h - 4, P.canvasD);
+      }
+      rect(g, w / 2 - 16, h - 36, 33, 5, P.canvasL);
+      // Guy lines to the pegs.
+      for (const s of [-1, 1] as const) {
+        line(g, w / 2 + s * (w / 2 - 8), eave + 2, w / 2 + s * (w / 2 - 1), h - 4, P.canvasD);
+      }
+      speckle(g, 8, 10, w - 16, h - 14, P.canvasD, 0.045, v + 7);
+    },
+  },
+
+  /**
+   * A brush shelter.
+   *
+   * Greene's letter is the source and it is worth quoting in a comment
+   * because it is what this object is: some regiments had tents, and some
+   * had "shelters made of boards, some of sailcloth, some partly of one and
+   * partly of the other" — and some had brush. The camp street is a survey
+   * of how unequal an army of thirteen colonies actually was.
+   */
+  brushShelter: {
+    w: 58, h: 34, block: 0.5, sink: 2,
+    draw(g, w, h, v) {
+      // A lean-to frame of poles.
+      for (const x of [4, w / 2, w - 6]) line(g, x, h - 3, x + 6, 6, P.trunkD);
+      line(g, 6, 8, w - 4, 8, P.trunkD);
+      // Brush thrown over it, drawn as strokes rather than a mass.
+      for (let i = 0; i < 150; i++) {
+        const t = hash(i, v, 11);
+        const x = Math.round(4 + hash(i, v, 12) * (w - 10));
+        const y = Math.round(7 + hash(i, v, 13) * (h - 12));
+        const len = 3 + Math.floor(hash(i, v, 14) * 5);
+        const c = t < 0.35 ? P.leafDry : t < 0.7 ? P.leafD : P.trunkD;
+        if (hash(i, v, 15) < 0.55) line(g, x, y, x + len, y - 2, c);
+        else line(g, x, y, x + 2, y + len, c);
+      }
+      // A board or two, because some of them had boards and some did not.
+      board(g, w - 22, h - 18, 18, 5, [P.woodD, P.wood, P.woodL], v);
+      rect(g, 8, h - 12, 14, 9, shade(P.ink, 0.14));
+    },
+  },
+
+  /** The kettle, on a trivet, over the fire. One to a mess of six. */
+  campKettle: {
+    w: 34, h: 32, block: 0.22, sink: 2,
+    draw(g, w, h, v) {
+      // Embers.
+      ellipse(g, w / 2, h - 5, 13, 4, P.fireD);
+      for (let i = 0; i < 12; i++) {
+        px(g, Math.round(w / 2 - 11 + hash(i, v, 21) * 22), h - 6 + Math.round(hash(i, v, 22) * 3),
+          hash(i, v, 23) < 0.4 ? P.ember : P.fire);
+      }
+      // Trivet legs.
+      for (const s of [-1, 0, 1] as const) line(g, w / 2 + s * 9, h - 4, w / 2 + s * 5, h - 16, P.ironD);
+      // The pot: belly, rim, bail.
+      ellipse(g, w / 2, h - 18, 11, 9, P.iron);
+      ellipse(g, w / 2 - 3, h - 21, 6, 5, P.ironL);
+      ellipse(g, w / 2, h - 26, 11, 3, P.ironD);
+      ellipse(g, w / 2, h - 26, 8, 2, shade(P.ink, 0.06));
+      for (let a = 0; a <= 12; a++) {
+        const t = a / 12;
+        px(g, Math.round(w / 2 - 11 + t * 22), Math.round(h - 27 - Math.sin(t * Math.PI) * 8), P.ironL);
+      }
+    },
+  },
+
+  /** Three muskets stacked by the bayonet — the one thing this army lacks. */
+  musketStack: {
+    w: 30, h: 52, block: 0.2, sink: 2,
+    draw(g, w, h) {
+      for (const [x0, x1] of [[3, 14], [w - 4, 16], [w / 2, 15]] as const) {
+        line(g, x0, h - 3, x1, 6, P.woodD);
+        line(g, x0 + 1, h - 3, x1 + 1, 6, P.wood);
+        // Lock and barrel bands.
+        px(g, Math.round((x0 + x1) / 2), Math.round(h / 2), P.ironL);
+      }
+      // Where the bayonets would cross, if there were bayonets.
+      disc(g, 15, 6, 3, P.ironD);
+      px(g, 15, 5, P.ironL);
+    },
+  },
+
+  /** A regimental drum, hooped and painted. The camp runs on this, not a clock. */
+  drum: {
+    w: 34, h: 34, block: 0.2, sink: 2,
+    draw(g, w, h, v) {
+      cylinder(g, 4, 8, w - 8, h - 14, [P.blueD, P.blue, P.blueL]);
+      rect(g, 3, 6, w - 6, 4, P.woodL);
+      rect(g, 3, h - 8, w - 6, 4, P.woodD);
+      // The cords, zig-zagged between the hoops.
+      for (let i = 0; i < 6; i++) {
+        const x = 5 + i * 4;
+        line(g, x, 10, x + 3, h - 8, P.buffL);
+        line(g, x + 3, h - 8, x + 6, 10, P.buffL);
+      }
+      ellipse(g, w / 2, 8, 12, 3, P.linenL);
+      speckle(g, 5, 9, w - 10, h - 16, P.blueD, 0.05, v);
+    },
+  },
+
+  /** A bare staff. What the camp flew before there was anything to fly. */
+  flagStaff: {
+    w: 20, h: 84, block: 0.16, sink: 4,
+    draw(g, w, h) {
+      vline(g, w / 2, 2, h - 4, P.woodD);
+      vline(g, w / 2 + 1, 2, h - 4, P.wood);
+      vline(g, w / 2 + 2, 2, h - 4, P.woodL);
+      disc(g, w / 2 + 1, 3, 2, P.buffL);
+      // The halyard, and nothing on the end of it.
+      line(g, w / 2, 6, w / 2 - 4, h - 12, P.linenD);
+    },
+  },
+
+  /**
+   * The Grand Union, raised on Prospect Hill on 1 January 1776.
+   *
+   * Thirteen stripes and the King's colours still in the canton, which is the
+   * whole of where this war is in January: they are fighting the King's army
+   * under the King's flag, because independence has not been declared and
+   * most of them have not asked for it. Do not draw stars. There are no stars
+   * for another eighteen months, and a student who is shown one here will
+   * carry the error out of the room.
+   */
+  grandUnion: {
+    w: 74, h: 88, block: 0.16, sink: 4,
+    draw(g, w, h, v) {
+      vline(g, 4, 2, h - 4, P.woodD);
+      vline(g, 5, 2, h - 4, P.wood);
+      vline(g, 6, 2, h - 4, P.woodL);
+      disc(g, 5, 3, 2, P.buffL);
+      const fy = 8, fh = 39, fw = w - 12;
+      // Thirteen stripes, red and white, with the fly lifting a little.
+      for (let i = 0; i < 13; i++) {
+        const y = fy + Math.round((i * fh) / 13);
+        const hgt = Math.round(((i + 1) * fh) / 13) - Math.round((i * fh) / 13);
+        for (let x = 0; x < fw; x++) {
+          const lift = Math.round(Math.sin((x / fw) * Math.PI * 1.4 + v) * 2);
+          rect(g, 7 + x, y + lift, 1, Math.max(1, hgt), i % 2 === 0 ? P.scarlet : P.linenL);
+        }
+      }
+      // The canton: the union flag of 1606, crosses only.
+      const cw = Math.round(fw * 0.42), ch = Math.round((fh * 7) / 13);
+      rect(g, 7, fy, cw, ch, P.blueD);
+      line(g, 7, fy, 7 + cw - 1, fy + ch - 1, P.linenL);
+      line(g, 7, fy + ch - 1, 7 + cw - 1, fy, P.linenL);
+      rect(g, 7, fy + Math.round(ch / 2) - 1, cw, 3, P.linenL);
+      rect(g, 7 + Math.round(cw / 2) - 1, fy, 3, ch, P.linenL);
+      rect(g, 7, fy + Math.round(ch / 2), cw, 1, P.scarlet);
+      rect(g, 7 + Math.round(cw / 2), fy, 1, ch, P.scarlet);
+    },
+  },
+
+  /**
+   * A gabion: a bottomless wicker basket set on end and filled with earth.
+   *
+   * Twenty of them side by side is a wall, and any farmer who has made a
+   * hurdle can make one. That sentence is the whole reason field engineering
+   * was something this army could actually do.
+   */
+  gabion: {
+    w: 34, h: 42, block: 0.3, sink: 2,
+    draw(g, w, h, v) {
+      // The wicker: uprights first, then the weave over them.
+      cylinder(g, 3, 6, w - 6, h - 8, [P.trunkD, P.brown, P.brownL]);
+      for (let x = 5; x < w - 4; x += 4) vline(g, x, 6, h - 8, shade(P.brownD, -0.06));
+      for (let y = 8; y < h - 4; y += 3) {
+        for (let x = 3; x < w - 3; x++) {
+          if (((x + y) >> 1) % 2 === 0) px(g, x, y, P.brownL);
+        }
+      }
+      // Earth, heaped above the rim and spilling a little.
+      ellipse(g, w / 2, 7, w * 0.44, 5, P.turf);
+      ellipse(g, w / 2 - 2, 5, w * 0.30, 3, P.turfL);
+      speckle(g, 4, 3, w - 8, 8, P.turfD, 0.20, v);
+    },
+  },
+
+  /** Fascines: brushwood bound in six-foot lengths, stacked. */
+  fascineStack: {
+    w: 60, h: 26, block: 0.34, sink: 2,
+    draw(g, w, h, v) {
+      for (let row = 0; row < 3; row++) {
+        const y = h - 6 - row * 6;
+        const inset = row * 5;
+        cylinder(g, 3 + inset, y, w - 6 - inset * 2, 6, [P.trunkD, P.brown, P.leafDry]);
+        // Cut ends, which is what says brushwood rather than a log.
+        for (let x = 4 + inset; x < w - 4 - inset; x += 3) {
+          px(g, x, y + 1 + Math.floor(hash(x, row, v) * 3), P.leafDry);
+        }
+        // The withy binding it.
+        for (const bx of [10 + inset, w - 14 - inset]) vline(g, bx, y, 6, P.trunkD);
+      }
+    },
+  },
+
+  /** Abatis: a felled tree laid with its sharpened branches outward. */
+  abatis: {
+    w: 76, h: 30, block: 0.55, sink: 2,
+    draw(g, w, h, v) {
+      cylinder(g, 4, h - 12, w - 8, 8, [P.trunkD, P.trunk, P.trunkL], false);
+      for (let i = 0; i < 22; i++) {
+        const x = Math.round(6 + hash(i, v, 31) * (w - 12));
+        const len = 8 + Math.floor(hash(i, v, 32) * 12);
+        const up = hash(i, v, 33) < 0.6;
+        const y1 = up ? h - 14 - len : h - 4 + Math.floor(len * 0.2);
+        line(g, x, h - 8, x + Math.round((hash(i, v, 34) - 0.5) * 16), y1, P.trunkD);
+        line(g, x + 1, h - 8, x + 1 + Math.round((hash(i, v, 34) - 0.5) * 16), y1, P.trunk);
+        // The sharpened point, which is the entire purpose of the object.
+        px(g, x + Math.round((hash(i, v, 34) - 0.5) * 16), y1, P.pineL);
+      }
+    },
+  },
+
+  /** A palisade: pointed stakes, driven and braced. */
+  palisade: {
+    w: 64, h: 40, block: 0.42, sink: 3,
+    draw(g, w, h, v) {
+      for (let x = 3; x < w - 3; x += 6) {
+        const top = 6 + Math.floor(hash(x, v, 41) * 4);
+        rect(g, x, top, 5, h - top - 2, P.wood);
+        vline(g, x, top, h - top - 2, P.woodL);
+        vline(g, x + 4, top, h - top - 2, P.woodD);
+        // The point.
+        px(g, x + 2, top - 2, P.pineL);
+        px(g, x + 1, top - 1, P.pine);
+        px(g, x + 3, top - 1, P.pine);
+      }
+      rect(g, 2, h - 14, w - 4, 3, P.woodD);
+    },
+  },
+
+  /**
+   * A field gun on its carriage. Iron barrel, red-ochred carriage.
+   *
+   * There are almost none of these in front of Boston until Knox gets back,
+   * which is why the two that are here stand where the whole camp walks past
+   * them.
+   */
+  fieldGun: {
+    w: 78, h: 42, block: 0.5, sink: 2,
+    draw(g, w, h) {
+      // Trail and cheeks.
+      rect(g, 6, h - 16, w - 14, 7, P.carriage);
+      hline(g, 6, h - 16, w - 14, P.carriageL);
+      hline(g, 6, h - 10, w - 14, P.carriageD);
+      rect(g, w - 20, h - 24, 14, 12, P.carriage);
+      // The barrel, tapering, with reinforcing rings and a muzzle swell.
+      for (let x = 8; x < w - 16; x++) {
+        const t = (x - 8) / (w - 24);
+        const r = Math.round(7 - t * 2.5);
+        rect(g, x, h - 26 - r, 1, r * 2, P.iron);
+        px(g, x, h - 26 - r, P.ironL);
+        px(g, x, h - 27 + r, P.ironD);
+      }
+      for (const x of [12, 26, w - 30]) rect(g, x, h - 35, 3, 18, P.ironD);
+      rect(g, 6, h - 34, 4, 16, P.ironL);   // the muzzle
+      rect(g, w - 20, h - 30, 6, 10, P.ironD);  // the cascabel end
+      // Wheels: spokes, felloes, and an iron tyre.
+      for (const cx of [22, w - 30]) {
+        disc(g, cx, h - 12, 11, P.carriageD);
+        disc(g, cx, h - 12, 9, P.carriage);
+        for (let a = 0; a < 8; a++) {
+          const t = (a / 8) * Math.PI * 2;
+          line(g, cx, h - 12, Math.round(cx + Math.cos(t) * 9), Math.round(h - 12 + Math.sin(t) * 9), P.carriageL);
+        }
+        disc(g, cx, h - 12, 3, P.ironD);
+      }
+    },
+  },
+
+  /** A pyramid of round shot, which is the only tidy thing in the camp. */
+  shotPile: {
+    w: 40, h: 30, block: 0.24, sink: 2,
+    draw(g, w, h) {
+      const rows = [[5, 0], [4, 5], [3, 10], [2, 15], [1, 20]] as const;
+      for (const [n, up] of rows) {
+        for (let i = 0; i < n; i++) {
+          const cx = w / 2 - (n - 1) * 4 + i * 8;
+          disc(g, cx, h - 6 - up, 4, P.ironD);
+          disc(g, cx - 1, h - 7 - up, 2, P.iron);
+          px(g, cx - 2, h - 8 - up, P.ironL);
+        }
+      }
+    },
+  },
+
+  /** The glass on its rest, pointed at a town you cannot enter. */
+  spyglassRest: {
+    w: 40, h: 46, block: 0.2, sink: 2,
+    draw(g, w, h) {
+      for (const s of [-1, 0, 1] as const) line(g, w / 2 + s * 8, h - 3, w / 2, h - 22, P.woodD);
+      rect(g, w / 2 - 3, h - 26, 7, 6, P.woodD);
+      // The tube, drawn as three drawn sections, tilted up a little.
+      for (let i = 0; i < 3; i++) {
+        const x = 6 + i * 9, r = 4 - i;
+        rect(g, x, h - 30 - i * 3, 10, r * 2, P.blackD);
+        hline(g, x, h - 30 - i * 3, 10, P.brownL);
+      }
+      rect(g, 4, h - 30, 3, 8, P.buffD);
+      px(g, 5, h - 27, P.glassL);
+    },
+  },
+
+  /** A grave, marked on a board. Eleven of them, and not one of them shot. */
+  graveMarker: {
+    w: 24, h: 30, block: 0, sink: 2,
+    draw(g, w, h, v) {
+      // The mound first, so the board stands in it.
+      ellipse(g, w / 2, h - 4, 10, 4, P.turfD);
+      ellipse(g, w / 2 - 1, h - 5, 8, 3, P.turf);
+      rect(g, w / 2 - 5, h - 22, 10, 15, P.woodD);
+      rect(g, w / 2 - 4, h - 21, 8, 13, P.wood);
+      hline(g, w / 2 - 5, h - 22, 10, P.woodL);
+      // Lettering, deliberately illegible: never generate readable period text.
+      for (let y = h - 19; y < h - 11; y += 3) hline(g, w / 2 - 3, y, 5 + (v % 2), P.inkSoft);
+    },
+  },
+
+  /** A sentry box, which is a barrel with a roof and a bored man in it. */
+  sentryBox: {
+    w: 34, h: 58, block: 0.3, sink: 2,
+    draw(g, w, h, v) {
+      rect(g, 3, 10, w - 6, h - 13, P.woodD);
+      for (let x = 4; x < w - 4; x += 5) vline(g, x, 11, h - 15, P.wood);
+      rect(g, 7, 16, w - 14, h - 22, shade(P.ink, 0.12));
+      // A pitched cap on it.
+      for (let y = 2; y < 11; y++) {
+        const half = Math.round(3 + ((y - 2) / 9) * (w / 2 - 2));
+        hline(g, w / 2 - half, y, half * 2, y < 6 ? P.shingleL : P.shingle);
+      }
+      speckle(g, 4, 11, w - 8, h - 15, P.woodD, 0.06, v);
+    },
+  },
+
+  /**
+   * Knox's sledge: a gun on a sled, behind oxen that are not drawn.
+   *
+   * It arrives in January and it is the only object in Act 2 that is
+   * unambiguously good news, so it gets to be the one thing in a grey frame
+   * with a saturated colour on it.
+   */
+  gunSledge: {
+    w: 88, h: 40, block: 0.6, sink: 2,
+    draw(g, w, h) {
+      // Runners, curled up at the front.
+      for (const y of [h - 6, h - 10]) {
+        rect(g, 8, y, w - 18, 3, P.woodD);
+        line(g, 8, y, 3, y - 6, P.woodD);
+      }
+      // Deck.
+      for (let x = 10; x < w - 12; x += 7) rect(g, x, h - 16, 6, 6, P.wood);
+      hline(g, 10, h - 16, w - 22, P.woodL);
+      // The barrel, chained down. This one is a twenty-four pounder.
+      for (let x = 14; x < w - 18; x++) {
+        const t = (x - 14) / (w - 32);
+        const r = Math.round(8 - t * 2);
+        rect(g, x, h - 20 - r * 2, 1, r * 2, P.iron);
+        px(g, x, h - 20 - r * 2, P.ironL);
+      }
+      for (const x of [22, 40, w - 34]) rect(g, x, h - 38, 3, 20, P.ironD);
+      for (const x of [26, w - 36]) rect(g, x, h - 22, 3, 8, P.blackD);
+      // The chain across it.
+      for (let x = 16; x < w - 20; x += 4) px(g, x, h - 18, P.ironL);
+    },
+  },
+
+  /** A four-wheeled baggage wagon, canvas-tilted. */
+  wagonTilt: {
+    w: 86, h: 52, block: 0.6, sink: 2,
+    draw(g, w, h, v) {
+      // Bed.
+      rect(g, 10, h - 24, w - 24, 9, P.woodD);
+      hline(g, 10, h - 24, w - 24, P.woodL);
+      // Tilt: hoops with canvas over them.
+      for (let x = 12; x < w - 16; x++) {
+        const t = (x - 12) / (w - 28);
+        const top = Math.round(h - 26 - Math.sin(t * Math.PI) * 20);
+        vline(g, x, top, h - 26 - top, P.canvasM);
+        px(g, x, top, P.canvasL);
+        if (t > 0.55) vline(g, x, top + 1, h - 27 - top, P.canvasD);
+      }
+      for (const t of [0.15, 0.45, 0.78]) {
+        const x = Math.round(12 + t * (w - 28));
+        const top = Math.round(h - 26 - Math.sin(t * Math.PI) * 20);
+        vline(g, x, top, h - 26 - top, P.canvasD);
+      }
+      // Wheels: small in front, tall behind.
+      for (const [cx, r] of [[22, 9], [w - 26, 13]] as const) {
+        disc(g, cx, h - 4 - r + 4, r, P.woodD);
+        disc(g, cx, h - 4 - r + 4, r - 2, P.wood);
+        for (let a = 0; a < 8; a++) {
+          const t = (a / 8) * Math.PI * 2;
+          line(g, cx, h - r, Math.round(cx + Math.cos(t) * (r - 2)),
+            Math.round(h - r + Math.sin(t) * (r - 2)), P.woodD);
+        }
+      }
+      speckle(g, 12, h - 46, w - 28, 22, P.canvasD, 0.05, v);
+    },
+  },
+
+  /** A marked powder cask. There are never enough, and this is the act saying so. */
+  powderCask: {
+    w: 28, h: 34, block: 0.24, sink: 2,
+    draw(g, w, h, v) {
+      for (let y = 2; y < h - 1; y++) {
+        const t = (y - 2) / (h - 4);
+        const bulge = Math.sin(t * Math.PI) * 2.5;
+        const ww = Math.round(w - 8 + bulge * 2);
+        const x = Math.round(w / 2 - ww / 2);
+        hline(g, x, y, ww, P.brown);
+        vline(g, x, y, 1, P.brownL);
+        vline(g, x + ww - 1, y, 1, P.brownD);
+      }
+      for (const y of [5, h * 0.5, h - 7]) hline(g, 2, y, w - 4, P.ironD);
+      ellipse(g, w / 2, 3, w * 0.34, 2, P.brownL);
+      // The mark, which is a mark and not a word.
+      rect(g, w / 2 - 4, h * 0.44, 8, 7, P.blackD);
+      px(g, w / 2, h * 0.47, P.buffL);
+      speckle(g, 5, 6, w - 10, h - 12, P.brownD, 0.05, v);
+    },
+  },
+
+  /** A trestle table with the day's paper on it. The camp's other weapon. */
+  campTable: {
+    w: 58, h: 34, block: 0.3, sink: 2,
+    draw(g, w, h) {
+      for (const cx of [12, w - 14]) {
+        line(g, cx - 6, h - 3, cx + 2, h - 14, P.woodD);
+        line(g, cx + 6, h - 3, cx - 2, h - 14, P.woodD);
+      }
+      board(g, 2, h - 18, w - 4, 6, [P.woodD, P.wood, P.woodL], 2);
+      rect(g, 14, h - 22, 20, 5, P.paper);
+      hline(g, 14, h - 22, 20, P.paperDim);
+      for (let y = h - 21; y < h - 18; y++) hline(g, 16, y, 14, P.inkSoft);
+      rect(g, w - 22, h - 21, 6, 4, P.blackD);
+    },
+  },
+
+  /**
+   * The map table: the object the whole Knox sequence hangs on.
+   *
+   * A big deal table with a survey of the country between here and
+   * Ticonderoga on it, weighted at the corners. Examining it opens the sheet
+   * full screen; standing next to it, it has to read as a table with a plan
+   * on it from twelve feet up, which means the plan needs a coastline the eye
+   * can recognise as a coastline at this size and nothing else.
+   */
+  mapTable: {
+    w: 84, h: 48, block: 0.5, sink: 2,
+    draw(g, w, h, v) {
+      for (const cx of [10, w - 12]) {
+        rect(g, cx - 3, h - 22, 6, 20, P.woodD);
+        rect(g, cx - 7, h - 4, 14, 3, P.woodD);
+      }
+      board(g, 2, h - 28, w - 4, 8, [P.woodD, P.wood, P.woodL], 3);
+      // The sheet, curling at one corner.
+      rect(g, 8, h - 44, w - 18, 18, P.paper);
+      hline(g, 8, h - 44, w - 18, P.paperDim);
+      line(g, w - 12, h - 44, w - 10, h - 40, P.paperDim);
+      // A coastline and a river, which is all the detail this size can carry.
+      line(g, 12, h - 30, 26, h - 36, P.inkSoft);
+      line(g, 26, h - 36, 40, h - 33, P.inkSoft);
+      line(g, 40, h - 33, 58, h - 40, P.inkSoft);
+      line(g, 58, h - 40, w - 16, h - 36, P.inkSoft);
+      for (let x = 14; x < w - 16; x += 3) px(g, x, h - 42 + Math.round(Math.sin(x * 0.4) * 2), P.blueD);
+      // The weights at the corners, and a pair of dividers.
+      for (const [x, y] of [[10, h - 43], [w - 14, h - 29]] as const) disc(g, x, y, 3, P.ironD);
+      line(g, 46, h - 42, 52, h - 32, P.ironL);
+      line(g, 46, h - 42, 41, h - 32, P.ironL);
+      speckle(g, 9, h - 43, w - 20, 16, P.paperDim, 0.05, v);
+    },
+  },
+
+  /** A woodpile. In December this is the most valuable object in the camp. */
+  woodpile: {
+    w: 54, h: 32, block: 0.36, sink: 2,
+    draw(g, w, h, v) {
+      for (let row = 0; row < 4; row++) {
+        const y = h - 6 - row * 6;
+        const inset = Math.floor(row * 2.5);
+        for (let x = 3 + inset; x < w - 4 - inset; x += 7) {
+          disc(g, x + 3, y + 2, 3, P.trunkD);
+          disc(g, x + 3, y + 2, 2, P.trunk);
+          // The split face, pale, which is what makes it firewood and not logs.
+          if (hash(x, row, v) < 0.5) rect(g, x + 2, y, 3, 3, P.pineL);
+        }
+      }
+    },
+  },
+
+  /** A bare tree. Winter's most important object, because there are hundreds. */
+  oakBare: {
+    w: 78, h: 108, block: 0.20, sink: 3,
+    draw(g, w, h, v) {
+      const cx = w / 2;
+      trunk(g, cx, 40, h - 4, 10);
+      // Boughs, drawn as a recursive fork so no two are the same shape.
+      const limb = (x: number, y: number, a: number, len: number, thick: number, d: number) => {
+        const x1 = Math.round(x + Math.cos(a) * len);
+        const y1 = Math.round(y + Math.sin(a) * len);
+        for (let t = 0; t < thick; t++) line(g, x + t, y, x1 + t, y1, t === 0 ? P.trunkL : P.trunkD);
+        if (d <= 0) return;
+        limb(x1, y1, a - 0.42 - hash(d, v, 51) * 0.3, len * 0.68, Math.max(1, thick - 1), d - 1);
+        limb(x1, y1, a + 0.40 + hash(d, v, 52) * 0.3, len * 0.66, Math.max(1, thick - 1), d - 1);
+      };
+      limb(cx, 44, -Math.PI / 2 - 0.5, 22, 3, 3);
+      limb(cx, 44, -Math.PI / 2 + 0.45, 21, 3, 3);
+      limb(cx, 52, -Math.PI / 2 - 1.05, 18, 2, 3);
+      limb(cx, 52, -Math.PI / 2 + 1.00, 18, 2, 3);
+      // Two or three leaves that never fell.
+      for (let i = 0; i < 5; i++) {
+        px(g, Math.round(10 + hash(i, v, 53) * (w - 20)), Math.round(12 + hash(i, v, 54) * 40), P.leafDry);
+      }
+    },
+  },
+
+  /** A pine with snow on it. Drawn as a pine, then the snow laid on top. */
+  pineSnow: {
+    w: 62, h: 116, block: 0.20, sink: 3,
+    draw(g, w, h, v) {
+      const cx = w / 2;
+      trunk(g, cx, 74, h - 4, 7);
+      // Tiers, widest at the bottom, each with a lit upper edge of snow.
+      for (let i = 0; i < 6; i++) {
+        const y = 18 + i * 12;
+        const half = Math.round(5 + i * 4.2);
+        for (let x = -half; x <= half; x++) {
+          const drop = Math.round((Math.abs(x) / half) * 8);
+          vline(g, cx + x, y + drop, 12 - Math.round(drop * 0.4), i % 2 ? P.leafD : P.leaf);
+        }
+        // Snow, sitting on the top of each tier and only on the top.
+        for (let x = -half; x <= half; x++) {
+          const drop = Math.round((Math.abs(x) / half) * 8);
+          if (hash(x, i, v + 61) < 0.72) {
+            px(g, cx + x, y + drop, P.snowL);
+            if (hash(x, i, v + 62) < 0.5) px(g, cx + x, y + drop + 1, P.snow);
+          }
+        }
+      }
+      px(g, cx, 14, P.snowL);
+    },
+  },
+
+  /** A drift, lying flat. Breaks up an unbroken field of snow tiles. */
+  snowDrift: {
+    w: 70, h: 20, flat: true, block: 0,
+    draw(g, w, h, v) {
+      for (let i = 0; i < 4; i++) {
+        const cx = Math.round(12 + hash(i, v, 71) * (w - 24));
+        const rx = 10 + Math.floor(hash(i, v, 72) * 14);
+        ellipse(g, cx, h / 2 + Math.round(hash(i, v, 73) * 4), rx, 5, P.snow);
+        ellipse(g, cx - 2, h / 2 - 2, Math.round(rx * 0.7), 3, P.snowL);
+      }
+      speckle(g, 2, 2, w - 4, h - 4, P.snowD, 0.05, v);
     },
   },
 

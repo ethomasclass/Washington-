@@ -36,6 +36,13 @@ import { DOCUMENTS } from './content/documents';
 import { portraitOf, WASHINGTON, WASHINGTON_REGIMENTALS } from './content/people';
 import { STEP_SOUND } from './content/legend';
 import { A1_D4_UNIFORM, DEPARTURE_LINES } from './content/departure';
+import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
+import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
+import { ACT2_DECISIONS } from './content/act2-decisions';
+import { SurveySheet, type SurveyResult } from './ui/survey';
+import { SurveyOverlay } from './engine/overlay';
+import { isDown } from './engine/input';
+import { reckon, type LedgerLine } from './ledger';
 
 /* ---------------------------------------------------------------------- *
  * Constants
@@ -45,7 +52,37 @@ const MAPS: Record<string, MapDef> = {
   [ESTATE.id]: ESTATE,
   [MANSION_GROUND.id]: MANSION_GROUND,
   [MANSION_UPPER.id]: MANSION_UPPER,
+  [CAMBRIDGE_SUMMER.id]: CAMBRIDGE_SUMMER,
+  [CAMBRIDGE_WINTER.id]: CAMBRIDGE_WINTER,
+  [HQ_AUTUMN.id]: HQ_AUTUMN,
+  [HQ_WINTER.id]: HQ_WINTER,
+  [HQ_UP_AUTUMN.id]: HQ_UP_AUTUMN,
+  [HQ_UP_WINTER.id]: HQ_UP_WINTER,
 };
+
+/**
+ * Which act a map belongs to. Drives the objective rail and the act break,
+ * and it is a lookup rather than a field on `MapDef` because a map does not
+ * need to know what act it is in — the game does.
+ */
+const MAP_ACT: Record<string, number> = {
+  [ESTATE.id]: 1, [MANSION_GROUND.id]: 1, [MANSION_UPPER.id]: 1,
+  [CAMBRIDGE_SUMMER.id]: 2, [HQ_AUTUMN.id]: 2, [HQ_UP_AUTUMN.id]: 2,
+  [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
+};
+
+/**
+ * The ledger's earned lines, looked up from the decision record.
+ *
+ * `ledger.ts` recomputes the reckoning from scratch every time rather than
+ * accumulating it, so this has to be a pure function of (decision, option)
+ * and nothing else. It is: every line is authored on the option that causes
+ * it, in `act2-decisions.ts`.
+ */
+const EARNED = new Map<string, LedgerLine[]>();
+for (const d of ACT2_DECISIONS) {
+  for (const o of d.options) if (o.ledger) EARNED.set(`${d.id}/${o.id}`, o.ledger);
+}
 
 const WALK_SPEED = 4.2;
 const REACH = 1.9;
@@ -100,6 +137,12 @@ class Game {
   private lastTime = 0;
   private actOver = false;
 
+  /** The map table's four decisions, once they have been settled. */
+  private survey: SurveySheet;
+  private surveyResult: SurveyResult | null = null;
+  /** The held-key survey of the ground. Never takes the keyboard. */
+  private overlay: SurveyOverlay;
+
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = makeRenderer(canvas);
     this.post = new Post(this.renderer);
@@ -109,7 +152,10 @@ class Game {
       portraitFor: (id) => (id ? portraitOf(id) : null),
       passport: () => encode(this.state),
     });
-    document.getElementById('stage')!.append(this.ui.root);
+    this.survey = new SurveySheet();
+    this.overlay = new SurveyOverlay();
+    const stage = document.getElementById('stage')!;
+    stage.append(this.ui.root, this.survey.root, this.overlay.root);
   }
 
   /* ---------------- map loading -------------------------------------- */
@@ -191,10 +237,45 @@ class Game {
   private refreshObjectives(): void {
     if (this.actOver) { this.ui.setObjectives([]); return; }
     const has = (k: string) => this.state.knowledge.has(k);
+    const done = (d: string) => this.state.decisions.has(d);
+
+    if (MAP_ACT[this.mapId] === 2) {
+      /*
+       * ACT 2's RAIL, AND WHY IT IS NOT A CHECKLIST OF FOUR DECISIONS.
+       *
+       * The winter half of this act deliberately does not tell the player
+       * that anything is coming: they walk out of a council of war into
+       * December and the objectives change under them, which is as near as
+       * an interface can get to how the winter of 1775 actually arrived.
+       */
+      const winter = has('obs.a2.winter_came');
+      this.ui.setObjectives(
+        winter
+          ? [
+            { text: 'Answer Reed. The order of 12 November is still standing.', done: done('A2-D3') },
+            { text: 'Give Sergeant Starr an answer. Eleven hundred wait on it.', done: done('A2-D4') },
+            { text: 'Walk the parapet on the first of January.', done: this.actOver },
+            ...(has('obs.a2.knox_gone') && !has('doc.a2.knox')
+              ? [{ text: 'There has been no word from Knox in eighteen days.', done: false }]
+              : []),
+          ]
+          : [
+            { text: 'Tell Greene what is in the magazine, or do not.', done: done('A2-D1') },
+            { text: 'Put the assault to the council of war.', done: done('A2-D2') },
+            { text: 'Settle the train of artillery at the map table.', done: !!this.surveyResult },
+            ...(has('obs.a2.spyglass') && !has('map.a2.shipping')
+              ? [{ text: 'Hold SHIFT on the parapet and name what is over there.', done: false }]
+              : []),
+          ],
+        winter ? 'Eleven days' : 'This summer',
+      );
+      return;
+    }
+
     this.ui.setObjectives([
-      { text: 'Answer Martha. She asked you a week ago.', done: this.state.decisions.has('A1-D1') },
-      { text: 'See Lund about the north end.', done: this.state.decisions.has('A1-D2') },
-      { text: 'Give Jenkins something to carry back.', done: this.state.decisions.has('A1-D3') },
+      { text: 'Answer Martha. She asked you a week ago.', done: done('A1-D1') },
+      { text: 'See Lund about the north end.', done: done('A1-D2') },
+      { text: 'Give Jenkins something to carry back.', done: done('A1-D3') },
       { text: 'Walk down to the landing when you are ready.', done: this.actOver },
       ...(has('doc.a1.fairfax') && !has('heard.a1.harry')
         ? [{ text: 'The lane past the timber goes somewhere.', done: false }]
@@ -316,6 +397,30 @@ class Game {
         }
       }
     }
+
+    if (it.opens === 'survey') await this.openSurvey();
+  }
+
+  /**
+   * The map table.
+   *
+   * Four decisions and five dispatches, and then it is settled and it stays
+   * settled: coming back to the table shows you the account of what came in,
+   * and does not let you have another go. The whole point of the sequence is
+   * that a supply decision is made once, in the dark, and answered eight
+   * weeks later by a rider.
+   */
+  private async openSurvey(): Promise<void> {
+    if (this.surveyResult) {
+      await this.survey.replay(this.surveyResult);
+      return;
+    }
+    const r = await this.survey.run(this.state.knowledge);
+    this.surveyResult = r;
+    this.state.decisions.set('A2-KNOX', r.id);
+    this.state.knowledge.add('obs.a2.knox_train');
+    if (r.guns === 59) this.state.knowledge.add('obs.a2.noble_train');
+    this.ui.toast(`The train: ${r.guns} pieces, ${r.daysLate === 0 ? 'on time' : `${r.daysLate} days late`}`);
   }
 
   private async talk(n: NpcDef): Promise<void> {
@@ -349,6 +454,10 @@ class Game {
     for (const [k, v] of Object.entries(chosen.effects)) {
       applyDelta(this.state, k as never, v as number, !!d.sealed);
     }
+    // A decision may tell the WORLD what was settled. It may never tell
+    // another decision — see the note on `grants` in types.ts, and the
+    // linter assertion that enforces it.
+    for (const f of chosen.grants ?? []) this.state.knowledge.add(f);
     await this.ui.narrate(chosen.result);
   }
 
@@ -359,7 +468,11 @@ class Game {
     }
     sfxDoor();
     await this.ui.fadeOut();
-    this.loadMap(p.to, p.at, (p.facing ?? 0) as Dir);
+    // One door, two seasons. You go in at this one in the autumn and the
+    // council of war settles what the army is going to do about Boston; you
+    // come out of it into December, and nothing announces it.
+    const alt = p.alt && this.state.knowledge.has(p.alt.requires) ? p.alt : null;
+    this.loadMap(alt?.to ?? p.to, alt?.at ?? p.at, (p.facing ?? 0) as Dir);
     await this.ui.fadeIn();
     const def = this.built.def;
     if (def.arrival && !this.firedZones.has(`arr:${def.id}`)) {
@@ -458,6 +571,21 @@ class Game {
             ['Doll', 'heard.a1.doll', 'Enslaved. Cook at the Mansion House since 1759.'],
             ['Harry', 'heard.a1.harry', 'Enslaved. He worked the Dismal Swamp survey.'],
             ['Simms', 'heard.a1.simms', 'Runs the boat down to the ferry.'],
+            // --- Act 2 -------------------------------------------------
+            ['Nathanael Greene', 'heard.a2.greene', 'Rhode Island. A foundryman&rsquo;s son who learned war out of books.'],
+            ['Henry Knox', 'heard.a2.knox', 'A Boston bookseller of twenty-five who proposes to fetch the guns.'],
+            ['Horatio Gates', 'heard.a2.gates', 'Adjutant General. Twenty years in the King&rsquo;s service.'],
+            ['Joseph Reed', 'heard.a2.reed', 'Military secretary. A Philadelphia lawyer who writes what you say.'],
+            ['Robert Harrison', 'heard.a2.harrison', 'Secretary, and your own attorney from Alexandria.'],
+            ['Colonel Prescott', 'heard.a2.prescott', 'Held the redoubt on Breed&rsquo;s Hill through three assaults.'],
+            ['Amos Doolittle', 'heard.a2.doolittle', 'An engraver. Made the only pictures of Lexington by a man who went.'],
+            ['Sergeant Starr', 'heard.a2.starr', 'Connecticut. His paper runs out on the tenth of December.'],
+            ['Salem Poor', 'heard.a2.salem', 'Bought his own freedom in 1769. Fought at Bunker Hill.'],
+            ['William Lee, in the field', 'heard.a2.billy', 'Enslaved. Six months in this camp, and no date to count to.'],
+            ['Bragg', 'heard.a2.bragg', 'A Virginia rifleman. Six hundred miles in three weeks.'],
+            ['Whitcomb', 'heard.a2.whitcomb', 'A scout. Counts what is over there and reports the count.'],
+            ['A woman of the camp', 'heard.a2.campwoman', 'On the rations at half a man&rsquo;s allowance, and worth more.'],
+            ['Martha, at Cambridge', 'heard.a2.martha', 'Came five hundred miles in December, and said nothing about it.'],
           ].filter(([, flag]) => this.state.knowledge.has(flag as string));
           if (!met.length) return `<h3>Spoken to</h3><div class="empty">Nobody yet.</div>`;
           return `<h3>Spoken to</h3>` + met
@@ -492,6 +620,7 @@ class Game {
   /* ---------------- the end of the act ------------------------------------ */
 
   private async maybeEndAct(): Promise<void> {
+    if (MAP_ACT[this.mapId] === 2) { await this.maybeEndActTwo(); return; }
     if (this.actOver || this.mapId !== ESTATE.id) return;
     // The wharf. He has to have answered Philadelphia first, or there is
     // nothing to leave for.
@@ -529,6 +658,84 @@ class Game {
     await this.ui.narrate([
       `Act One is done. Your code is ${encode(this.state)} — write it down; the next lesson starts from it.`,
     ]);
+
+    /*
+     * And on to Cambridge.
+     *
+     * Six weeks and four hundred miles happen inside one fade, which is the
+     * right amount of screen time for a journey the player has no decisions
+     * in. The snapshot is taken BEFORE the crossing, so Act 2's world mood
+     * and his portrait are set by the man who got on the boat, not by what
+     * happens to him in the first ten minutes of the camp.
+     */
+    await this.ui.fadeOut(700);
+    this.state.act = 2;
+    this.state.scene = 'CB-01';
+    takeSnapshot(this.state);
+    this.actOver = false;
+    this.firedZones.clear();
+    this.firedAmbient.clear();
+    this.loadMap(CAMBRIDGE_SUMMER.id);
+    await this.ui.fadeIn(700);
+    await this.ui.narrate(CAMBRIDGE_SUMMER.arrival!);
+    this.busy = false;
+  }
+
+  /**
+   * THE END OF ACT 2.
+   *
+   * On the parapet, on the first of January 1776, once Starr has his answer.
+   * The Grand Union goes up the staff — thirteen stripes and the King's
+   * colours still in the canton, because independence has not been declared
+   * and most of this army has not asked for it — and then the reckoning.
+   *
+   * There is no exit door. The act ends where the player chooses to walk,
+   * and the only place it can end is the highest and most exposed ground on
+   * the map, which is the one piece of staging in this game that is allowed
+   * to be a little bit of a flourish.
+   */
+  private async maybeEndActTwo(): Promise<void> {
+    if (this.actOver || this.mapId !== CAMBRIDGE_WINTER.id) return;
+    const onCrest = this.player.z < 14 && this.player.x > 30 && this.player.x < 44;
+    if (!onCrest) return;
+
+    if (!this.state.decisions.has('A2-D4')) {
+      if (!this.firedZones.has('nudge:crest')) {
+        this.firedZones.add('nudge:crest');
+        this.busy = true;
+        await this.ui.narrate(
+          'The staff is bare and the halyard is rove and there is a bundle of new bunting under '
+          + 'a stone at the foot of it. Sergeant Starr is still standing at the unfinished work '
+          + 'with eleven hundred men behind him, waiting to be told whether his own paper means '
+          + 'what it says.',
+        );
+        this.busy = false;
+      }
+      return;
+    }
+
+    this.busy = true;
+    this.actOver = true;
+    await this.ui.narrate([
+      'The first of January, 1776. Whatever this army was on the thirty-first of December, it is '
+      + 'not that this morning, and the men standing in these works signed nothing that obliged '
+      + 'them to be here.',
+      'The new colours go up the staff at noon: thirteen stripes, and the King&rsquo;s crosses '
+      + 'still in the corner of it. Nobody has declared anything. They are fighting the King&rsquo;s '
+      + 'army under the King&rsquo;s flag and they have been doing it for eight months.',
+      'Across the water somebody in Boston sees it go up, and reports that the rebels have hoisted '
+      + 'the union flag in token of submission, and is wrong about that in a way that will be '
+      + 'funny for two hundred years.',
+    ]);
+
+    const r = reckon(2, this.state, (d, o) => EARNED.get(`${d}/${o}`) ?? []);
+    if (r) await this.ui.reckoning(r);
+
+    takeSnapshot(this.state);
+    this.refreshObjectives();
+    await this.ui.narrate([
+      `Act Two is done. Your code is ${encode(this.state)} — write it down; the next lesson starts from it.`,
+    ]);
     this.busy = false;
   }
 
@@ -540,6 +747,43 @@ class Game {
     this.renderer.setSize(w, h, false);
     this.post.resize(w, h);
     this.rig.resize(w / h);
+    this.overlay.resize(w, h);
+  }
+
+  /**
+   * THE SURVEY, HELD.
+   *
+   * Held, not toggled, and it never consumes a key — hold SHIFT and the
+   * ground is read the way a surveyor reads it, and you can keep walking
+   * while you do it. It only comes up outdoors, because contours off a
+   * floorboard would be a joke.
+   *
+   * A mark that is in sight while the survey is up is LEARNED. That is how
+   * the seven British positions across the water are gathered: stand on the
+   * parapet, hold the key, and the glass names them with the range to each,
+   * once, quietly, in a toast. Reading them off a telescope is what scouting
+   * is, and it is one interaction where the old build had seven.
+   */
+  private updateOverlay(): void {
+    const want =
+      !this.built.def.interior && !this.busy && !this.ui.modal
+      && (isDown('ShiftLeft') || isDown('ShiftRight'));
+    this.overlay.setVisible(want);
+    if (!want) return;
+
+    const marks = this.built.def.marks ?? [];
+    if (!marks.length) return;
+    const sighted = this.overlay.draw(
+      this.rig.camera, this.built.grid,
+      { x: this.player.x, y: this.player.y, z: this.player.z },
+      marks,
+    );
+    for (const m of sighted) {
+      if (!m.grants || this.state.knowledge.has(m.grants)) continue;
+      this.state.knowledge.add(m.grants);
+      this.ui.toast(`Taken by survey: ${m.label}`);
+      this.refreshObjectives();
+    }
   }
 
   async start(): Promise<void> {
@@ -583,6 +827,7 @@ class Game {
 
     void this.updateZones(dt);
     this.rig.follow(this.player.x, this.player.y, this.player.z, dt);
+    this.updateOverlay();
 
     this.renderer.setRenderTarget(this.post.target);
     this.renderer.clear();
@@ -621,7 +866,11 @@ void game.start();
 // The dev jump, kept from the old build because a teacher wants it too.
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'F2' && e.code !== 'Backquote') return;
-  const order = [ESTATE.id, MANSION_GROUND.id, MANSION_UPPER.id];
+  const order = [
+    ESTATE.id, MANSION_GROUND.id, MANSION_UPPER.id,
+    CAMBRIDGE_SUMMER.id, HQ_AUTUMN.id, HQ_UP_AUTUMN.id,
+    CAMBRIDGE_WINTER.id, HQ_WINTER.id, HQ_UP_WINTER.id,
+  ];
   const cur = order.indexOf((game as unknown as { mapId: string }).mapId);
   game.loadMap(order[(cur + 1) % order.length]);
 });

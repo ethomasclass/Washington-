@@ -77,13 +77,25 @@ export function makeGrid(map: MapDef): Grid {
     }
   }
 
-  // Props block a radius, in tiles, declared on the prop itself.
+  /*
+   * Props block a radius, in tiles, declared on the prop itself.
+   *
+   * The epsilon is not cosmetic. A candle stand of radius 0.2 standing at
+   * z 8.2 has `8.2 - 0.2 === 7.999999999999999` in binary floating point, so
+   * `Math.floor` hands back row 7 and the prop silently blocks twice the
+   * ground it should. In an open field nobody would ever notice; in a
+   * furnished room it sealed a general officer behind a table, and the only
+   * thing that ever said so was the reachability flood. Nudging both bounds
+   * inward by a millionth of a tile costs nothing and makes a prop block
+   * exactly the tiles it covers.
+   */
+  const EPS = 1e-6;
   for (const p of map.props) {
     const def = PROPS[p.id];
     if (!def?.block) continue;
     const rad = def.block * (p.scale ?? 1);
-    for (let c = Math.floor(p.x - rad); c <= Math.floor(p.x + rad); c++) {
-      for (let r = Math.floor(p.z - rad); r <= Math.floor(p.z + rad); r++) {
+    for (let c = Math.floor(p.x - rad + EPS); c <= Math.floor(p.x + rad - EPS); c++) {
+      for (let r = Math.floor(p.z - rad + EPS); r <= Math.floor(p.z + rad - EPS); r++) {
         const i = at(c, r);
         if (i >= 0) solid[i] = 1;
       }

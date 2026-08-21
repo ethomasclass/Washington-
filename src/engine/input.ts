@@ -1,9 +1,24 @@
 /**
  * Input. Arrows or WASD to walk, Space/Enter/E to act, Tab to cycle what is in
- * reach, Escape for the letterbook, and a gamepad if one is plugged in.
+ * reach, Escape for the letterbook, a gamepad if one is plugged in, and a
+ * thumb on a phone.
  *
  * A classroom Chromebook may or may not have a trackpad the student can use
  * well, so everything is reachable from the keyboard and nothing needs a mouse.
+ *
+ * TOUCH ENTERS THIS FILE THROUGH EXACTLY ONE DOOR — `setTouchAxis`.
+ *
+ * Everything else the on-screen pad does, it does by dispatching real
+ * `KeyboardEvent`s at `window`, so it arrives here through the same listener
+ * a keyboard uses and every other consumer in the game — the modal panel in
+ * `ui.ts`, the travel panel's `F1`, the survey sheet's arrows, the held
+ * `Shift` the ground overlay reads — keeps working with no knowledge that a
+ * finger was involved. See `engine/touch.ts`.
+ *
+ * The stick is the one thing that cannot go through that door, because a key
+ * is on or off and a thumb is neither: quantising it to eight directions
+ * makes a phone feel like a d-pad from 1987. So the stick, and only the
+ * stick, writes an analogue vector straight into the state below.
  */
 
 export interface InputState {
@@ -18,6 +33,19 @@ export interface InputState {
 
 const DOWN = new Set<string>();
 const PRESSED = new Set<string>();
+
+/** The on-screen stick's vector, -1..1 on each axis. See `engine/touch.ts`. */
+let touchX = 0, touchZ = 0;
+
+/**
+ * Set the analogue stick vector. Called from the touch layer on every
+ * pointer move and zeroed on release; harmless on a machine with no touch,
+ * where it is simply never called.
+ */
+export function setTouchAxis(x: number, z: number): void {
+  touchX = x;
+  touchZ = z;
+}
 
 const MOVE: Record<string, [number, number]> = {
   ArrowUp: [0, -1], KeyW: [0, -1],
@@ -38,7 +66,7 @@ export function installInput(target: HTMLElement | Window = window): () => void 
     if (SWALLOW.has(e.code)) e.preventDefault();
   };
   const up = (e: KeyboardEvent) => { DOWN.delete(e.code); };
-  const blur = () => { DOWN.clear(); };
+  const blur = () => { DOWN.clear(); setTouchAxis(0, 0); };
   target.addEventListener('keydown', down as EventListener);
   target.addEventListener('keyup', up as EventListener);
   window.addEventListener('blur', blur);
@@ -64,7 +92,7 @@ let padAct = false;
 let gamepadBlocked = false;
 
 export function readInput(): InputState {
-  let ax = 0, az = 0;
+  let ax = touchX, az = touchZ;
   for (const code of DOWN) {
     const m = MOVE[code];
     if (m) { ax += m[0]; az += m[1]; }

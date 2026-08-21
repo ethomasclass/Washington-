@@ -97,6 +97,9 @@ export class SurveyOverlay {
   /** Reused every frame so the overlay allocates nothing while it is up. */
   private v = new THREE.Vector3();
 
+  /** How far the glass carries, in tiles. Set by `resize`. */
+  private range = 46;
+
   constructor() {
     this.root = document.createElement('div');
     this.root.id = 'survey-overlay';
@@ -110,6 +113,18 @@ export class SurveyOverlay {
   resize(w: number, h: number): void {
     this.canvas.width = w;
     this.canvas.height = h;
+    /*
+     * HOW FAR THE GLASS CARRIES DEPENDS ON HOW WIDE THE FRAME IS.
+     *
+     * The labels are twelve pixels tall whatever the screen, so on a
+     * thirteen-inch laptop eight of them across a mile of water is a legible
+     * survey and on a phone it is a wall of text with the game behind it.
+     * Rather than shrink the type below reading size, the glass reaches
+     * less far on a narrow frame: fewer marks, each still readable, and the
+     * ones it drops are the distant ones a surveyor would need to walk
+     * toward anyway.
+     */
+    this.range = w < 700 ? 30 : 46;
   }
 
   setVisible(v: boolean): void {
@@ -242,7 +257,7 @@ export class SurveyOverlay {
     let mi = 0;
     for (const m of marks) {
       const d = Math.hypot(m.x - from.x, m.z - from.z);
-      if (d > 46) continue;
+      if (d > this.range) continue;
       const my = grid.heightAt(m.x, m.z);
       const to = this.project(camera, m.x, my + 0.6, m.z);
       if (!to || !here) continue;
@@ -269,7 +284,11 @@ export class SurveyOverlay {
       const text = `${m.label} · ${distanceLabel(d)}`;
       const wpx = g.measureText(text).width;
       const lx = Math.min(W - wpx - 12, Math.max(6, to[0] - wpx / 2));
-      const ly = to[1] - 18 - (mi++ % 3) * 17;
+      // Clamped into the frame on both axes. The stagger pushes labels
+      // upward and a mark near the top of the screen used to push its own
+      // label clean off it — a name half-drawn along the top edge, which
+      // reads as a rendering fault rather than as a distant hill.
+      const ly = Math.max(14, Math.min(H - 12, to[1] - 18 - (mi++ % 3) * 17));
       g.fillStyle = 'rgba(8,14,11,.78)';
       g.fillRect(lx - 5, ly - 9, wpx + 10, 18);
       g.fillStyle = open ? '#cfe9dd' : '#eccccc';
@@ -284,7 +303,7 @@ export class SurveyOverlay {
     const level = Math.round(from.y / STEP);
     const sighted = marks.filter((m) => {
       const d = Math.hypot(m.x - from.x, m.z - from.z);
-      return d <= 46 && (m.overWater || clear(grid, from.x, from.z, m.x, m.z));
+      return d <= this.range && (m.overWater || clear(grid, from.x, from.z, m.x, m.z));
     });
     this.legend.innerHTML =
       `<b>Survey</b><br>station at level ${level}<br>`

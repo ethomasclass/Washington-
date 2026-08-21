@@ -49,6 +49,7 @@ import { FOUR_CHIMNEYS } from './content/four-chimneys';
 import { SurveySheet, type SurveyResult } from './ui/survey';
 import { WindTable } from './ui/windtable';
 import { Travel } from './ui/travel';
+import { installTouch, type TouchPad } from './engine/touch';
 import { SurveyOverlay } from './engine/overlay';
 import { isDown } from './engine/input';
 import { reckon, type LedgerLine } from './ledger';
@@ -179,6 +180,8 @@ class Game {
   private overlay: SurveyOverlay;
   /** F1. The build jump, and the one a teacher wants too. */
   private travel: Travel;
+  /** The on-screen stick and buttons. `null` on anything with a keyboard. */
+  private pad: TouchPad | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = makeRenderer(canvas);
@@ -193,7 +196,25 @@ class Game {
     this.windTable = new WindTable();
     this.overlay = new SurveyOverlay();
     this.travel = new Travel();
+
+    /*
+     * THE PAD GOES IN FIRST, AND THAT IS THE WHOLE OF ITS Z-ORDER.
+     *
+     * There is not one `z-index` in `ui/style.ts`, so what paints over what
+     * is DOM order and nothing else. Mounting the pad before every panel
+     * makes every panel paint over it, which is what is wanted: an open
+     * document is not something you should be able to walk out from behind.
+     * The pad hides itself while a panel is open in any case — this is the
+     * belt to that pair of braces.
+     */
+    this.pad = installTouch({
+      panelOpen: () => this.ui.modal || this.travel.open || this.busy,
+      canSurvey: () =>
+        !this.built.def.interior && !!this.built.def.marks?.length,
+    });
+
     const stage = document.getElementById('stage')!;
+    if (this.pad) stage.append(this.pad.root);
     stage.append(
       this.ui.root, this.survey.root, this.windTable.root,
       this.overlay.root, this.travel.root,
@@ -1099,6 +1120,10 @@ class Game {
       !this.built.def.interior && !this.busy && !this.ui.modal
       && (isDown('ShiftLeft') || isDown('ShiftRight'));
     this.overlay.setVisible(want);
+    // Published for the stylesheet: on a phone the objective rail sits
+    // exactly where the survey draws its labels, and two sets of words in
+    // the same place is neither.
+    document.documentElement.classList.toggle('surveying', want);
     if (!want) return;
 
     const marks = this.built.def.marks ?? [];
@@ -1158,6 +1183,7 @@ class Game {
     void this.updateZones(dt);
     this.rig.follow(this.player.x, this.player.y, this.player.z, dt);
     this.updateOverlay();
+    this.pad?.update();
 
     this.renderer.setRenderTarget(this.post.target);
     this.renderer.clear();

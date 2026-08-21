@@ -25,6 +25,7 @@
  */
 
 import { sfxCancel, sfxConfirm, sfxSelect } from '../engine/audio';
+import { KEY_BACK, KEY_GO } from '../engine/touch';
 
 export interface Destination {
   /** Map id. */
@@ -223,12 +224,35 @@ export class Travel {
       if (!this.open) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (this.resolveKey) {
-        const r = this.resolveKey;
-        this.resolveKey = null;
-        r(e.code);
-      }
+      this.feed(e.code);
     });
+
+    /*
+     * A tap on a destination is the same act as arrowing to it and pressing
+     * Enter, so it takes the same path: set the cursor, then feed the key
+     * the loop below is already waiting on. Delegated from the list rather
+     * than bound per row, because `paint()` rebuilds the whole list from a
+     * string every time the cursor moves and per-row listeners would not
+     * survive that.
+     */
+    this.list.addEventListener('click', (e) => {
+      if (!this.open) return;
+      const row = (e.target as HTMLElement | null)?.closest('.row');
+      if (!row) return;
+      const rows = [...this.list.querySelectorAll('.row')];
+      const i = rows.indexOf(row);
+      if (i < 0) return;
+      this.sel = i;
+      this.feed('Enter');
+    });
+  }
+
+  /** Hand a code to whatever the panel is waiting on, typed or tapped. */
+  private feed(code: string): void {
+    const r = this.resolveKey;
+    if (!r) return;
+    this.resolveKey = null;
+    r(code);
   }
 
   private key(): Promise<string> {
@@ -270,10 +294,12 @@ export class Travel {
     this.open = true;
     this.root.classList.add('on');
     this.foot.innerHTML =
-      '<span class="key">&uarr; &darr;</span>choose'
-      + '<span class="key">&larr; &rarr;</span>by act'
-      + '<span class="key">ENTER</span>go'
-      + '<span class="key">ESC</span>stay';
+      (KEY_GO === 'TAP'
+        ? '<span class="key">tap</span>a place to go'
+        : '<span class="key">&uarr; &darr;</span>choose'
+          + '<span class="key">&larr; &rarr;</span>by act'
+          + '<span class="key">ENTER</span>go')
+      + `<span class="key">${KEY_BACK}</span>stay`;
     this.paint(currentMap);
 
     for (;;) {

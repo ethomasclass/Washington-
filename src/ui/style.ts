@@ -164,6 +164,18 @@ html, body {
 #portrait.empty { display: none; }
 
 #say { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+/*
+ * NOTHING INSIDE THE SPEECH COLUMN MAY SHRINK.
+ *
+ * #text carries a min-height of 3.1em so a one-line answer does not make the
+ * panel jump, and a flex child's default flex-shrink of 1 reads that as
+ * permission to squeeze it down TO 3.1em when the column is height-capped —
+ * which it is on a phone. Four lines of prompt then render inside three
+ * lines of box and overflow straight through the Council underneath, one
+ * sentence written over another. It is a spectacular-looking bug for a
+ * one-word cause.
+ */
+#say > * { flex: 0 0 auto; }
 #speaker {
   font-size: 13px; letter-spacing: .15em; text-transform: uppercase;
   color: var(--brass); margin-bottom: 7px; font-weight: 600;
@@ -730,6 +742,240 @@ html, body {
   font-size: 12px; padding: 2px 8px; border-radius: 2px;
   background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
 }
+
+/* ====================================================================== *
+ * THE THUMB PAD
+ *
+ * Only ever built on a touch device — see \`engine/touch.ts\` — so none of
+ * this costs a classroom Chromebook anything. It is mounted FIRST inside
+ * \`#stage\`, which in a stylesheet with no z-index anywhere means every
+ * panel in the game paints over it, which is exactly what is wanted: the
+ * pad is the floor the interface stands on, not a thing that fights it.
+ * ====================================================================== */
+
+#pad {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  touch-action: none;
+  opacity: 1; transition: opacity .18s linear;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* A panel has the input. Get out of the way — and stop taking taps, or the
+ * dead pad under an open document eats the tap meant to dismiss it. */
+#pad.away { opacity: 0; pointer-events: none !important; }
+#pad.away * { pointer-events: none !important; }
+
+/* The whole lower-left is live. The stick has no home until a thumb gives
+ * it one, so the zone is large and completely invisible. */
+#pad .stickzone {
+  position: absolute; left: 0; bottom: 0;
+  width: 52%; height: 62%;
+  pointer-events: auto; touch-action: none;
+}
+
+#pad .stick {
+  position: fixed; width: 0; height: 0;
+  opacity: 0; transition: opacity .12s linear;
+}
+#pad .stick.on { opacity: 1; }
+#pad .stick::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 132px; height: 132px; transform: translate(-50%,-50%);
+  border-radius: 50%;
+  border: 2px solid rgba(200,161,63,.30);
+  background: radial-gradient(circle, rgba(20,14,10,.34), rgba(20,14,10,.10) 70%);
+}
+#pad .knob {
+  position: absolute; left: 50%; top: 50%;
+  width: 58px; height: 58px; transform: translate(-50%,-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(233,224,201,.80), rgba(138,108,38,.72));
+  border: 2px solid rgba(233,224,201,.55);
+  box-shadow: 0 2px 10px rgba(0,0,0,.45);
+}
+
+#pad .btns {
+  position: absolute; right: 0; bottom: 0;
+  padding: 0 calc(20px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) 0;
+  display: grid; gap: 12px;
+  grid-template-columns: auto auto;
+  grid-template-areas: "look cycle" "act act";
+  align-items: end; justify-items: end;
+  pointer-events: none;
+}
+#pad .b-look  { grid-area: look; }
+#pad .b-cycle { grid-area: cycle; }
+#pad .b-act   { grid-area: act; }
+
+#pad .pills {
+  position: absolute; right: 0; top: 0;
+  padding: calc(12px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 0 0;
+  display: flex; gap: 8px;
+  pointer-events: none;
+}
+
+#pad .b {
+  pointer-events: auto; touch-action: none;
+  font-family: var(--ui); font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--parch);
+  background: linear-gradient(180deg, rgba(74,54,38,.86), rgba(23,15,10,.90));
+  border: 2px solid rgba(200,161,63,.46);
+  border-radius: 999px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.5);
+  transition: transform .06s linear, background .06s linear;
+}
+#pad .b.down {
+  transform: scale(.93);
+  background: linear-gradient(180deg, rgba(217,184,98,.92), rgba(163,127,38,.92));
+  color: #211607;
+}
+/* Greyed rather than removed: a control that comes and goes teaches the
+ * player nothing about when it works. */
+#pad .b.off { opacity: .30; }
+
+/* Sized off a thumb, not off a mouse: 44pt is the floor everybody quotes,
+ * and the primary is well over it because it is pressed a hundred times an
+ * act and the other two are not. */
+#pad .b-act   { width: 92px; height: 92px; font-size: 15px; }
+#pad .b-cycle,
+#pad .b-look  { width: 64px; height: 64px; font-size: 11px; }
+#pad .b-pill  { padding: 7px 13px; font-size: 11px; }
+
+/* ====================================================================== *
+ * THE PHONE LAYOUT
+ *
+ * Every panel in this interface was sized for a 1280-wide frame and every
+ * one of them had to be told what to do at 390. The rules are the same
+ * three each time: give the measure back (a 64-character line at 19px does
+ * not fit and must not be made to), let the panel scroll rather than
+ * overflow, and keep the bottom of the screen clear of the thumb pad.
+ * ====================================================================== */
+
+@media (max-width: 780px), (max-height: 460px) {
+  #ui { font-size: 17px; }
+
+  /* The banner is a title card, not a fixture. Small and out of the way. */
+  #banner { margin-top: calc(8px + env(safe-area-inset-top)); padding: 5px 14px; gap: 9px; }
+  #banner .place { font-size: 13px; letter-spacing: .07em; }
+  #banner .when  { font-size: 12px; }
+
+  /*
+   * The objective rail on a phone is a two-line strip, not a column.
+   * At full size it took a third of the screen and the third it took was
+   * the third you walk into.
+   */
+  #rail {
+    top: calc(46px + env(safe-area-inset-top));
+    left: calc(10px + env(safe-area-inset-left));
+    right: calc(10px + env(safe-area-inset-right));
+    max-width: none; padding: 7px 11px 8px;
+    font-size: 13px; line-height: 1.34;
+  }
+  #rail h4 { font-size: 10px; margin-bottom: 3px; }
+  #rail li { margin-bottom: 1px; }
+
+  #reach { bottom: auto; top: calc(50% - 20px); font-size: 14px; padding: 6px 12px; }
+
+  /* A conversation owns a phone screen entirely. Anything still showing
+   * behind it is a clipped half-sentence, not information. */
+  html.panel #rail, html.panel #banner, html.panel #reach,
+  html.surveying #rail, html.surveying #banner { opacity: 0; }
+
+  /* The legend moves to the top-left, into the space the hidden rail just
+   * gave up. Bottom-left is where the thumb is and where the nearest marks
+   * label themselves, and it was sitting on both. */
+  #survey-overlay .legend {
+    top: calc(10px + env(safe-area-inset-top));
+    bottom: auto; left: calc(10px + env(safe-area-inset-left));
+    font-size: 11px; line-height: 1.5; padding: 7px 10px;
+  }
+
+  /*
+   * The dialogue panel. The portrait goes: at 108px it is a third of the
+   * width of the phone and the text it leaves room for is four words wide.
+   * The speaker's name still names them, which is what the portrait was
+   * there to do.
+   */
+  #dialogue {
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    width: calc(100% - 16px);
+    padding: 13px 14px 12px;
+    gap: 10px;
+    max-height: 78vh; overflow-y: auto; overscroll-behavior: contain;
+  }
+  #portrait { display: none; }
+  #speaker { font-size: 12px; margin-bottom: 5px; }
+  #text { font-size: 15px; line-height: 1.38; min-height: 2em; max-width: none; }
+  #council { margin-top: 8px; gap: 3px; }
+  #council .voice { font-size: 13px; line-height: 1.26; gap: 7px; }
+  #council .voice img { width: 19px; height: 19px; }
+  #dialogue .choice { padding: 7px 7px; font-size: 14px; line-height: 1.3; }
+  #dialogue .choice .note { display: block; margin-left: 0; font-size: 12px; }
+  #dialogue .favoured img { width: 16px; height: 16px; }
+  #dialogue .hint { font-size: 11px; }
+
+  /* Documents, notices, the reckoning, the letterbook. */
+  #sheet, #book, #notice .card {
+    width: calc(100% - 20px) !important;
+    height: auto !important; max-height: calc(100% - 24px) !important;
+    padding: 18px 16px !important;
+  }
+  #sheet .body { font-size: 17px; line-height: 1.54; max-width: none; }
+  #notice p { font-size: 15px; }
+  /* The letterbook's own padding is on #tabs and #pages, not on #book, so
+   * the shared override above has to be taken back off it or the page gets
+   * padded twice and the tab strip loses a tab off the right edge. */
+  #book { padding: 0 !important; height: min(560px, calc(100% - 24px)) !important; }
+  #tabs { padding: 8px 8px 0; overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; }
+  #tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 8px 11px; font-size: 12px; letter-spacing: .06em; white-space: nowrap; }
+  #pages { padding: 14px 15px 18px; font-size: 15px; }
+  #pages .row { padding: 8px 9px; }
+  #pages .row .sub { font-size: 12px; }
+  #pages .code { font-size: 19px; letter-spacing: .16em; padding: 12px 14px; }
+
+  /* The map tables. They are drawings and they must stay 8:5 or the
+   * survey is a lie; they simply get the width and no more. */
+  .sheetui .plate { max-width: 100% !important; }
+
+  #travel { width: calc(100% - 20px) !important; max-height: calc(100% - 24px) !important; }
+  #travel .dest { padding: 9px 10px; font-size: 14px; }
+  #travel .note { display: none; }
+
+  #toast {
+    right: calc(10px + env(safe-area-inset-right));
+    bottom: auto; top: calc(50% + 30px);
+    max-width: 220px; font-size: 13px; padding: 8px 11px;
+  }
+
+  #title h1 { font-size: 30px; }
+  #title .sub { font-size: 11px; letter-spacing: .16em; }
+  #title .go { font-size: 13px; }
+}
+
+/*
+ * Landscape on a phone is short, not narrow, and the thing that breaks is
+ * vertical: the dialogue panel and the rail meet in the middle.
+ */
+@media (max-height: 460px) and (orientation: landscape) {
+  #rail { display: none; }
+  #dialogue { max-height: 62vh; }
+  #pad .b-act { width: 84px; height: 84px; font-size: 14px; }
+  #pad .b-cycle, #pad .b-look { width: 60px; height: 60px; font-size: 11px; }
+  #pad .stickzone { height: 78%; }
+}
+
+/*
+ * A touch device gets no hover, and a stylesheet that paints selection with
+ * hover paints nothing at all. Selection is painted by \`.sel\` from the
+ * keyboard cursor as well, so this only has to stop the hover rules from
+ * being the only thing that says which row is live.
+ */
+html.touch #dialogue .choice.sel { background: rgba(200,161,63,.14); }
+html.touch #view { touch-action: none; }
+html.touch body { overscroll-behavior: none; }
 `;
 
 export function installStyle(): void {

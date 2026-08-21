@@ -33,6 +33,7 @@
 import { P } from '../palette';
 import { hash, line as inkLine, px, rect, surface, type Surface } from '../engine/pixels';
 import { sfxConfirm, sfxDocument, sfxSelect } from '../engine/audio';
+import { KEY_GO } from '../engine/touch';
 
 export interface SurveyResult {
   guns: number;
@@ -498,12 +499,22 @@ export class SurveySheet {
       if (!this.root.classList.contains('on')) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (this.resolveKey) {
-        const r = this.resolveKey;
-        this.resolveKey = null;
-        r(e.code);
-      }
+      this.feed(e.code);
     });
+  }
+
+  /**
+   * Hand a code to whatever the sheet is waiting on, typed or tapped.
+   *
+   * The option rows call this with `Space` after moving the cursor onto
+   * themselves, so a finger and the arrow keys arrive at the same line of
+   * the same loop and there is only ever one way a choice is made.
+   */
+  private feed(code: string): void {
+    const r = this.resolveKey;
+    if (!r) return;
+    this.resolveKey = null;
+    r(code);
   }
 
   private key(codes: string[] = []): Promise<string> {
@@ -544,7 +555,9 @@ export class SurveySheet {
         `<span class="n">${si + 1} of ${STAGES.length}</span>${stage.question}`;
       this.wire.classList.remove('on');
       this.foot.innerHTML =
-        '<span class="key">&larr; &rarr;</span> choose &nbsp; <span class="key">SPACE</span> settle it';
+        KEY_GO === 'TAP'
+          ? '<span class="key">tap</span> the course you will take'
+          : '<span class="key">&larr; &rarr;</span> choose &nbsp; <span class="key">SPACE</span> settle it';
 
       const rows = stage.choices.map((c) => {
         const locked = !!c.requires && !knowledge.has(c.requires);
@@ -564,6 +577,11 @@ export class SurveySheet {
         open[i].row.classList.add('on');
       };
       paint();
+      open.forEach((r, oi) => r.row.addEventListener('click', () => {
+        i = oi;
+        paint();
+        this.feed('Space');
+      }));
 
       for (;;) {
         const code = await this.key();
@@ -588,7 +606,7 @@ export class SurveySheet {
       this.wire.innerHTML =
         `<span class="hdr">By express</span><p>${stage.dispatch[chosen.id]}</p>`;
       this.wire.classList.add('on');
-      this.foot.innerHTML = '<span class="key">SPACE</span> read on';
+      this.foot.innerHTML = `<span class="key">${KEY_GO}</span> read on`;
       await this.key(['Space', 'Enter', 'KeyE']);
     }
 

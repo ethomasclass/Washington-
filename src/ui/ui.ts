@@ -19,6 +19,7 @@ import { emblem, sealMark } from './emblems';
 import {
   sfxCancel, sfxConfirm, sfxDenied, sfxDocument, sfxSeal, sfxSelect, sfxType, sfxVoice,
 } from '../engine/audio';
+import { KEY_GO } from '../engine/touch';
 
 const REVEAL_CPS = 45;
 
@@ -174,7 +175,7 @@ export class Ui {
       <div class="sub">An American history</div>
       <h1>In Washington's Shoes</h1>
       <div class="sub">Act One &mdash; Mount Vernon, May 1775</div>
-      <div class="go">Press <span class="key">SPACE</span> to begin</div>`;
+      <div class="go">Press <span class="key">${KEY_GO}</span> to begin</div>`;
 
     this.root.append(
       this.banner, this.rail, this.reach, this.dialogue,
@@ -245,8 +246,10 @@ export class Ui {
   setReach(label: string | null, extra = 0): void {
     if (!label) { this.reach.classList.remove('on'); return; }
     this.reach.innerHTML =
-      `<span class="key">SPACE</span><span>${label}</span>` +
-      (extra > 0 ? `<span class="more">&nbsp;&middot; TAB for ${extra} more</span>` : '');
+      `<span class="key">${KEY_GO === 'TAP' ? 'ACT' : 'SPACE'}</span><span>${label}</span>` +
+      (extra > 0
+        ? `<span class="more">&nbsp;&middot; ${KEY_GO === 'TAP' ? 'NEXT' : 'TAB'} for ${extra} more</span>`
+        : '');
     this.reach.classList.add('on');
   }
 
@@ -302,7 +305,7 @@ export class Ui {
         this.portrait.classList.add('empty');
       }
       this.speaker.textContent = line.speaker === '—' ? '' : plain(line.speaker);
-      this.hintEl.innerHTML = `<span style="opacity:.7">SPACE to continue</span>`;
+      this.hintEl.innerHTML = `<span style="opacity:.7">${KEY_GO} to continue</span>`;
       await this.reveal(this.textEl, line.text);
       await this.waitKey(['Space', 'Enter', 'KeyE']);
     }
@@ -395,10 +398,19 @@ export class Ui {
     });
 
     this.hintEl.innerHTML =
-      `<span style="opacity:.7">&#8593;&#8595; choose &nbsp;&middot;&nbsp; SPACE to commit</span>`;
+      KEY_GO === 'TAP'
+        ? `<span style="opacity:.7">tap an answer</span>`
+        : `<span style="opacity:.7">&#8593;&#8595; choose &nbsp;&middot;&nbsp; SPACE to commit</span>`;
 
     let cursor = openIdx[0] ?? 0;
-    const paint = () => rows.forEach((r, i) => r.classList.toggle('sel', i === cursor));
+    const paint = () => {
+      rows.forEach((r, i) => r.classList.toggle('sel', i === cursor));
+      // On a phone the panel is taller than the screen and scrolls, so the
+      // options can appear below the fold with nothing to say they are there.
+      // Keeping the cursor in view is what a keyboard player gets for free
+      // from the browser and a thumb player does not get at all.
+      rows[cursor]?.scrollIntoView({ block: 'nearest' });
+    };
     paint();
 
     rows.forEach((r, i) => {
@@ -450,7 +462,7 @@ export class Ui {
       (n.source ? `<div class="src">${n.source}</div>` : '') +
       `</div>` +
       `<div class="go"><span class="key">&#8595;</span>read on` +
-      `<span class="key" style="margin-left:14px">SPACE</span>go on</div>`;
+      `<span class="key" style="margin-left:14px">${KEY_GO}</span>go on</div>`;
     const body = card.querySelector('.body') as HTMLElement;
     body.scrollTop = 0;
     this.noticeEl.classList.add('on');
@@ -500,7 +512,7 @@ export class Ui {
       + 'decided, and this page does not tell you which is which.</div>'
       + `</div>`
       + `<div class="go"><span class="key">&#8595;</span>read on`
-      + `<span class="key" style="margin-left:14px">SPACE</span>go on</div>`;
+      + `<span class="key" style="margin-left:14px">${KEY_GO}</span>go on</div>`;
     const body = card.querySelector('.body') as HTMLElement;
     body.scrollTop = 0;
     this.noticeEl.classList.add('on');
@@ -524,7 +536,7 @@ export class Ui {
       `<div class="cite">${doc.cite}</div>` +
       (doc.gloss ? `<div class="gloss">${doc.gloss}</div>` : '') +
       `<div class="body">${doc.body.map((p) => `<p>${p}</p>`).join('')}</div>` +
-      `<div class="close">SPACE or ESC to put it down</div>`;
+      `<div class="close">${KEY_GO === 'TAP' ? 'tap' : 'SPACE or ESC'} to put it down</div>`;
     this.reader.classList.add('on');
     this.sheet.scrollTop = 0;
     for (;;) {
@@ -557,7 +569,11 @@ export class Ui {
     paint();
     for (;;) {
       const code = await this.waitKey();
-      if (code === 'Escape' || code === 'KeyQ') break;
+      // Space closes it too. Every other panel in the game treats Space as
+      // "done", the book was the one exception, and on a phone that made it
+      // the one panel a player could open and not get out of — the pad's
+      // tap-to-continue speaks Space and nothing else.
+      if (code === 'Escape' || code === 'KeyQ' || code === 'Space' || code === 'Enter') break;
       if (code === 'ArrowRight' || code === 'Tab') { sel = (sel + 1) % tabs.length; sfxSelect(); paint(); }
       if (code === 'ArrowLeft') { sel = (sel - 1 + tabs.length) % tabs.length; sfxSelect(); paint(); }
       if (code === 'ArrowDown') this.pagesEl.scrollTop += 80;

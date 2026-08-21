@@ -26,6 +26,7 @@
 import { P } from '../palette';
 import { hash, line as inkLine, px, rect, surface, type Surface } from '../engine/pixels';
 import { sfxConfirm, sfxDocument, sfxSelect } from '../engine/audio';
+import { KEY_GO } from '../engine/touch';
 
 const SHEET_W = 520, SHEET_H = 420;
 
@@ -250,8 +251,35 @@ export class WindTable {
       if (!this.open) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (this.resolveKey) { const r = this.resolveKey; this.resolveKey = null; r(e.code); }
+      this.feed(e.code);
     });
+
+    /*
+     * Turning the wind with a thumb.
+     *
+     * The rose is the instrument, so the rose is the control: a tap on the
+     * left half of the board backs the wind, a tap on the right half veers
+     * it. It reads as turning the card, which is what a person does to a
+     * compass rose, and it means the sheet needs no buttons drawn on it.
+     *
+     * `.board` is excluded from the global tap-to-continue in
+     * `engine/touch.ts` precisely so this can exist — otherwise the tap that
+     * turns the wind would also be the tap that puts the sheet down, and the
+     * one thing a player wants to do here would close it.
+     */
+    this.board.addEventListener('click', (e) => {
+      if (!this.open) return;
+      const r = this.board.getBoundingClientRect();
+      this.feed(e.clientX < r.left + r.width / 2 ? 'ArrowLeft' : 'ArrowRight');
+    });
+  }
+
+  /** Hand a code to whatever the sheet is waiting on, typed or tapped. */
+  private feed(code: string): void {
+    const r = this.resolveKey;
+    if (!r) return;
+    this.resolveKey = null;
+    r(code);
   }
 
   private key(): Promise<string> {
@@ -296,8 +324,10 @@ export class WindTable {
     this.wind = HISTORICAL;
     this.seen = new Set([HISTORICAL]);
     this.foot.innerHTML =
-      '<span class="key">&larr; &rarr;</span>turn the wind'
-      + '<span class="key">SPACE</span>put the sheet down';
+      (KEY_GO === 'TAP'
+        ? '<span class="key">tap the rose</span>to turn the wind'
+        : '<span class="key">&larr; &rarr;</span>turn the wind')
+      + `<span class="key">${KEY_GO}</span>put the sheet down`;
     this.paint();
 
     for (;;) {

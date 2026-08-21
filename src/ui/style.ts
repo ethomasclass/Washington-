@@ -516,6 +516,104 @@ html, body {
   #survey .head .sub { display: none; }
 }
 
+/* ---------- the travel panel ------------------------------------------ *
+ *
+ * Deliberately the plainest thing in the game. Everything else here is
+ * dressed as 1775 — brass, parchment, a serif with a bit of age on it — and
+ * this is a list of places with a scrollbar, because it is not part of the
+ * fiction and pretending otherwise would make it slower to read.
+ * ------------------------------------------------------------------- */
+
+#travel {
+  position: absolute; inset: 0;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(6,5,4,.88);
+  padding: 22px;
+}
+#travel.on { display: flex; }
+#travel .frame {
+  width: min(760px, 100%); max-height: 100%;
+  display: flex; flex-direction: column;
+  background: #14161a;
+  border: 1px solid #394049;
+  border-left: 3px solid var(--brass);
+  border-radius: 2px;
+  padding: 16px 4px 12px 20px;
+}
+#travel .head {
+  flex: 0 0 auto; display: flex; align-items: baseline; gap: 12px;
+  flex-wrap: wrap; padding-right: 18px; padding-bottom: 10px;
+  border-bottom: 1px solid #2a2f36;
+}
+#travel .head .ttl {
+  font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--brass); font-weight: 600;
+}
+#travel .head .sub { font-size: 12px; color: #6f767e; letter-spacing: .03em; }
+
+#travel .list {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  padding: 8px 16px 8px 0; margin-right: 2px;
+}
+#travel .grp {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin: 12px 0 5px;
+}
+#travel .grp:first-child { margin-top: 0; }
+#travel .grp .h {
+  font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--brass-dim); font-weight: 600;
+}
+#travel .grp .w { font-size: 11.5px; color: #5f666e; }
+
+#travel .row {
+  display: grid; grid-template-columns: 12.5rem 1fr auto;
+  align-items: baseline; gap: 12px;
+  padding: 5px 10px; border-radius: 2px;
+  border-left: 2px solid transparent;
+  color: #9aa1a9; font-size: 14px; line-height: 1.35;
+}
+#travel .row.on {
+  background: rgba(58,44,22,.85);
+  border-left-color: var(--brass);
+  color: var(--text);
+}
+#travel .row .lab { color: inherit; }
+#travel .row.on .lab { color: var(--text); }
+#travel .row .note { font-size: 12.5px; color: #6b7178; }
+#travel .row.on .note { color: #b3aa96; }
+#travel .row .map {
+  font-size: 10.5px; letter-spacing: .08em; color: #4e555c;
+  font-variant-numeric: tabular-nums;
+}
+/* A dot against every destination on the map you are standing on. It is the
+ * fastest way to answer "where am I", which is the question you actually
+ * have when you open this. */
+#travel .row.here .lab::before {
+  content: '\\25CF'; color: var(--brass-dim);
+  font-size: 8px; vertical-align: middle; margin-right: 7px;
+}
+#travel .row:not(.here) .lab::before {
+  content: '\\25CF'; color: transparent;
+  font-size: 8px; vertical-align: middle; margin-right: 7px;
+}
+
+#travel .foot {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 10px; padding: 10px 18px 0 0; border-top: 1px solid #2a2f36;
+  font-size: 12.5px; color: #878d95; letter-spacing: .03em;
+}
+#travel .foot .key {
+  font-size: 11px; padding: 2px 7px; border-radius: 2px; margin-right: 4px;
+  background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
+}
+#travel .foot .key:not(:first-child) { margin-left: 10px; }
+
+@media (max-width: 640px) {
+  #travel .row { grid-template-columns: 1fr; gap: 2px; }
+  #travel .row .map { display: none; }
+}
+
 /* ---------- the surveyor's overlay ------------------------------------ *
  *
  * Held, not toggled. It draws over the frame and it never takes the

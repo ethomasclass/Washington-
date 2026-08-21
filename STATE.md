@@ -162,8 +162,21 @@ npm run build:single            # dist-single/washington.html, one file, no asse
 the walk, the whole prop library, every ground tile and every wall style at 2–4×.
 **Judge the drawing there before judging it in the frame.**
 
-In the browser console, `__game.warp(x, z)` and `__game.go('MV-HOUSE-1', x, z)`.
-`` ` `` or F2 cycles the maps.
+**`F1` opens the travel panel.** Thirty-five named places across both acts —
+the Quarter, the burying ground, the council room, the parapet on the first of
+January — grouped by act, with a dot against every destination on the map you
+are currently standing in. Up/down to choose, left/right to jump a whole act,
+Enter to go, Escape to stay. It opens over anything, including mid-conversation,
+and lands you at a position rather than at the map's spawn.
+
+Destinations are content, in `ui/travel.ts`, and `npm test` checks every one of
+them the way it checks a portal: the map exists, the tile exists, it is not
+inside a wall, and it is connected to the rest of the map. A build tool that
+lands you inside a wall costs more time than it saves.
+
+`` ` `` or F2 still cycles the map list, which is one key and sometimes one key
+is what you want. In the browser console, `__game.warp(x, z)` and
+`__game.go('MV-HOUSE-1', x, z)`.
 
 ---
 

@@ -40,6 +40,7 @@ import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
 import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
 import { ACT2_DECISIONS } from './content/act2-decisions';
 import { SurveySheet, type SurveyResult } from './ui/survey';
+import { Travel } from './ui/travel';
 import { SurveyOverlay } from './engine/overlay';
 import { isDown } from './engine/input';
 import { reckon, type LedgerLine } from './ledger';
@@ -142,6 +143,8 @@ class Game {
   private surveyResult: SurveyResult | null = null;
   /** The held-key survey of the ground. Never takes the keyboard. */
   private overlay: SurveyOverlay;
+  /** F1. The build jump, and the one a teacher wants too. */
+  private travel: Travel;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = makeRenderer(canvas);
@@ -154,8 +157,32 @@ class Game {
     });
     this.survey = new SurveySheet();
     this.overlay = new SurveyOverlay();
+    this.travel = new Travel();
     const stage = document.getElementById('stage')!;
-    stage.append(this.ui.root, this.survey.root, this.overlay.root);
+    stage.append(this.ui.root, this.survey.root, this.overlay.root, this.travel.root);
+
+    /*
+     * F1, from anywhere, including out of a conversation.
+     *
+     * Its own listener rather than a branch in the frame loop, for two
+     * reasons. `readInput()` only surfaces the handful of codes the game
+     * itself binds, and adding F1 to that set would make it a game key. And
+     * a panel that opens only when the loop is idle is useless precisely
+     * when you want it — mid-dialogue, looking at a room, wanting to be in
+     * a different room.
+     *
+     * The panel takes the keyboard from the moment it opens, so nothing it
+     * consumes reaches the world. `this.busy` is held across the await for
+     * the same reason: without it the frame after the panel closes reads a
+     * stale Space and interacts with whatever the player has just landed
+     * beside.
+     */
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'F1' || this.travel.open) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      void this.openTravel();
+    }, true);
   }
 
   /* ---------------- map loading -------------------------------------- */
@@ -212,6 +239,29 @@ class Game {
 
     this.ui.setPlace(def.title, def.when);
     this.refreshObjectives();
+  }
+
+  /**
+   * The travel panel: pick a place, go and stand in it.
+   *
+   * No fade and no arrival narration. This is not a journey the player has
+   * made, it is the camera being moved by whoever is building or teaching
+   * the thing, and dressing it as travel would put two seconds of curtain
+   * between every look at a room and the next one.
+   */
+  private async openTravel(): Promise<void> {
+    const wasBusy = this.busy;
+    this.busy = true;
+    this.overlay.setVisible(false);
+    try {
+      const dest = await this.travel.choose(this.mapId);
+      if (!dest) return;
+      this.loadMap(dest.map, dest.at, (dest.facing ?? 0) as Dir);
+      this.ui.toast(`Travelled: ${dest.label}`);
+    } finally {
+      this.busy = wasBusy;
+      this.refreshObjectives();
+    }
   }
 
   /** Put him somewhere. Dev only; nothing in the game calls it. */
@@ -863,7 +913,16 @@ void game.start();
   debug: () => game.debug(),
 };
 
-// The dev jump, kept from the old build because a teacher wants it too.
+/*
+ * F2 and ` still cycle the map list, and they are now the poor relation.
+ *
+ * The cycle lands you on each map's own spawn point in a fixed order, so
+ * getting to the burying ground meant pressing it four times and then
+ * walking. F1 opens the travel panel instead: named places, a position on
+ * the map as well as the map, and a mark against wherever you are standing.
+ * The cycle is kept because it is one key and sometimes one key is what you
+ * want, and because it costs six lines.
+ */
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'F2' && e.code !== 'Backquote') return;
   const order = [

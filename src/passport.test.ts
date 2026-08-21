@@ -25,6 +25,7 @@ import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
 import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
 import { A2_D3_ENLISTMENT, ACT2_DECISIONS } from './content/act2-decisions';
 import { reckon, RECKONED_ACTS } from './ledger';
+import { DESTINATIONS } from './ui/travel';
 
 let failures = 0;
 let checks = 0;
@@ -659,6 +660,46 @@ section('Act 2 — the shape of the act');
     const grid = makeGrid(m);
     const seen = reachable(grid, [m.spawn.x, m.spawn.z]);
     ok(!withinReach(grid, seen, 30, 1, 2.5), `${m.id}: Charlestown cannot be walked to`);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+section('the travel panel');
+
+/*
+ * A build tool that lands you inside a wall is worse than no build tool: you
+ * spend the next two minutes deciding whether the map is broken or the jump
+ * is. Every destination is checked exactly as hard as a portal is.
+ */
+{
+  const seen = new Set<string>();
+  for (const g of DESTINATIONS) {
+    ok(!!g.heading && !!g.where, 'every travel group is labelled');
+    for (const d of g.rows) {
+      const m = MAPS.find((x) => x.id === d.map);
+      ok(!!m, `travel: ${d.label} goes to a map that exists (${d.map})`);
+      if (!m) continue;
+      ok(!seen.has(d.label), `travel: "${d.label}" is named once`);
+      seen.add(d.label);
+
+      const [x, z] = d.at ?? [m.spawn.x, m.spawn.z];
+      const ch = m.ground[z]?.[x] ?? ' ';
+      ok(!!m.legend[ch], `travel: ${d.label} lands on a tile that exists`);
+      ok((m.objects?.[z]?.[x] ?? ' ') !== '#', `travel: ${d.label} does not land inside a wall`);
+
+      // And it has to be somewhere you could have walked to, or the jump has
+      // put the player somewhere the game cannot get them out of.
+      const grid = makeGrid(m);
+      const reach = reachable(grid, [m.spawn.x, m.spawn.z]);
+      const i = grid.at(x, z);
+      ok(i >= 0 && !!reach[i], `travel: ${d.label} lands somewhere connected to the map`);
+    }
+  }
+  // Every map in the game is reachable from the panel, or it is a map nobody
+  // working on this can look at without typing into a console.
+  for (const m of MAPS) {
+    ok(DESTINATIONS.some((g) => g.rows.some((d) => d.map === m.id)),
+      `travel: ${m.id} can be reached from the panel`);
   }
 }
 

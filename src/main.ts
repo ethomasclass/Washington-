@@ -49,7 +49,13 @@ import { FOUR_CHIMNEYS } from './content/four-chimneys';
 import { SurveySheet, type SurveyResult } from './ui/survey';
 import { WindTable } from './ui/windtable';
 import { Travel } from './ui/travel';
+import { NorthernTable } from './ui/northern';
 import { installTouch, type TouchPad } from './engine/touch';
+import {
+  VF_CAMP, VF_CAMP_MARCH, VF_CAMP_MAY, VF_POTTS, VF_POTTS_MARCH, VF_HOSPITAL,
+  V_PARADE_N,
+} from './content/valleyforge';
+import { ACT5_DECISIONS } from './content/act5-decisions';
 import { SurveyOverlay } from './engine/overlay';
 import { isDown } from './engine/input';
 import { reckon, type LedgerLine } from './ledger';
@@ -76,6 +82,12 @@ const MAPS: Record<string, MapDef> = {
   [DL_BANK_NIGHT.id]: DL_BANK_NIGHT,
   [TR_STREET.id]: TR_STREET,
   [TR_STREET_AFTER.id]: TR_STREET_AFTER,
+  [VF_CAMP.id]: VF_CAMP,
+  [VF_CAMP_MARCH.id]: VF_CAMP_MARCH,
+  [VF_CAMP_MAY.id]: VF_CAMP_MAY,
+  [VF_POTTS.id]: VF_POTTS,
+  [VF_POTTS_MARCH.id]: VF_POTTS_MARCH,
+  [VF_HOSPITAL.id]: VF_HOSPITAL,
 };
 
 /**
@@ -89,6 +101,8 @@ const MAP_ACT: Record<string, number> = {
   [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
   [BK_LINES.id]: 3, [BK_FERRY.id]: 3, [BK_FERRY_NIGHT.id]: 3, [FOUR_CHIMNEYS.id]: 3,
   [DL_BANK.id]: 4, [DL_BANK_NIGHT.id]: 4, [TR_STREET.id]: 4, [TR_STREET_AFTER.id]: 4,
+  [VF_CAMP.id]: 5, [VF_CAMP_MARCH.id]: 5, [VF_CAMP_MAY.id]: 5,
+  [VF_POTTS.id]: 5, [VF_POTTS_MARCH.id]: 5, [VF_HOSPITAL.id]: 5,
 };
 
 /**
@@ -109,7 +123,8 @@ const EARNED = new Map<string, LedgerLine[]>();
  * reckoning Act 4 with every decision in the game set to its worst option
  * and getting an army of minus two thousand.
  */
-for (const [act, list] of [[2, ACT2_DECISIONS], [3, ACT3_DECISIONS], [4, ACT4_DECISIONS]] as const) {
+for (const [act, list] of
+  [[2, ACT2_DECISIONS], [3, ACT3_DECISIONS], [4, ACT4_DECISIONS], [5, ACT5_DECISIONS]] as const) {
   for (const d of list) {
     for (const o of d.options) if (o.ledger) EARNED.set(`${act}/${d.id}/${o.id}`, o.ledger);
   }
@@ -176,6 +191,8 @@ class Game {
   private surveyResult: SurveyResult | null = null;
   /** The East River, and the wind that saved the army. */
   private windTable: WindTable;
+  /** The northern department: Saratoga, and the alliance it bought. */
+  private northern: NorthernTable;
   /** The held-key survey of the ground. Never takes the keyboard. */
   private overlay: SurveyOverlay;
   /** F1. The build jump, and the one a teacher wants too. */
@@ -194,6 +211,7 @@ class Game {
     });
     this.survey = new SurveySheet();
     this.windTable = new WindTable();
+    this.northern = new NorthernTable();
     this.overlay = new SurveyOverlay();
     this.travel = new Travel();
 
@@ -216,7 +234,7 @@ class Game {
     const stage = document.getElementById('stage')!;
     if (this.pad) stage.append(this.pad.root);
     stage.append(
-      this.ui.root, this.survey.root, this.windTable.root,
+      this.ui.root, this.survey.root, this.windTable.root, this.northern.root,
       this.overlay.root, this.travel.root,
     );
 
@@ -443,6 +461,45 @@ class Game {
       return;
     }
 
+    if (MAP_ACT[this.mapId] === 5) {
+      /*
+       * ACT 5's RAIL, IN THREE STATES, AND IT NEVER PROMISES ANYTHING.
+       *
+       * Two thousand men die on this hill whatever is on this list. So the
+       * list is work: settle the committee, settle the pox, settle the
+       * method, settle the Cabal — and, in May, walk down a street. It
+       * never says "get the army through the winter", because that framing
+       * would make the fixed loss read as a failure by the player, and it
+       * was not one.
+       */
+      const winter = this.mapId === VF_CAMP.id || this.mapId === VF_POTTS.id
+        || this.mapId === VF_HOSPITAL.id;
+      const spring = this.mapId === VF_CAMP_MAY.id;
+      this.ui.setObjectives(
+        spring
+          ? [
+            { text: 'Walk down the street you first saw in the mud.', done: this.actOver },
+          ]
+          : winter
+            ? [
+              { text: 'Answer Dr. Cochran in the hospital hut.', done: done('A5-D1') },
+              { text: 'Decide what the Committee at Camp sees.', done: done('A5-D4') },
+              ...(has('doc.a5.conway')
+                ? []
+                : [{ text: "Stirling's letter is on the table at Potts's house.", done: false }]),
+            ]
+            : [
+              { text: 'Settle the Baron&rsquo;s method on the parade.', done: done('A5-D3') },
+              { text: 'Answer Hamilton about Conway.', done: done('A5-D2') },
+              ...(has('obs.a5.northern')
+                ? []
+                : [{ text: 'There is a map of the northern department on a drum head.', done: false }]),
+            ],
+        spring ? 'The sixth of May' : winter ? 'The hutting' : 'March',
+      );
+      return;
+    }
+
     this.ui.setObjectives([
       { text: 'Answer Martha. She asked you a week ago.', done: done('A1-D1') },
       { text: 'See Lund about the north end.', done: done('A1-D2') },
@@ -571,6 +628,28 @@ class Game {
 
     if (it.opens === 'survey') await this.openSurvey();
     if (it.opens === 'wind') await this.openWind();
+    if (it.opens === 'northern') await this.openNorthern();
+  }
+
+  /**
+   * The northern department: Saratoga, and what it bought.
+   *
+   * Like the wind rose and unlike Knox's table this settles nothing and can
+   * be opened as often as the player likes, because Saratoga had already
+   * happened and Washington had no part in it. What it does is hand over a
+   * set of knowledge flags, and one of them &mdash; `obs.a5.despatches`
+   * &mdash; is the one the student will still be carrying in 1780 when
+   * Arnold turns.
+   */
+  private async openNorthern(): Promise<void> {
+    const r = await this.northern.run();
+    let fresh = 0;
+    for (const f of r.learned) {
+      if (!this.state.knowledge.has(f)) fresh++;
+      this.state.knowledge.add(f);
+    }
+    if (fresh > 0) this.ui.toast(`Taken from the map: ${fresh} of the northern department`);
+    this.refreshObjectives();
   }
 
   /**
@@ -850,6 +929,12 @@ class Game {
     if (MAP_ACT[this.mapId] === 2) { await this.maybeEndActTwo(); return; }
     if (MAP_ACT[this.mapId] === 3) { await this.maybeEndActThree(); return; }
     if (MAP_ACT[this.mapId] === 4) { await this.maybeEndActFour(); return; }
+    if (MAP_ACT[this.mapId] === 5) {
+      await this.maybeForgeSpring();
+      await this.maybeForgeMay();
+      await this.maybeEndActFive();
+      return;
+    }
     if (this.actOver || this.mapId !== ESTATE.id) return;
     // The wharf. He has to have answered Philadelphia first, or there is
     // nothing to leave for.
@@ -1087,7 +1172,126 @@ class Game {
       + 'is six weeks, on your own credit, at ten dollars a man.',
       'It is enough. It is the first time in this war that anything has been.',
     ]);
-    await this.closeAct(4, []);
+    await this.closeAct(4, [
+      'Then Princeton on the third of January, and the Jerseys taken back a town at a time '
+      + 'through the spring, and Brandywine in September, and Germantown, and the enemy in '
+      + 'Philadelphia by the end of the month with Congress fled to York.',
+      'It is the nineteenth of December, 1777. The army has marched eight days from Whitemarsh '
+      + 'onto a plateau above the Schuylkill with a burnt-out forge on it, and there is nothing '
+      + 'there at all.',
+    ], VF_CAMP.id);
+  }
+
+  /**
+   * THE END OF THE HUTTING, AND THE FIRST OF ACT 5'S TWO SEASON CHANGES.
+   *
+   * The act does not break here — the reckoning is at the end of May, not
+   * in February — so this is a fade and a map swap and nothing else. The
+   * gate is the two winter decisions: the pox, in the hospital hut, and the
+   * committee, in the street. When both are settled, the huts are finished
+   * and it is March, and the player is put on the Grand Parade because that
+   * is where the next thing is.
+   *
+   * Nothing announces it. It is the same trick as Act 2's council of war
+   * opening onto December, and it works for the same reason: a season is
+   * something you notice you are in, not something you are told about.
+   */
+  private async maybeForgeSpring(): Promise<void> {
+    if (this.mapId !== VF_CAMP.id) return;
+    if (!this.state.decisions.has('A5-D1') || !this.state.decisions.has('A5-D4')) return;
+    if (this.state.knowledge.has('obs.a5.march_came')) return;
+
+    this.busy = true;
+    this.state.knowledge.add('obs.a5.march_came');
+    await this.ui.narrate([
+      'The huts are finished in the second week of February. Two thousand of them, in ranks, to '
+      + 'the specification, and the men are inside them for the first time since Whitemarsh.',
+      'Nothing else improves. The commissary is what it is, and the burying ground on the west '
+      + 'slope gets longer through February and faster through March, because sickness follows a '
+      + 'thaw and everybody in the medical department knows it and nobody can do anything about '
+      + 'it.',
+      'And at the end of February a Prussian arrives with a large dog, a French cook, and a '
+      + 'letter from Franklin.',
+    ]);
+    await this.ui.fadeOut(700);
+    this.firedZones.clear();
+    this.firedAmbient.clear();
+    this.loadMap(VF_CAMP_MARCH.id);
+    await this.ui.fadeIn(700);
+    await this.ui.narrate(MAPS[VF_CAMP_MARCH.id].arrival!);
+    this.busy = false;
+  }
+
+  /**
+   * THE SECOND SEASON CHANGE, AND THE ACT'S APEX.
+   *
+   * Gated on the two spring decisions. `docs/05` §5.6 marks `A5-S7` the
+   * apex scene of the act and asks for the game's slowest camera move down
+   * the finished street; the camera rig does not do scripted moves, so what
+   * this does instead is put the player at the head of the street in May
+   * and let them walk it, which is the same seven seconds and is theirs.
+   */
+  private async maybeForgeMay(): Promise<void> {
+    if (this.mapId !== VF_CAMP_MARCH.id) return;
+    if (!this.state.decisions.has('A5-D2') || !this.state.decisions.has('A5-D3')) return;
+    if (this.state.knowledge.has('obs.a5.may_came')) return;
+
+    this.busy = true;
+    this.state.knowledge.add('obs.a5.may_came');
+    await this.ui.narrate([
+      'March, and then April, and April is the worst month on this hill. The ration returns get '
+      + 'better and the burial details get busier, which is not a contradiction: the men who die '
+      + 'in April were made ill in January and no beef in March undoes it.',
+      'And on the last day of April a packet comes in from Paris that has been three months at '
+      + 'sea.',
+    ]);
+    await this.ui.fadeOut(900);
+    this.firedZones.clear();
+    this.firedAmbient.clear();
+    this.loadMap(VF_CAMP_MAY.id);
+    await this.ui.fadeIn(900);
+    await this.ui.narrate(MAPS[VF_CAMP_MAY.id].arrival!);
+    this.busy = false;
+  }
+
+  /**
+   * THE END OF ACT 5.
+   *
+   * At the head of the brigade street in May, having walked down it. There
+   * is no Act 6 built yet, so this closes on the code and stops — and the
+   * last thing it says is the fixed loss, because the fixed loss is the
+   * thing the *feu de joie* on the field below does not touch.
+   */
+  private async maybeEndActFive(): Promise<void> {
+    if (this.actOver || this.mapId !== VF_CAMP_MAY.id) return;
+    const onTheParade = this.player.z > V_PARADE_N - 2;
+    if (!onTheParade) {
+      if (!this.firedZones.has('nudge:parade')) {
+        this.firedZones.add('nudge:parade');
+        this.busy = true;
+        await this.ui.narrate(
+          'The whole line is on the Grand Parade below the camp and the signal gun has not fired '
+          + 'yet. Walk down the street when you are ready.',
+        );
+        this.busy = false;
+      }
+      return;
+    }
+
+    this.busy = true;
+    this.actOver = true;
+    await this.ui.narrate([
+      'The signal gun. Then the running fire, from the right of the front line to the left, man '
+      + 'after man, eleven thousand of them, and back along the second line the other way. It '
+      + 'takes about four minutes and there is not a gap anywhere in it.',
+      'Six months ago this army could not have formed on this field. It had no huts, no shoes, no '
+      + 'meat, and no idea how to stand still. Nobody sent it any of those things. It built the '
+      + 'first, went without the second and third, and was taught the fourth by a man who could '
+      + 'not speak to it.',
+      'And two thousand of them are in the ground on the west slope, most of them from April and '
+      + 'May, and nothing decided this winter moved that number at all.',
+    ]);
+    await this.closeAct(5, []);
   }
 
   /* ---------------- the loop ------------------------------------------------ */

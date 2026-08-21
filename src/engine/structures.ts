@@ -24,6 +24,7 @@ export type WallStyle =
   | 'rusticated'    // the mansion: sand-painted pine cut to look like stone
   | 'clapboard'     // the outbuildings
   | 'brick'
+  | 'stone'         // Chester County fieldstone: the Potts house
   | 'log'           // the quarter
   | 'frameOpen'     // the north wing: studs and sheathing, no siding yet
   | 'plaster'       // interior
@@ -129,6 +130,44 @@ function sidingBrick(g: CanvasRenderingContext2D, w: number, h: number, seed: nu
       hline(g, x + off, row * 7, 15, shade(P.brick, 0.14));
     }
   }
+}
+
+/**
+ * UNCOURSED FIELDSTONE, WHICH IS A DIFFERENT BUILDING FROM BRICK.
+ *
+ * Brick is a made material laid in courses by a tradesman and it says money
+ * and town. A Chester County farmhouse of 1770 is whatever came out of the
+ * field, sorted roughly by size, laid up with a great deal of mortar and no
+ * two stones alike — and the Potts house, which is headquarters for this
+ * act, is one of those. Cambridge headquarters was a confiscated mansion
+ * with a Palladian front. This is a rented farmhouse. The wall has to say
+ * so before a single line of dialogue does.
+ *
+ * The stones are laid in loose rows because a mason does work roughly by
+ * level even when he is not coursing, but each one gets its own width from
+ * `hash`, so no two rows repeat and nothing tiles.
+ */
+function sidingStone(g: CanvasRenderingContext2D, w: number, h: number, seed: number): void {
+  // Mortar first, and there is a lot of it. That is the read.
+  rect(g, 0, 0, w, h, shade(P.stoneL, 0.06));
+  for (let row = 0; row * 9 < h; row++) {
+    const y = row * 9;
+    let x = -Math.floor(hash(row, 0, seed) * 10);
+    while (x < w) {
+      const sw = 9 + Math.floor(hash(x, row, seed) * 12);
+      const sh = 6 + Math.floor(hash(x, row, seed + 1) * 2);
+      const v = hash(x, row, seed + 2);
+      const face = v < 0.28 ? shade(P.stoneD, 0.06) : v < 0.66 ? P.stone : shade(P.stone, 0.10);
+      rect(g, x + 1, y + 1, sw - 2, sh, face);
+      hline(g, x + 1, y + 1, sw - 2, shade(face, 0.16));
+      hline(g, x + 1, y + sh, sw - 2, shade(face, -0.18));
+      // A pebble or two knocked into the mortar joint, which is what a
+      // country mason did with what he could not use.
+      if (v > 0.8) px(g, x + sw, y + 4, P.stoneD);
+      x += sw;
+    }
+  }
+  speckle(g, 0, 0, w, h, shade(P.stoneD, -0.08), 0.04, seed + 3);
 }
 
 function sidingLog(g: CanvasRenderingContext2D, w: number, h: number, seed: number): void {
@@ -310,6 +349,7 @@ export function facade(o: FacadeOpts): Surface {
     case 'rusticated': sidingRusticated(g, w, h, seed); break;
     case 'clapboard': sidingClapboard(g, w, h, seed); break;
     case 'brick': sidingBrick(g, w, h, seed); break;
+    case 'stone': sidingStone(g, w, h, seed); break;
     case 'log': sidingLog(g, w, h, seed); break;
     case 'frameOpen': sidingFrameOpen(g, w, h, seed); break;
     default: wallInterior(g, w, h, o.style, seed, o.tint); break;

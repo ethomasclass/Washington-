@@ -576,18 +576,25 @@ function drawTile(id: TileId, v: number): Surface {
           px(g, x, yy - 1, shade(P.campD, -0.14));
         }
       }
-      // Standing water: a few flat pools that catch the sky, and ice at the
-      // edge of them, because at Valley Forge it was both at once.
-      for (let i = 0; i < 3; i++) {
-        const x = Math.floor(hash(i, v, 501) * TILE_PX);
-        const y = Math.floor(hash(i, v, 502) * TILE_PX);
-        const r = 3 + Math.floor(hash(i, v, 503) * 3);
-        ellipse(g, x, y, r + 2, r, shade(P.night, 0.22));
-        ellipse(g, x, y - 1, r, r - 1, shade(P.nightL, 0.10));
-        px(g, x - r, y, P.snowD);
-        px(g, x + r, y, P.snowD);
+      /*
+       * Standing water: ONE pool per tile, and it is muddy water rather
+       * than sky.
+       *
+       * Three pools a tile in a near-black blue made the brigade street
+       * read as wet tarmac with oil on it. A puddle in a churned field is
+       * the colour of the field with a shine on it, not the colour of the
+       * sky — the sky only wins when the puddle is large and still, and
+       * these are neither.
+       */
+      if (hash(0, v, 501) < 0.7) {
+        const x = Math.floor(hash(1, v, 502) * TILE_PX);
+        const y = Math.floor(hash(2, v, 503) * TILE_PX);
+        const r = 3 + Math.floor(hash(3, v, 504) * 3);
+        ellipse(g, x, y, r + 2, r, shade(P.campD, -0.22));
+        ellipse(g, x, y - 1, r, r - 1, shade(P.slushD, -0.06));
+        px(g, x - 1, y - 2, P.slush);
       }
-      speckle(g, 0, 0, TILE_PX, TILE_PX, P.snowD, 0.05, v + 504);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.campL, 0.06, v + 505);
       break;
     }
     case 'hutfloor': {

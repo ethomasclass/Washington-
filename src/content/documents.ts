@@ -15,6 +15,7 @@ import type { DocumentDef } from '../types';
 import { ACT2_DOCUMENTS } from './act2-documents';
 import { ACT3_DOCUMENTS } from './act3-documents';
 import { ACT4_DOCUMENTS } from './act4-documents';
+import { ACT5_DOCUMENTS } from './act5-documents';
 
 export const DOCUMENTS: Record<string, DocumentDef> = {
 
@@ -221,6 +222,7 @@ export const DOCUMENTS: Record<string, DocumentDef> = {
 
   /* ACT 4 — the Delaware, and the end of the drunk-Hessian story. */
   ...ACT4_DOCUMENTS,
+  ...ACT5_DOCUMENTS,
 };
 
 export function documentById(id: string): DocumentDef | undefined {

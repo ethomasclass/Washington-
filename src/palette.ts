@@ -169,8 +169,20 @@ export const P = {
    * -------------------------------------------------------------------- */
   greenwoodD: '#7A6E52', greenwood: '#A99B76', greenwoodL: '#CFC49E',
   clayD: '#6A4230', clay: '#8C5A3E', clayL: '#A87553',
-  // Camp mud in a wet winter: churned, frozen at night, never dry.
-  campD: '#3A3228', camp: '#54493A', campL: '#6E6250',
+  /*
+   * Camp mud in a wet winter: churned, frozen at night, never dry.
+   *
+   * LIGHTENED, TWICE, AND THE SECOND TIME BY A LOT.
+   *
+   * The first ramp ran #3A3228 to #6E6250, which is what wet earth looks
+   * like held in the hand and is nothing like what an acre of it looks like
+   * under an overcast sky. Multiplied by `forgeDecember`'s deliberately flat
+   * key it came out near-black, the whole of Act 5's opening frame read as
+   * a night scene, and the huts the act is about could not be seen at all.
+   * Ground is almost always lighter than the eye expects, because ground is
+   * mostly sky bouncing off it.
+   */
+  campD: '#4E4438', camp: '#6E6250', campL: '#8E8068',
   // The first green, in May, on ground that was mud in February.
   springD: '#4E6A2E', spring: '#6E8E3A', springL: '#96B356',
 } as const;
@@ -454,11 +466,26 @@ export const LIGHT: Record<string, Light> = {
    * this act contains and the reason it is in the light rather than in a
    * line of dialogue.
    *
-   * The three states below are the same three numbers walked in one
-   * direction: saturation 0.34 → 0.52 → 0.86, contrast 0.30 → 0.44 → 0.62,
-   * and the key from a blue-grey nothing to actual sun. Nobody is told this
-   * is happening. The whole point is that a student who plays the act
-   * straight through feels the frame warm up and could not say when.
+   * The three states below are the same numbers walked in one direction:
+   * saturation 0.34 → 0.52 → 0.86, contrast 0.34 → 0.44 → 0.58, and the key
+   * from a grey-white nothing to actual sun. Nobody is told this is
+   * happening. The whole point is that a student who plays the act straight
+   * through feels the frame warm up and could not say when.
+   *
+   * AND THE FILLS ARE ALL LIGHT, WHICH IS THE PART THAT WAS WRONG FIRST.
+   *
+   * December was built with `fill: '#6E747C'` on the theory that the
+   * worst winter of the war ought to be a dark frame. It is not: an
+   * overcast December day is FLAT, not dark, and it is in fact very bright
+   * — the light is coming off the whole sky at once. With a dark fill and
+   * a contrast of 0.30 every surface was dragged three-quarters of the way
+   * to the fill colour and the opening frame of the act came out as a night
+   * scene with a mud floor, in which the two thousand huts the act is
+   * about could not be seen at all.
+   *
+   * The misery in these frames is carried by the saturation, which is the
+   * lowest of any daylight scene in the game, and by what is standing in
+   * them. It is not carried by turning the lights off.
    * ------------------------------------------------------------------ */
 
   /**
@@ -470,8 +497,8 @@ export const LIGHT: Record<string, Light> = {
    * and the difference is that this one comes back.
    */
   forgeDecember: {
-    key: '#CFD2D6', fill: '#6E747C', haze: '#AFB4B8',
-    sun: 1.15, contrast: 0.30, bloom: 0.20, saturation: 0.34,
+    key: '#F0F2F2', fill: '#BEC3C8', haze: '#CFD3D6',
+    sun: 1.15, contrast: 0.34, bloom: 0.20, saturation: 0.34,
   },
   /**
    * The Grand Parade in February. Mud, and a low sun that means it.
@@ -482,7 +509,7 @@ export const LIGHT: Record<string, Light> = {
    * this state exists rather than a straight December-to-May cut.
    */
   forgeFebruary: {
-    key: '#E0D9C6', fill: '#6A6E70', haze: '#A8AAA6',
+    key: '#F6EFDC', fill: '#B2B4B0', haze: '#C4C6C0',
     sun: 1.05, contrast: 0.44, bloom: 0.26, saturation: 0.52,
   },
   /**
@@ -493,8 +520,8 @@ export const LIGHT: Record<string, Light> = {
    * before it comes close.
    */
   forgeMay: {
-    key: '#FFF2CE', fill: '#5E7048', haze: '#C6D2AE',
-    sun: 0.85, contrast: 0.62, bloom: 0.40, saturation: 0.86,
+    key: '#FFF6DA', fill: '#8EA274', haze: '#CBD8B4',
+    sun: 0.85, contrast: 0.58, bloom: 0.40, saturation: 0.86,
   },
   /**
    * The Potts house: two rooms of stone, a fire, and a great many papers.

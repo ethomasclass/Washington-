@@ -6,10 +6,146 @@ Read this first. It is the handoff, not the design — the design is in `docs/`.
 here. `main` still carries the old print-direction build; nothing on this branch
 has been merged into it.
 
-**Acts 1 through 4 are playable, end to end, and they run into each other.**
+**Acts 1 through 5 are playable, end to end, and they run into each other.**
 Act 1 closes on the boat at the landing, Act 2 opens on the common at Cambridge,
 Act 3 opens behind the Brooklyn line, Act 4 opens on the road down to
-McKonkey's Ferry — and there is no menu anywhere between them. Sixteen maps.
+McKonkey's Ferry, Act 5 opens on a bare plateau above the Schuylkill — and there
+is no menu anywhere between them. Twenty-two maps.
+
+**And it plays on a phone.** See *The thumb pad*, below.
+
+---
+
+## ACT 5 AND THE THUMB PAD — 21 August 2026
+
+### Play it on a phone
+
+`engine/touch.ts` is the whole of it, and it rests on one idea: **a finger
+presses keys.** Every button on the pad dispatches a real `KeyboardEvent` at
+`window`, so it arrives at the same listeners a keyboard's would, in the same
+order, with the `stopImmediatePropagation()` fight between the modal panel and
+the world already settled the way it was settled months ago. Nothing else in the
+game needed changing and nothing else can tell the difference.
+
+**The stick is the one exception** and writes an analogue vector straight into
+`input.ts` through `setTouchAxis`, because a key is on or off and a thumb is
+neither. It floats: put a thumb down anywhere in the lower-left and the stick
+appears under it. A stick painted in one place is a stick you have to look at.
+
+**Tap to continue** is one capture-phase listener that turns any tap not already
+on something interactive into `Space`, but only while a panel is open — which
+covers dialogue, narration, documents, notices, the reckoning and the letterbook
+in one rule. It tells a tap from a drag by distance and duration, because without
+that the first drag of a long document dismissed it instead of scrolling it.
+
+`?touch=1` forces the pad on any machine, which is how you check the layout
+without a phone in your hand.
+
+Four things that had to change in the interface itself:
+
+- **`#say > * { flex: 0 0 auto }`.** `#text` carries a min-height so a one-line
+  answer does not make the panel jump, and a flex child's default shrink read
+  that as permission to squeeze it *to* that height when the column is capped.
+  Four lines of prompt rendered inside three lines of box and overflowed straight
+  through the Council underneath, one sentence written over another.
+- **The portrait goes at phone widths.** At 108px it is a third of the screen and
+  the text it leaves room for is four words wide.
+- **The rail, banner and reach hint hide** behind an open panel and behind the
+  survey, because a clipped half-sentence under a conversation is not information.
+- **The glass carries 30 tiles instead of 46 on a narrow frame**, and labels are
+  clamped into it on both axes. Eight names across a mile of water is a legible
+  survey at 1280 and a wall of text at 390.
+
+### What is playable in Act 5
+
+**One camp, three times, plus two interiors.**
+
+| map | what it is |
+|---|---|
+| `VF-CAMP` | 78×66, 19 December 1777. A brigade street with nothing on it: the huts pegged out and three courses up, the hillside behind it cut over, and eleven thousand men in the open. |
+| `VF-CAMP-M` | The same ground in March. Two thousand huts finished, in ranks, and a hundred men on the Grand Parade with a Prussian in front of them. |
+| `VF-CAMP-S` | The same ground on 6 May. Green, and the whole line on the parade for the *feu de joie*. |
+| `VF-POTTS` / `VF-POTTS-M` | The Isaac Potts house: two rooms and a passage, stone, board floors, and no floorcloth anywhere in it. |
+| `VF-HOSPITAL` | One hut. Fourteen by sixteen, one window-hole, three tiers of berths, twelve men. |
+
+Four decisions (`A5-D1` the inoculation, `A5-D2` **sealed** — the Cabal,
+`A5-D3` von Steuben's method, `A5-D4` the Committee at Camp), seven documents,
+thirteen speaking characters, the Northern Department map table, and the act ends
+walking down a street the player first saw as mud.
+
+### The act's argument is a specification, not a blizzard
+
+Everything a student has been told about Valley Forge is a picture of suffering.
+What the record shows is a **construction project**: the hutting order of 18
+December 1777 gave the dimensions — fourteen by sixteen, six and a half to the
+eaves, door to the street, fireplace at the rear, gaps daubed eighteen inches —
+and offered twelve dollars to the first squad in each regiment to build one to
+it. Squads that got it wrong pulled theirs down. Two thousand huts in six weeks,
+on a grid, by an army with no nails.
+
+So the map is a grid and the huts are identical, because they were. The hutting
+order is the first thing on the map you can pick up.
+
+**There is no snow on most of this ground and that is not an oversight.** The
+winter was mild by the standards of that decade. What killed two thousand men was
+typhus, typhoid, dysentery and smallpox in a camp of eleven thousand with no
+drains, and most of them died in *April and May*. A picturesque blizzard would be
+a comfortable lie.
+
+### `A5-D2` and a document that does not exist
+
+The Conway letter is the best epistemological object in the game. Everybody knows
+the sentence — *"a weak General and bad Counsellors would have ruined it"* — and
+it survives because Wilkinson, drinking at Reading, repeated to another officer
+what he said he had read. That officer told Stirling; Stirling wrote to
+Washington. The letter was never produced by anybody, and Gates's account of what
+happened to it changed twice.
+
+`DOC-A5.3`'s register is `secretary` and its body is one hand quoting another
+quoting a third. **The typography is the teaching.** The historical option — send
+Conway the sentence, one line, no comment — is knowledge-locked on having read
+it, because you cannot send a man his own reported words if you have not read
+them.
+
+### What went wrong building it, in the order it was found
+
+- **The camp came out as a night scene.** `forgeDecember` was built with a dark
+  fill on the theory that the worst winter of the war ought to be a dark frame.
+  An overcast December day is *flat*, not dark, and is in fact very bright. With
+  a dark fill and a contrast of 0.30 every surface was dragged three-quarters of
+  the way to the fill and the huts the act is about could not be seen at all. The
+  misery is carried by the saturation — the lowest of any daylight scene in the
+  game — and by what is standing in the frame.
+- **The player spawned at the wrong end.** Up-screen is toward the felled
+  hillside, so the huts have to be *between* the player and it. The establishing
+  shot of the act was a bare hill with two sawhorses on it.
+- **The street was 110 feet wide**, which pushed both ranks off the sides of the
+  frame. It is eight tiles now, with four huts a side per row at a six-tile
+  interval.
+- **The December frame was still empty**, because on 19 December almost nothing
+  was standing. What fills it is the *work* — timber where it fell, sawhorses in
+  the road, stumps, chips, a fire every forty feet.
+- **Four buildings were sitting inside huts.** The flood fill found every one in a
+  single run. `V_BAND_W` / `V_BAND_E` and the comment above them exist so it does
+  not happen again.
+- **The Potts house came out with red tiled floors** — `'k'` in the New England
+  legend is the kitchen floor. It is `'b'`, board, in every room, and the absence
+  of any floorcloth is the point.
+
+### The third map table
+
+`ui/northern.ts` — the Northern Department, and the only table about a battle the
+player was not at. Three sheets: which of the three armies actually reached
+Albany (one), where the seventh of October was decided (not where Gates was), and
+what the alliance meant materially. Then Gates's despatch and Arnold's account of
+the same afternoon, side by side, disagreeing.
+
+**The Arnold seed is why it is here.** When he turns in 1780 the student will
+already have read a despatch about a battle he won that does not contain his
+name. The game never excuses him and never has to.
+
+The linter's map-table bound went from two kinds to three, with the reasoning
+recorded in `passport.test.ts` rather than in a commit message nobody will read.
 
 ---
 
@@ -281,10 +417,11 @@ npm run build:single            # dist-single/washington.html, one file, no asse
 the walk, the whole prop library, every ground tile and every wall style at 2–4×.
 **Judge the drawing there before judging it in the frame.**
 
-**`F1` opens the travel panel.** Sixty-nine named places across all four acts —
+**`F1` opens the travel panel.** Eighty-six named places across all five acts —
 the Quarter, the burying ground, the council room, the parapet on the first of
-January, the landing in the dark, the head of King Street — in ten groups, with
-a dot against every destination on the map you are currently standing in. Up/down to choose, left/right to jump a whole act,
+January, the landing in the dark, the head of King Street, the Grand Parade —
+in thirteen groups, with a dot against every destination on the map you are
+currently standing in. Up/down to choose, left/right to jump a whole act,
 Enter to go, Escape to stay. It opens over anything, including mid-conversation,
 and lands you at a position rather than at the map's spawn.
 
@@ -355,21 +492,32 @@ see into, and it is why this game does not need a camera it does not have.
    `D0`–`D4`. The *content* is the same content; the structure is not. `05`
    should be revised act by act as each act is rebuilt, not all at once.
 
-2. **Acts 5–8 do not exist in the new engine.** `content/` is Acts 1 through 4.
+2. **Acts 6–8 do not exist in the new engine.** `content/` is Acts 1 through 5.
    The engine is act-agnostic; the rest is not written. Every act so far has
    wanted the same shape — a continuous place, an interior, one instrument, one
-   fixed loss — and Acts 3 and 4 added a second rule to it: **an act whose two
-   halves face opposite ways is two maps, not one**, because a map has exactly
-   one up-screen direction. Act 5 is Morristown and Valley Forge.
+   fixed loss — and two rules have been added to it since: **an act whose two
+   halves face opposite ways is two maps, not one** (Act 3), because a map has
+   exactly one up-screen direction; and **an act that spans a season builds one
+   map function in N states and never a second map** (Acts 2 and 5). Act 6 is
+   Yorktown, and `docs/05` §6 says the enslaved-people thread arrives at its
+   worst and truest moment there.
 
-3. **The Witness Register is still behind a review gate, and it is now larger
+3. **The Witness Register is still behind a review gate, and it is larger
    again.** Frank Lee, Doll and Harry at Mount Vernon; **William Lee in the
-   field** in Acts 2, 3 and 4; Salem Poor in the camp at Cambridge; the Black
-   Marbleheader at the ferry; the Black Continental on the Delaware; the Quarter
-   notice; and the whole of `A2-D3` and `DOC-A2.7`. All carry `sensitive: true`
-   or the R5 marking and the §7.6 named pedagogical sign-off **has not been
-   given**. It is drafted. It is not approved. Budget the review before
-   budgeting anything else.
+   field** in Acts 2, 3, 4 and 5; Salem Poor at Cambridge; the Black
+   Marbleheader at the ferry; the Black Continental on the Delaware; **the
+   soldier of the 1st Rhode Island at Valley Forge**; the Quarter notice; and
+   the whole of `A2-D3` and `DOC-A2.7`. All carry `sensitive: true` or the R5
+   marking and the §7.6 named pedagogical sign-off **has not been given**. It is
+   drafted. It is not approved. Budget the review before budgeting anything else.
+
+   The Rhode Island man carries a fact the register was written for: the 1st
+   Rhode Island's reorganisation in February 1778 was the **exception**, and
+   most Black soldiers in this army served in ordinary integrated regiments, a
+   few to a company, across the whole line. A student who leaves with only the
+   regiment leaves believing Black service was segregated and unusual. He says
+   so himself, in the third of his three lines, and it is the only place in the
+   act where a character corrects the history rather than living in it.
 
 4. **`V-A2.1` — Amos Doolittle is a documented compression, and it is not
    resolved.** He marched to Cambridge after Lexington and published the four
@@ -377,12 +525,18 @@ see into, and it is why this game does not need a camera it does not have.
    compression, recorded at the head of `content/act2-people.ts`. Either date it,
    cut him, or find the evidence.
 
-5. **`ledger.ts`'s Act 2, 3 and 4 figures are unverified and marked so.** Act
-   2's opening strength is `CB-01`'s sourced return of 3 July 1775; everything
-   under it, and everything in Acts 3 and 4, is of the documented order but no
-   line has been checked against a primary source, and `08` §10 makes that
-   blocking for classroom use. This is the largest single piece of unfinished
-   work in the build.
+5. **`ledger.ts`'s Act 2, 3, 4 and 5 figures are unverified and marked so.**
+   Act 2's opening strength is `CB-01`'s sourced return of 3 July 1775;
+   everything under it, and everything in Acts 3 to 5, is of the documented
+   order but no line has been checked against a primary source, and `08` §10
+   makes that blocking for classroom use. This is the largest single piece of
+   unfinished work in the build.
+
+   Act 5 makes it worse in one specific way worth flagging: `A5-D1`'s ledger
+   lines assert that inoculation saved about eleven hundred men and killed
+   forty-seven. Both are plausible against the mortality ratios and **neither is
+   sourced**. Of everything in this file, that is the pair a historian would
+   object to first.
 
 6. **The passport code still has headroom and the rule has not changed.**
    `FLAG_REGISTRY` and `PASSPORT_FLAGS` are **append-only**; reordering either
@@ -441,5 +595,22 @@ this game.
   sprite — capless, unarmed, and not the `hessianFile` — would carry it better.
 - The road up from Newtown on `DL-BANK` is a large empty field of snow with a
   milestone in it. Period-correct, and still a lot of nothing.
+- **`VF-CAMP`'s camera only holds about 24 tiles across**, which is the street
+  plus one hut a side. The ranks recede correctly up-screen but a player never
+  sees more than two huts abreast, and the grid reads better in the wide
+  screenshots than it does while walking. A wider `CAM_DIST` on this map alone
+  would fix it and would make every other map on the same setting look wrong.
+- The hospital hut's floor is 16×12 tiles, which at this game's loose tile scale
+  is generous for a room the text insists is fourteen feet by sixteen. It reads
+  cramped, which is what matters, but the arithmetic does not survive being
+  checked.
+- `continentalFile` and `hessianFile` are the only crowds in the game and they
+  are props, so they do not move, do not turn, and cannot be spoken to. On the
+  Grand Parade in March that is exactly right. On the parade in May, where
+  eleven thousand men are supposed to be firing a running volley, fourteen
+  static files and the fog are doing a lot of work.
+- **Act 5 has no ambient winter sound and no drum.** R14 still stands — fife and
+  drum are diegetic or they do not happen — and the *feu de joie* is the one
+  event in this game that is a sound before it is a picture.
 - `docs/05-act-scene-inventory.md` is now out of step for Act 2 as well as Act 1:
   it describes `A2-S1` to `A2-S5` as five separate scenes.

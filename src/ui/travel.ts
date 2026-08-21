@@ -182,6 +182,41 @@ export const DESTINATIONS: TravelGroup[] = [
       { map: 'TR-STREET-A', at: [48, 48], facing: 3, label: 'The orchard', note: 'where the act ends, and the enlistments still expire' },
     ],
   },
+  {
+    heading: 'Act Five',
+    where: 'The Valley Forge, 19 December 1777',
+    rows: [
+      { map: 'VF-CAMP', at: [38, 46], facing: 1, label: 'The foot of the street', note: 'where the act opens, and there is nothing here' },
+      { map: 'VF-CAMP', at: [31, 17], facing: 1, label: 'The hutting', note: 'fourteen by sixteen, and no nails' },
+      { map: 'VF-CAMP', at: [38, 26], facing: 1, label: 'The brigade street', note: 'the grid, going up' },
+      { map: 'VF-CAMP', at: [5, 27], facing: 1, label: 'The bake house', note: 'flour, and what the men do with it' },
+      { map: 'VF-CAMP', at: [40, 48], facing: 1, label: 'The lower camp', note: 'brush shelters, and the men still in the open' },
+      { map: 'VF-CAMP', at: [12, 52], facing: 1, label: 'The Forge burying ground', note: 'two thousand, and most of them in the spring' },
+      { map: 'VF-CAMP', at: [73, 24], facing: 1, label: 'The flying hospital', note: 'the door into the hut' },
+      { map: 'VF-POTTS', at: [9, 17], facing: 0, label: "Potts's house", note: 'stone, rented, and not a mansion' },
+      { map: 'VF-POTTS', at: [17, 12], facing: 0, label: "Potts's dining room", note: "Stirling's letter, and Conway's sentence" },
+      { map: 'VF-HOSPITAL', at: [10, 13], facing: 0, label: 'Inside the hut', note: 'twelve men, one window-hole, and the pox' },
+    ],
+  },
+  {
+    heading: 'Act Five — the parade',
+    where: 'The Grand Parade, March 1778',
+    rows: [
+      { map: 'VF-CAMP-M', at: [38, 48], facing: 1, label: 'The Grand Parade', note: 'a hundred men, and a Prussian' },
+      { map: 'VF-CAMP-M', at: [38, 26], facing: 0, label: 'The street, finished', note: 'the same grid, with roofs on it' },
+      { map: 'VF-CAMP-M', at: [46, 43], facing: 1, label: 'The northern department', note: 'Saratoga, on a drum head' },
+      { map: 'VF-POTTS-M', at: [16, 12], facing: 0, label: 'Conway, in person', note: 'warm, fluent, and unverifiable' },
+    ],
+  },
+  {
+    heading: 'Act Five — May',
+    where: 'The Valley Forge, 6 May 1778',
+    rows: [
+      { map: 'VF-CAMP-S', at: [38, 46], facing: 1, label: 'The foot of the street, in May', note: 'the same view, five months on' },
+      { map: 'VF-CAMP-S', at: [38, 30], facing: 1, label: 'The street, green', note: 'green everywhere nobody walks' },
+      { map: 'VF-CAMP-S', at: [38, 54], facing: 1, label: 'The feu de joie', note: 'where the act ends' },
+    ],
+  },
 ];
 
 const FLAT: Array<{ d: Destination; group: number }> = [];

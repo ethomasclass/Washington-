@@ -2424,7 +2424,7 @@ export const PROPS: Record<string, PropDef> = {
    * street four months apart, is the act.
    */
   forgeHutRaw: {
-    w: 92, h: 42, block: 1.5, sink: 3,
+    w: 92, h: 58, block: 1.5, sink: 3,
     draw(g, w, h, v) {
       const base = h - 4;
       for (let y = base - 21; y < base; y += 7) {
@@ -2443,8 +2443,19 @@ export const PROPS: Record<string, PropDef> = {
       rect(g, 14, base - 30, w - 34, 6, P.greenwood);
       hline(g, 14, base - 30, w - 34, P.greenwoodL);
       for (const x of [18, w - 26]) line(g, x, base - 24, x + 5, base - 2, P.woodD);
-      // Corner posts standing above the courses, marking the height to come.
-      for (const x of [6, w - 10]) rect(g, x, base - 38, 4, 38, P.woodD);
+      /*
+       * Corner posts standing to the FULL height the hut will be, which is
+       * what makes this read as a building going up rather than as a pile
+       * of logs. They are the tallest thing in the December camp and they
+       * are the reason the frame has a skyline at all.
+       */
+      for (const x of [6, w - 10]) {
+        rect(g, x, 2, 4, base - 2, P.woodD);
+        vline(g, x, 2, base - 2, P.wood);
+      }
+      // And a tie beam across them, notched in this morning.
+      rect(g, 6, 6, w - 12, 3, P.greenwood);
+      hline(g, 6, 6, w - 12, P.greenwoodL);
       speckle(g, 6, base - 21, w - 12, 21, P.clayD, 0.05, v + 611);
     },
   },

@@ -17,6 +17,7 @@ import { P } from '../palette';
 import { ACT2_CAST, ACT2_SPEAKERS } from './act2-people';
 import { ACT3_CAST, ACT3_SPEAKERS } from './act3-people';
 import { ACT4_CAST, ACT4_SPEAKERS } from './act4-people';
+import { ACT5_CAST, ACT5_SPEAKERS } from './act5-people';
 
 /* ---------------------------------------------------------------------- *
  * The man himself
@@ -273,6 +274,7 @@ export const CAST: Record<string, ActorSpec> = {
   ...ACT2_CAST,
   ...ACT3_CAST,
   ...ACT4_CAST,
+  ...ACT5_CAST,
 };
 
 /** Speaker names as they appear in dialogue, mapped to their portrait key. */
@@ -291,6 +293,7 @@ export const SPEAKER_KEY: Record<string, string> = {
   ...ACT2_SPEAKERS,
   ...ACT3_SPEAKERS,
   ...ACT4_SPEAKERS,
+  ...ACT5_SPEAKERS,
 };
 
 const PORTRAITS = new Map<string, string>();

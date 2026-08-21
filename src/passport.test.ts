@@ -29,6 +29,10 @@ import { BK_FERRY, BK_FERRY_NIGHT, BK_LINES } from './content/brooklyn';
 import { FOUR_CHIMNEYS } from './content/four-chimneys';
 import { ACT4_DECISIONS } from './content/act4-decisions';
 import { DL_BANK, DL_BANK_NIGHT, TR_STREET, TR_STREET_AFTER } from './content/delaware';
+import { ACT5_DECISIONS } from './content/act5-decisions';
+import {
+  VF_CAMP, VF_CAMP_MARCH, VF_CAMP_MAY, VF_HOSPITAL, VF_POTTS, VF_POTTS_MARCH,
+} from './content/valleyforge';
 import { reckon, RECKONED_ACTS } from './ledger';
 import { DESTINATIONS } from './ui/travel';
 
@@ -50,6 +54,7 @@ const MAPS: MapDef[] = [
   CAMBRIDGE_WINTER, HQ_WINTER, HQ_UP_WINTER,
   BK_LINES, BK_FERRY, FOUR_CHIMNEYS, BK_FERRY_NIGHT,
   DL_BANK, DL_BANK_NIGHT, TR_STREET, TR_STREET_AFTER,
+  VF_CAMP, VF_POTTS, VF_HOSPITAL, VF_CAMP_MARCH, VF_POTTS_MARCH, VF_CAMP_MAY,
 ];
 
 /**
@@ -66,6 +71,8 @@ const ACT_OF: Record<string, number> = {
   [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
   [BK_LINES.id]: 3, [BK_FERRY.id]: 3, [FOUR_CHIMNEYS.id]: 3, [BK_FERRY_NIGHT.id]: 3,
   [DL_BANK.id]: 4, [DL_BANK_NIGHT.id]: 4, [TR_STREET.id]: 4, [TR_STREET_AFTER.id]: 4,
+  [VF_CAMP.id]: 5, [VF_POTTS.id]: 5, [VF_HOSPITAL.id]: 5,
+  [VF_CAMP_MARCH.id]: 5, [VF_POTTS_MARCH.id]: 5, [VF_CAMP_MAY.id]: 5,
 };
 const mapsOfAct = (a: number) => MAPS.filter((m) => ACT_OF[m.id] === a);
 
@@ -90,7 +97,7 @@ function decisionsOf(m: MapDef): Decision[] {
 const SEEN_DECISIONS = new Map<string, Decision>();
 for (const d of [
   ...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM,
-  ...ACT2_DECISIONS, ...ACT3_DECISIONS, ...ACT4_DECISIONS,
+  ...ACT2_DECISIONS, ...ACT3_DECISIONS, ...ACT4_DECISIONS, ...ACT5_DECISIONS,
 ]) {
   const prior = SEEN_DECISIONS.get(d.id);
   if (prior && prior !== d) {
@@ -212,6 +219,7 @@ section('every locked option is openable inside this act');
   const byAct = new Map<number, Set<string>>([
     [1, grantsOf(mapsOfAct(1))], [2, grantsOf(mapsOfAct(2))],
     [3, grantsOf(mapsOfAct(3))], [4, grantsOf(mapsOfAct(4))],
+    [5, grantsOf(mapsOfAct(5))],
   ]);
   const actOfDecision = new Map<string, number>();
   for (const m of MAPS) for (const d of decisionsOf(m)) actOfDecision.set(d.id, ACT_OF[m.id]);
@@ -647,11 +655,26 @@ section('Act 2 — the shape of the act');
    * exists in two seasons and the same table stands in both. Anything beyond
    * that is a second special case, and the rule this project keeps proving is
    * that a thing which looks like it wants a special case almost never does.
+   *
+   * RAISED FROM TWO KINDS TO THREE FOR ACT 5, AND THE REASONING IS RECORDED
+   * HERE RATHER THAN IN A COMMIT MESSAGE NOBODY WILL READ.
+   *
+   * Saratoga is a battle the player was not at, was not consulted about,
+   * and learned from despatches weeks after the fact. Every other way of
+   * delivering it — a conversation, a document, a cut-scene — puts the
+   * player in a room being told about it. A map with tokens on it is the
+   * only form that reproduces the actual epistemic position: you are
+   * looking at somebody else's account of somebody else's afternoon. So it
+   * is a third kind, and the bound goes to three and no further.
+   *
+   * The count bound rises from four to six, because the northern table
+   * stands on all three states of the Valley Forge camp and this test walks
+   * each state separately.
    */
   const opens = MAPS.flatMap((m) => (m.interactables ?? []).filter((i) => i.opens));
   const kinds = new Set(opens.map((i) => i.opens));
-  ok(opens.length <= 4, `map tables stay rare (${opens.length} objects open a screen)`);
-  ok(kinds.size <= 2, `and there are at most two kinds of them (${[...kinds].join(', ')})`);
+  ok(opens.length <= 6, `map tables stay rare (${opens.length} objects open a screen)`);
+  ok(kinds.size <= 3, `and there are at most three kinds of them (${[...kinds].join(', ')})`);
   ok(opens.filter((i) => i.opens === 'survey').length === 2,
     "Knox's table stands in both seasons of Cambridge");
 

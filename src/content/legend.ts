@@ -92,6 +92,13 @@ export const FIELD_LEGEND: Record<string, TileId> = {
   'k': 'plank',
   'o': 'furrow',
   'y': 'sleet',
+  // Act 5's own ground. Five characters, and the act is three of them in
+  // sequence: 'C' in December, 'P' from March, 'S' in May.
+  'C': 'campmud',
+  'P': 'parade',
+  'S': 'springturf',
+  'W': 'sawdust',
+  'H': 'hutfloor',
 };
 
 /**
@@ -131,6 +138,14 @@ export const NE_INDOOR_LEGEND: Record<string, TileId> = {
   'f': 'flag',
   'b': 'board',
   'g': 'gravel',
+  /*
+   * The floor of a hut, which is an interior in every sense the engine
+   * cares about and is bare beaten earth with straw on it. It is in the New
+   * England legend rather than a legend of its own because Act 5's two
+   * interiors are a Pennsylvania farmhouse and a soldier's hut, and one
+   * character is not worth a third legend.
+   */
+  'H': 'hutfloor',
 };
 
 /** What a footstep sounds like on each tile. */

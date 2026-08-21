@@ -139,17 +139,18 @@ export interface Interactable {
   /**
    * Opens a purpose-built screen instead of, or after, the examine panel.
    *
-   * There are two, one per act that has a map table, and they are the only
-   * two: a plan of the country between Ticonderoga and Cambridge with tokens
-   * on it, and a draught of the East River with a wind rose on it. Neither
-   * is a document and neither is a conversation. The only honest way to put
-   * a logistics problem or a wind in front of a student is to let them move
-   * the thing and watch what happens.
+   * There are three, one per act that has a map table, and they are the
+   * only three: a plan of the country between Ticonderoga and Cambridge
+   * with tokens on it, a draught of the East River with a wind rose on it,
+   * and the northern department with Saratoga on it. None of them is a
+   * document and none of them is a conversation. The only honest way to put
+   * a logistics problem, a wind, or a battle somebody else reported in
+   * front of a student is to let them move the thing and watch what happens.
    *
    * Everything else in this game that looked like it wanted a special case
    * turned out not to need one, and that should stay true.
    */
-  opens?: 'survey' | 'wind';
+  opens?: 'survey' | 'wind' | 'northern';
 }
 
 export type DocRegister = 'printed' | 'secretary' | 'engrossed' | 'rough';

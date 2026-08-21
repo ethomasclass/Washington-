@@ -2285,6 +2285,366 @@ export const PROPS: Record<string, PropDef> = {
    * the way `structures.ts`'s exterior `doorLeaf` already is, and that is
    * future work, not a prop.
    */
+
+  /* ====================================================================== *
+   * VALLEY FORGE, 1777-78
+   *
+   * THE HUT IS THE ACT.
+   *
+   * Everything about Valley Forge that a student is likely to have been
+   * told is a picture of suffering, and the thing the record actually shows
+   * is a specification. The hutting order of 18 December 1777 gave the
+   * dimensions — fourteen feet by sixteen, six and a half feet to the
+   * eaves, the door in the side facing the street, the fireplace at the
+   * rear — and squads that built theirs wrong were made to pull them down
+   * and start again. Twelve men to a hut, six hundred huts, laid out on a
+   * grid, by an army that was starving and had no nails.
+   *
+   * So these props are drawn to make one argument: ORDER AND MISERY IN THE
+   * SAME FRAME. The huts are identical because they were meant to be, and
+   * the timber is green and pale and gapped because it was cut that week
+   * off the hill behind them. A picturesque ruin would be a lie in the
+   * opposite direction from the one everybody already believes.
+   * ==================================================================== */
+
+  /**
+   * A finished hut, to the specification.
+   *
+   * Green logs, clay chinking in every course, a door in the long side, and
+   * a chimney of sticks and clay at the gable end. The proportions are the
+   * order's: wider than it is deep, and LOW — six and a half feet at the
+   * eaves means a man of Washington's height could not stand up in one,
+   * which is a fact worth being able to see rather than be told.
+   */
+  forgeHut: {
+    w: 92, h: 74, block: 1.5, sink: 3,
+    draw(g, w, h, v) {
+      const eave = 34;
+      const base = h - 4;
+
+      // --- the log wall, course by course --------------------------------
+      // Each course is a log with clay rammed into the gap above it. The
+      // clay stripe is not decoration: green wood shrinks as it dries and
+      // the gaps are the reason the order specified eighteen inches of it.
+      const RET = w - 22;                 // where the front wall turns the corner
+      for (let y = eave; y < base; y += 7) {
+        // The front wall, in the light.
+        rect(g, 6, y, RET - 6, 5, P.greenwood);
+        hline(g, 6, y, RET - 6, P.greenwoodL);
+        hline(g, 6, y + 4, RET - 6, P.greenwoodD);
+        rect(g, 6, y + 5, RET - 6, 2, P.clay);
+        hline(g, 6, y + 6, RET - 6, P.clayD);
+        /*
+         * The returning end, in shadow — and drawn as LOGS, not as a slab.
+         * The first pass laid a flat grey rectangle over this end to darken
+         * it and it read as a stain on the wall rather than as a wall
+         * turning a corner: the courses simply stopped, and a log building
+         * whose logs stop is not a log building.
+         */
+        rect(g, RET, y, w - 6 - RET, 5, shade(P.greenwood, -0.22));
+        hline(g, RET, y, w - 6 - RET, shade(P.greenwoodL, -0.24));
+        hline(g, RET, y + 4, w - 6 - RET, shade(P.greenwoodD, -0.18));
+        rect(g, RET, y + 5, w - 6 - RET, 2, shade(P.clay, -0.20));
+        vline(g, RET, y, 7, P.greenwoodD);
+        // The sawn ends of the logs, showing at the corners.
+        rect(g, 3, y, 4, 5, P.greenwoodL);
+        rect(g, w - 7, y, 4, 5, shade(P.greenwoodD, -0.16));
+      }
+
+      // --- the roof: split shakes, weighted with poles --------------------
+      for (let y = 10; y < eave; y++) {
+        const t = (y - 10) / (eave - 10);
+        const half = Math.round(8 + t * (w / 2 - 6));
+        hline(g, w / 2 - half, y, half, P.woodD);
+        hline(g, w / 2, y, half, shade(P.woodD, -0.12));
+        /*
+         * SHAKE COURSES, EVERY FOUR ROWS.
+         *
+         * Without them the roof is one flat brown triangle the size of the
+         * whole prop, and six hundred flat brown triangles down a street is
+         * a hillside rather than a town. A shake roof is short split boards
+         * laid in overlapping courses, so the read is a stack of horizontal
+         * lines with the ends of the boards breaking them up — and the ends
+         * are staggered off `hash`, because a roof split with a froe by a
+         * hungry man is not a regular grid.
+         */
+        if ((y - 10) % 4 === 0) {
+          hline(g, w / 2 - half, y, half * 2, shade(P.wood, -0.16));
+          for (let x = w / 2 - half; x < w / 2 + half; x += 9) {
+            if (hash(x, y + v, 601) < 0.7) vline(g, x + (v % 3), y, 4, shade(P.woodD, -0.22));
+          }
+        }
+      }
+      hline(g, w / 2 - 9, 10, 19, P.wood);
+      // Weight poles laid across it, which is how a shake roof stayed on
+      // when the army had no nails and the order did not issue any.
+      for (const dx of [-22, 0, 22]) {
+        line(g, w / 2 + dx - 4, 12, w / 2 + dx - 14, eave - 2, P.woodD);
+      }
+
+      // --- the door, in the long side, facing the street ------------------
+      rect(g, 24, base - 26, 20, 26, shade(P.ink, 0.10));
+      vline(g, 24, base - 26, 26, P.greenwoodL);
+      vline(g, 43, base - 26, 26, P.greenwoodD);
+      hline(g, 24, base - 26, 20, P.greenwoodL);
+      // A hide or a blanket hung in it, because doors needed hinges and the
+      // order did not issue those either. Hung, so it falls in folds.
+      rect(g, 27, base - 24, 14, 17, shade(P.canvasD, -0.18));
+      for (let x = 28; x < 41; x += 4) vline(g, x, base - 24, 17, shade(P.canvasD, -0.30));
+      hline(g, 27, base - 24, 14, shade(P.canvasM, -0.14));
+
+      /*
+       * The chimney: sticks laid up like a miniature log pen and daubed
+       * with clay, which is what a camp chimney was and why so many of them
+       * caught fire. Muted against the chinking rather than matching it —
+       * two identical reds at this size read as one object.
+       */
+      rect(g, w - 20, 2, 13, eave - 2, shade(P.clay, -0.12));
+      rect(g, w - 20, 2, 5, eave - 2, shade(P.clayL, -0.10));
+      hline(g, w - 21, 2, 15, P.clayD);
+      for (let y = 5; y < eave - 4; y += 5) {
+        hline(g, w - 20, y, 13, P.clayD);
+        px(g, w - 20, y, P.greenwoodD);
+        px(g, w - 8, y, P.greenwoodD);
+      }
+
+      // Sparse. The first pass speckled clay over the whole wall and it
+      // read as spatter rather than as daub.
+      speckle(g, 6, eave, RET - 6, base - eave, P.greenwoodD, 0.018, v + 602);
+    },
+  },
+
+  /**
+   * The same hut, three courses up and no roof.
+   *
+   * This is what the whole camp looked like on the day the act opens: the
+   * order given on the eighteenth, twelve thousand men in the open, and the
+   * huts going up around them out of green wood with axes and no nails. The
+   * gap between this prop and the one above it, standing in the same
+   * street four months apart, is the act.
+   */
+  forgeHutRaw: {
+    w: 92, h: 42, block: 1.5, sink: 3,
+    draw(g, w, h, v) {
+      const base = h - 4;
+      for (let y = base - 21; y < base; y += 7) {
+        rect(g, 6, y, w - 12, 5, P.greenwood);
+        hline(g, 6, y, w - 12, P.greenwoodL);
+        hline(g, 6, y + 4, w - 12, P.greenwoodD);
+        // No clay yet in the top course — that is the work still to do.
+        if (y < base - 8) {
+          rect(g, 6, y + 5, w - 12, 2, P.clay);
+          hline(g, 6, y + 6, w - 12, P.clayD);
+        }
+        rect(g, 3, y, 4, 5, P.greenwoodL);
+        rect(g, w - 7, y, 4, 5, P.greenwoodD);
+      }
+      // The next log, up on skids, waiting to go on.
+      rect(g, 14, base - 30, w - 34, 6, P.greenwood);
+      hline(g, 14, base - 30, w - 34, P.greenwoodL);
+      for (const x of [18, w - 26]) line(g, x, base - 24, x + 5, base - 2, P.woodD);
+      // Corner posts standing above the courses, marking the height to come.
+      for (const x of [6, w - 10]) rect(g, x, base - 38, 4, 38, P.woodD);
+      speckle(g, 6, base - 21, w - 12, 21, P.clayD, 0.05, v + 611);
+    },
+  },
+
+  /**
+   * A hut pegged out and not yet raised.
+   *
+   * Four sills on the ground and a stake at each corner, at fourteen by
+   * sixteen exactly. This is the specification made visible: a rectangle
+   * on frozen mud, drawn before anybody had a wall.
+   */
+  hutFrame: {
+    w: 92, h: 30, block: 0.6, sink: 2, flat: true,
+    draw(g, w, h, v) {
+      rect(g, 4, h - 8, w - 8, 4, P.greenwoodD);
+      rect(g, 4, 6, w - 8, 4, shade(P.greenwoodD, -0.10));
+      rect(g, 4, 6, 4, h - 10, P.greenwood);
+      rect(g, w - 8, 6, 4, h - 10, shade(P.greenwood, -0.08));
+      for (const [x, y] of [[3, 4], [w - 8, 4], [3, h - 10], [w - 8, h - 10]] as const) {
+        rect(g, x, y, 3, 7, P.woodD);
+        px(g, x, y, P.greenwoodL);
+      }
+      speckle(g, 8, 10, w - 16, h - 18, P.greenwoodL, 0.04, v + 621);
+    },
+  },
+
+  /**
+   * A stump, cut this winter.
+   *
+   * The cut face is pale and clean and the chips are still round it, and
+   * that is the tell: a stump that has stood one season is grey. An acre of
+   * these is what six hundred huts costs, and the hillside behind the camp
+   * was stripped to the ridge.
+   */
+  stumpCut: {
+    w: 30, h: 22, block: 0.4, sink: 3,
+    draw(g, w, h, v) {
+      ellipse(g, w / 2, h - 8, 11, 6, P.woodD);
+      ellipse(g, w / 2, h - 11, 11, 6, P.greenwoodL);
+      ellipse(g, w / 2, h - 11, 6, 3, P.greenwood);
+      // Axe cuts round the rim, which is how it was felled — the army had
+      // few saws and the order did not issue those either.
+      for (let i = 0; i < 5; i++) {
+        const a = hash(i, v, 631) * Math.PI * 2;
+        px(g, Math.round(w / 2 + Math.cos(a) * 9), Math.round(h - 11 + Math.sin(a) * 4), P.woodD);
+      }
+      for (let i = 0; i < 6; i++) {
+        const x = Math.floor(hash(i, v, 632) * w);
+        px(g, x, h - 2 - Math.floor(hash(i, v, 633) * 3), P.greenwoodL);
+      }
+    },
+  },
+
+  /** Green timber, stacked where it was dragged to. */
+  greenTimber: {
+    w: 58, h: 30, block: 0.7, sink: 2,
+    draw(g, w, h, v) {
+      for (let row = 0; row < 3; row++) {
+        const y = h - 6 - row * 7;
+        const inset = row * 5;
+        for (let x = 4 + inset; x < w - 6 - inset; x += 11) {
+          ellipse(g, x + 5, y, 5, 4, P.greenwoodD);
+          ellipse(g, x + 5, y - 1, 4, 3, P.greenwood);
+          ellipse(g, x + 5, y - 1, 2, 2, P.greenwoodL);
+        }
+      }
+      for (const x of [2, w - 4]) line(g, x, h - 2, x + 2, 6, P.woodD);
+      speckle(g, 4, 6, w - 8, h - 8, P.greenwoodL, 0.05, v + 641);
+    },
+  },
+
+  /**
+   * A FILE OF CONTINENTALS, AND WHY IT IS DRAWN AGAINST `hessianFile`.
+   *
+   * Same construction, same five men, same interval, same angle on every
+   * musket — and not one of them matching another. Hunting shirts, a coat
+   * that was blue once, a blanket cut with a hole for the head, one man in
+   * an overall and one in nothing much. A third of them have no shoes and
+   * the drawing says so.
+   *
+   * That is the entire argument of Act 5 in one object. At Trenton the
+   * matched blue rank with brass caps was the professional army and the
+   * ragged one was not; by June the ragged one moves exactly like it, and
+   * the only thing that changed is that somebody spent a winter teaching
+   * them to. Von Steuben's own line about it is the point: in Europe you
+   * say "this is why you do it" and the man does it; here you have to say
+   * why, and then he does it — and does it better.
+   */
+  continentalFile: {
+    w: 78, h: 52, block: 0.5, sink: 2,
+    draw(g, _w, h, v) {
+      const coats = [P.hessianD, P.wood, P.canvasD, P.turfD, P.carriageD];
+      for (let m = 0; m < 5; m++) {
+        const cx = 9 + m * 15;
+        const lift = hash(m, v, 651) < 0.5 ? 0 : 1;
+        const head = 18 - lift;
+        const coat = head + 7;
+        const foot = h - 6;
+        const cloth = coats[Math.floor(hash(m, v, 652) * coats.length) % coats.length];
+
+        // The musket, shouldered, at the same angle as every other man's —
+        // which is the whole of what the winter bought.
+        line(g, cx + 7, foot - 2, cx + 4, head - 8, P.woodD);
+        line(g, cx + 8, foot - 2, cx + 5, head - 8, P.wood);
+        // Only some of them have a bayonet, and that is documented: the
+        // muskets were whatever anybody had brought from home.
+        if (hash(m, v, 653) < 0.45) {
+          line(g, cx + 4, head - 8, cx + 3, head - 15, P.steelL);
+          px(g, cx + 3, head - 16, P.steelL);
+        }
+
+        rect(g, cx - 5, coat, 11, foot - coat, cloth);
+        vline(g, cx - 5, coat, foot - coat, shade(cloth, 0.14));
+        vline(g, cx + 5, coat, foot - coat, shade(cloth, -0.16));
+        hline(g, cx - 5, foot - 1, 11, shade(cloth, -0.20));
+        // A patch, on about half of them.
+        if (hash(m, v, 654) < 0.5) {
+          rect(g, cx - 2, coat + 6, 4, 4, shade(coats[(m + 2) % coats.length], 0.06));
+        }
+
+        // Legs. Rags round the feet where there are no shoes, and there is
+        // no shoe on two men in five.
+        const shod = hash(m, v, 655) < 0.6;
+        rect(g, cx - 4, foot, 3, 5, shod ? P.ironD : P.canvasM);
+        rect(g, cx + 2, foot, 3, 5, shod ? P.ironD : P.canvasM);
+
+        rect(g, cx - 2, head, 5, 6, P.skinA);
+        hline(g, cx - 2, head, 5, P.skinAD);
+        // Hats: a cocked hat, a round hat, a cap, or nothing at all.
+        const hat = Math.floor(hash(m, v, 656) * 4);
+        if (hat === 0) {
+          hline(g, cx - 6, head - 2, 13, P.woodD);
+          rect(g, cx - 3, head - 5, 7, 3, P.woodD);
+        } else if (hat === 1) {
+          hline(g, cx - 5, head - 1, 11, shade(P.wood, -0.10));
+          rect(g, cx - 3, head - 5, 7, 4, shade(P.wood, -0.10));
+        } else if (hat === 2) {
+          rect(g, cx - 3, head - 4, 7, 5, P.canvasD);
+          px(g, cx + 3, head - 4, P.canvasM);
+        }
+      }
+    },
+  },
+
+  /**
+   * A pole with a fascine of straw on it — von Steuben's bayonet target.
+   *
+   * He had to teach the use of the bayonet from nothing, because the
+   * Continental soldier had been using his as a spit and a tent peg. This
+   * is the object that teaching happened against, and it is on the Grand
+   * Parade because that is where it was.
+   */
+  bayonetPost: {
+    w: 26, h: 56, block: 0.4, sink: 3,
+    draw(g, w, h, v) {
+      vline(g, w / 2, 12, h - 14, P.woodD);
+      vline(g, w / 2 + 1, 12, h - 14, P.wood);
+      // The straw bundle, tied twice, and punched through in three places.
+      rect(g, w / 2 - 8, 6, 17, 22, P.canvasD);
+      for (let i = 0; i < 14; i++) {
+        const x = w / 2 - 8 + Math.floor(hash(i, v, 661) * 17);
+        vline(g, x, 6, 22, hash(i, v, 662) < 0.4 ? P.canvasM : P.canvasD);
+      }
+      hline(g, w / 2 - 9, 11, 19, P.woodD);
+      hline(g, w / 2 - 9, 23, 19, P.woodD);
+      for (let i = 0; i < 3; i++) {
+        disc(g, w / 2 - 4 + i * 4, 13 + Math.floor(hash(i, v, 663) * 8), 2, shade(P.ink, 0.12));
+      }
+    },
+  },
+
+  /**
+   * A hospital bunk: three tiers of green poles, no bedding to speak of.
+   *
+   * The flying hospitals were huts like the others with berths built up the
+   * walls. Twelve men in fourteen by sixteen means they were stacked, and
+   * the record of what that did — two thousand dead, mostly of typhus and
+   * dysentery, mostly in the spring rather than the worst of the cold — is
+   * the act's fixed loss.
+   */
+  hospitalBunk: {
+    w: 62, h: 54, block: 0.8, sink: 2,
+    draw(g, w, h, v) {
+      for (const x of [4, w - 8]) rect(g, x, 4, 4, h - 6, P.greenwoodD);
+      for (let tier = 0; tier < 3; tier++) {
+        const y = 12 + tier * 14;
+        rect(g, 6, y, w - 12, 4, P.greenwood);
+        hline(g, 6, y, w - 12, P.greenwoodL);
+        // Straw on the berth, and a blanket on some of them.
+        for (let i = 0; i < 9; i++) {
+          const bx = 8 + Math.floor(hash(i, v, tier * 10 + 671) * (w - 20));
+          hline(g, bx, y - 1, 4, P.canvasD);
+        }
+        if (hash(tier, v, 672) < 0.66) {
+          rect(g, 10 + tier * 3, y - 5, 26, 5, shade(P.turfD, 0.08));
+          hline(g, 10 + tier * 3, y - 5, 26, shade(P.turf, 0.06));
+        }
+      }
+    },
+  },
 };
 
 /* ---------------------------------------------------------------------- *

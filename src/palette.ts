@@ -140,6 +140,39 @@ export const P = {
   // Hessian blue, and the brass of a grenadier cap plate.
   hessianD: '#1E2A44', hessian: '#2E3F60', hessianL: '#46587C',
   brassD: '#8A6A22', brass: '#B8933C', brassL: '#DCBE6A',
+
+  /* --- Valley Forge, 1777-78 --------------------------------------------
+   *
+   * THE ACT'S WHOLE ARGUMENT IS IN THESE FOUR RAMPS, AND IT IS A COLOUR
+   * ARGUMENT BEFORE IT IS ANYTHING ELSE.
+   *
+   * Green timber is the first: an oak felled on Monday and built into a
+   * wall on Tuesday is a raw, wet, pale yellow-white on the cut face and
+   * grey-brown on the bark, and it is nothing like the weathered brown of
+   * every other structure in this game. Six hundred huts of it, all cut in
+   * three weeks off the same hillside, is the most visually specific thing
+   * about the place — and the reason the walls would not close, because
+   * green wood shrinks as it dries and leaves a gap you can see daylight
+   * through in February.
+   *
+   * The clay is the answer to that: eighteen inches of it, rammed into
+   * every gap, in the order that specified it. Red-brown Pennsylvania clay
+   * over pale wood is what a Valley Forge hut actually looked like, and it
+   * is a stripe, not a wash.
+   *
+   * And `spring`, which is only used at the end. Sixty per cent of what the
+   * paper shows is how far into the winter we are, and the thaw happens for
+   * everyone: the last state of this map is the first one with a green in
+   * it that is not the green of standing water. It is deliberately not the
+   * lawn green of Mount Vernon — it is the thin, acid, first green of a
+   * Pennsylvania May, and it is the loveliest thing in the act.
+   * -------------------------------------------------------------------- */
+  greenwoodD: '#7A6E52', greenwood: '#A99B76', greenwoodL: '#CFC49E',
+  clayD: '#6A4230', clay: '#8C5A3E', clayL: '#A87553',
+  // Camp mud in a wet winter: churned, frozen at night, never dry.
+  campD: '#3A3228', camp: '#54493A', campL: '#6E6250',
+  // The first green, in May, on ground that was mud in February.
+  springD: '#4E6A2E', spring: '#6E8E3A', springL: '#96B356',
 } as const;
 
 /** A three-step ramp, for anything that has a lit face and a shadow face. */
@@ -405,5 +438,91 @@ export const LIGHT: Record<string, Light> = {
   trentonAfter: {
     key: '#F2E6CA', fill: '#7E8492', haze: '#B8BAB8',
     sun: 1.35, contrast: 0.50, bloom: 0.34, saturation: 0.70,
+  },
+
+  /* --------------------------------------------------------------------
+   * VALLEY FORGE, DECEMBER 1777 – JUNE 1778.
+   *
+   * THE ONLY ACT WHOSE LIGHT IS THE STORY.
+   *
+   * `docs/05` §5.1 sets it out: snow as bare paper, ink at its coldest and
+   * thinnest, wash reserved for smoke and mud — and then, across the act,
+   * the wash comes back. First the ochre of new-cut logs, then green.
+   * `kAct = 0.60`: sixty per cent of what you are looking at is how far
+   * into the winter you are, and forty per cent is what kind of leader you
+   * have been. **The thaw happens for everyone**, which is the one mercy
+   * this act contains and the reason it is in the light rather than in a
+   * line of dialogue.
+   *
+   * The three states below are the same three numbers walked in one
+   * direction: saturation 0.34 → 0.52 → 0.86, contrast 0.30 → 0.44 → 0.62,
+   * and the key from a blue-grey nothing to actual sun. Nobody is told this
+   * is happening. The whole point is that a student who plays the act
+   * straight through feels the frame warm up and could not say when.
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Brigade Street in December. The bottom of the act and of the war.
+   *
+   * The lowest saturation of any daylight scene in the game — under the
+   * Quarter's, which is the only other place the colour is taken out on
+   * purpose. Here it is weather and hunger rather than a moral register,
+   * and the difference is that this one comes back.
+   */
+  forgeDecember: {
+    key: '#CFD2D6', fill: '#6E747C', haze: '#AFB4B8',
+    sun: 1.15, contrast: 0.30, bloom: 0.20, saturation: 0.34,
+  },
+  /**
+   * The Grand Parade in February. Mud, and a low sun that means it.
+   *
+   * The first frame in the act with any warmth in the key at all, and it
+   * arrives on the day von Steuben walks onto the parade with a hundred
+   * men — which is the correct day for the light to change, and is why
+   * this state exists rather than a straight December-to-May cut.
+   */
+  forgeFebruary: {
+    key: '#E0D9C6', fill: '#6A6E70', haze: '#A8AAA6',
+    sun: 1.05, contrast: 0.44, bloom: 0.26, saturation: 0.52,
+  },
+  /**
+   * Brigade Street in May, and the *feu de joie*.
+   *
+   * The most saturated exterior in the first five acts, and every bit of it
+   * is earned by the two states above. Yorktown will beat it; nothing
+   * before it comes close.
+   */
+  forgeMay: {
+    key: '#FFF2CE', fill: '#5E7048', haze: '#C6D2AE',
+    sun: 0.85, contrast: 0.62, bloom: 0.40, saturation: 0.86,
+  },
+  /**
+   * The Potts house: two rooms of stone, a fire, and a great many papers.
+   *
+   * Deliberately not the Vassall house. Cambridge headquarters was a
+   * confiscated Tory mansion with a Palladian front; this is a small plain
+   * ironmaster's dwelling that Washington rented for a hundred pounds of
+   * Pennsylvania currency, and he did not move into it until the huts were
+   * built because he had said he would not.
+   */
+  pottsHouse: {
+    key: '#F0DCA8', fill: '#4A4C4A', haze: '#14161A',
+    sun: -1.35, contrast: 0.74, bloom: 0.30, saturation: 0.72,
+    exposure: 0.88,
+  },
+  /**
+   * The hospital hut. One window-hole, twelve men, and a camera at eye
+   * level rather than above it.
+   *
+   * `docs/05` §5.3 marks this scene `sensitive` and gives it R5's framing
+   * without R5's grey wash. The light does that work: the exposure is the
+   * lowest of any interior in the game and the one source is a fire that
+   * is not enough, because the hut had one window-hole and a hearth at the
+   * back and that is all the light there was.
+   */
+  hospitalHut: {
+    key: '#E8B472', fill: '#2A2622', haze: '#0C0A08',
+    sun: -1.10, contrast: 0.88, bloom: 0.22, saturation: 0.46,
+    exposure: 0.62,
   },
 };

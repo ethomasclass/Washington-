@@ -29,7 +29,9 @@ export type TileId =
   // New England indoors. A different house has to be a different house.
   | 'oakfloor' | 'marbled' | 'carpetBlue'
   // Brooklyn, and the Delaware.
-  | 'marsh' | 'mudflat' | 'cobble' | 'plank' | 'furrow' | 'sleet';
+  | 'marsh' | 'mudflat' | 'cobble' | 'plank' | 'furrow' | 'sleet'
+  // Valley Forge, and the three states one camp goes through.
+  | 'campmud' | 'hutfloor' | 'parade' | 'springturf' | 'sawdust';
 
 /** Draw order in the atlas. Index is the row. */
 export const TILE_ORDER: TileId[] = [
@@ -39,6 +41,7 @@ export const TILE_ORDER: TileId[] = [
   'snow', 'slush', 'turf', 'trampled', 'ice',
   'oakfloor', 'marbled', 'carpetBlue',
   'marsh', 'mudflat', 'cobble', 'plank', 'furrow', 'sleet',
+  'campmud', 'hutfloor', 'parade', 'springturf', 'sawdust',
 ];
 
 export const TILE_INDEX: Record<TileId, number> = Object.fromEntries(
@@ -546,6 +549,121 @@ function drawTile(id: TileId, v: number): Surface {
       }
       speckle(g, 0, 0, TILE_PX, TILE_PX, P.snowL, 0.16, v + 184);
       speckle(g, 0, 0, TILE_PX, TILE_PX, P.slushD, 0.10, v + 185);
+      break;
+    }
+    case 'campmud': {
+      /*
+       * THE BRIGADE STREET IN DECEMBER, AND THE WHOLE OF THE ACT'S PROBLEM.
+       *
+       * Not the mud of a building site and not the churned mud of the ferry
+       * road: this is twelve thousand men living on eight acres for six
+       * months with no drainage and no lime. It freezes at night and thaws
+       * by noon and is never once dry, which is why the tile carries both
+       * — frozen ridges in the ruts and standing water in the hollows, in
+       * the same thirty-two pixels.
+       *
+       * Waldo's diary is the source everybody quotes and the phrase that
+       * sticks is "a pox on my bad luck... poor food — hard lodging — cold
+       * weather — fatigue — nasty cloathes — nasty cookery". This is the
+       * ground he wrote it standing on.
+       */
+      base(g, [P.campD, P.camp, P.campL], v);
+      // Ruts, running with the street rather than across it.
+      for (let y = (v * 5) % 9; y < TILE_PX; y += 9) {
+        for (let x = 0; x < TILE_PX; x++) {
+          const yy = y + Math.round(Math.sin((x + v * 7) * 0.22) * 1.4);
+          hline(g, x, yy, 1, P.campD);
+          px(g, x, yy - 1, shade(P.campD, -0.14));
+        }
+      }
+      // Standing water: a few flat pools that catch the sky, and ice at the
+      // edge of them, because at Valley Forge it was both at once.
+      for (let i = 0; i < 3; i++) {
+        const x = Math.floor(hash(i, v, 501) * TILE_PX);
+        const y = Math.floor(hash(i, v, 502) * TILE_PX);
+        const r = 3 + Math.floor(hash(i, v, 503) * 3);
+        ellipse(g, x, y, r + 2, r, shade(P.night, 0.22));
+        ellipse(g, x, y - 1, r, r - 1, shade(P.nightL, 0.10));
+        px(g, x - r, y, P.snowD);
+        px(g, x + r, y, P.snowD);
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.snowD, 0.05, v + 504);
+      break;
+    }
+    case 'hutfloor': {
+      /*
+       * Inside a hut: bare earth, beaten hard, with straw where a man
+       * sleeps. Fourteen feet by sixteen for twelve men means the straw is
+       * most of the floor and there is no furniture to speak of.
+       */
+      base(g, [shade(P.campD, -0.10), P.campD, P.camp], v);
+      for (let i = 0; i < 22; i++) {
+        const x = Math.floor(hash(i, v, 511) * TILE_PX);
+        const y = Math.floor(hash(i, v, 512) * TILE_PX);
+        const len = 4 + Math.floor(hash(i, v, 513) * 7);
+        if (hash(i, v, 514) < 0.5) hline(g, x, y, len, P.greenwoodD);
+        else hline(g, x, y + 1, Math.max(2, len - 2), P.greenwood);
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.greenwoodL, 0.05, v + 515);
+      break;
+    }
+    case 'parade': {
+      /*
+       * The Grand Parade. Two thousand men drilled on it every day from
+       * March, and the difference between this and `campmud` is that this
+       * has been WALKED — flattened, uniform, and with the ruts driven out
+       * of it by feet rather than by wheels. It is the only ground in the
+       * act that looks deliberate, which is exactly the argument.
+       */
+      base(g, [P.campD, P.camp, P.campL], v);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, shade(P.camp, 0.10), 0.22, v + 521);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, shade(P.campD, -0.08), 0.14, v + 522);
+      // A faint grain running one way, from a thousand men facing the same
+      // direction. Almost subliminal, and it is what tells the eye this
+      // ground is used rather than abandoned.
+      for (let y = 2; y < TILE_PX; y += 6) {
+        for (let x = (v * 3) % 4; x < TILE_PX; x += 4) px(g, x, y, shade(P.campL, 0.06));
+      }
+      break;
+    }
+    case 'springturf': {
+      /*
+       * MAY, ON GROUND THAT WAS MUD IN FEBRUARY.
+       *
+       * Deliberately not `grass` and deliberately not `lawn`. The first
+       * green over a winter camp comes up in patches through churned earth,
+       * so the mud is still in this tile and is meant to be — it is what
+       * makes the green mean something. A clean lawn here would say the
+       * winter had not happened.
+       */
+      base(g, [P.springD, P.spring, P.springL], v);
+      for (let i = 0; i < 5; i++) {
+        const x = Math.floor(hash(i, v, 531) * TILE_PX);
+        const y = Math.floor(hash(i, v, 532) * TILE_PX);
+        const r = 2 + Math.floor(hash(i, v, 533) * 4);
+        ellipse(g, x, y, r + 2, r, P.camp);
+        ellipse(g, x, y - 1, r, r - 1, P.campL);
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.springL, 0.16, v + 534);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.springD, 0.10, v + 535);
+      break;
+    }
+    case 'sawdust': {
+      /*
+       * Where the huts were cut. Chips, sawdust and bark over frozen
+       * ground, and it is pale — the one light-coloured surface in a
+       * December frame, because a hillside of oaks felled in three weeks
+       * leaves an acre of raw wood on the ground.
+       */
+      base(g, [P.campD, P.greenwoodD, P.greenwood], v);
+      for (let i = 0; i < 26; i++) {
+        const x = Math.floor(hash(i, v, 541) * TILE_PX);
+        const y = Math.floor(hash(i, v, 542) * TILE_PX);
+        const w = 2 + Math.floor(hash(i, v, 543) * 4);
+        rect(g, x, y, w, 2, hash(i, v, 544) < 0.4 ? P.greenwoodL : P.greenwood);
+        px(g, x, y, P.woodD);
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.greenwoodL, 0.12, v + 545);
       break;
     }
     case 'ice': {

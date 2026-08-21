@@ -57,7 +57,12 @@ export const CAMP_LEGEND: Record<string, TileId> = {
   'v': 'garden',
 };
 
-/** Interiors use their own, smaller set. */
+/**
+ * VIRGINIA INDOORS. Mount Vernon's floors and nobody else's.
+ *
+ * Wide pine boards, an ochre painted floorcloth in the passage, and a wine
+ * turkey carpet in the best room.
+ */
 export const INDOOR_LEGEND: Record<string, TileId> = {
   '.': 'board',
   'p': 'painted',
@@ -69,11 +74,34 @@ export const INDOOR_LEGEND: Record<string, TileId> = {
   'g': 'gravel',
 };
 
+/**
+ * NEW ENGLAND INDOORS. The Vassall House, and everything north of it.
+ *
+ * The same characters mean different floors, which is the whole point: the
+ * first build of Cambridge used the Virginia legend and the borrowed
+ * loyalist mansion came out furnished like a Potomac planter's. Narrow dark
+ * oak instead of wide pine; a black-and-white diamond floorcloth imitating
+ * marble paving instead of an ochre checker; a blue-green carpet instead of
+ * a red one.
+ */
+export const NE_INDOOR_LEGEND: Record<string, TileId> = {
+  '.': 'oakfloor',
+  'p': 'marbled',
+  'c': 'carpetBlue',
+  'k': 'kitchenfloor',
+  'e': 'cellar',
+  'x': 'site',
+  'f': 'flag',
+  'b': 'board',
+  'g': 'gravel',
+};
+
 /** What a footstep sounds like on each tile. */
 export const STEP_SOUND: Partial<Record<TileId, 'grass' | 'gravel' | 'board' | 'stone'>> = {
   grass: 'grass', lawn: 'grass', meadow: 'grass', garden: 'grass', straw: 'grass',
   gravel: 'gravel', dirt: 'gravel', site: 'gravel', sand: 'gravel', mud: 'gravel',
   board: 'board', painted: 'board', carpet: 'board', deck: 'board',
+  oakfloor: 'board', marbled: 'board', carpetBlue: 'board',
   flag: 'stone', brickyard: 'stone', kitchenfloor: 'stone', cellar: 'stone',
   // Cambridge. Snow is the quietest footstep in the game and slush is the
   // loudest, which is most of what a winter camp sounds like.

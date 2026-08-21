@@ -58,6 +58,34 @@ Four decisions (`A2-D1` the powder, `A2-D2` **sealed** — the council of war,
 documents, sixteen speaking characters, the Knox logistics sequence, and the act
 ends on the parapet on the first of January.
 
+### The Vassall House is not Mount Vernon, and had to be made not to
+
+The first build of Cambridge used the Virginia interior legend, the Virginia
+wall style and the Virginia furniture, and it came out looking like the Mount
+Vernon parlour with different people standing in it — which is a claim about
+the eighteenth century that is simply false. A Potomac planter sat on
+upholstered mahogany from London under fielded panelling; a Cambridge merchant
+sat on turned maple made forty miles away under imported printed paper.
+
+Four levers, all of them period rather than decorative, and all of them
+available to any future interior:
+
+| lever | Virginia | New England |
+|---|---|---|
+| `wallStyle` | `panelled` — fielded panels, dado, chair rail | `papered` — a printed lozenge repeat with a printed border where a cornice would be, and visible roll seams |
+| `wallTint` | plaster | `#8FA79C`, a blue-green ground |
+| legend | `INDOOR_LEGEND`: wide pine, ochre floorcloth, wine carpet | `NE_INDOOR_LEGEND`: narrow dark oak, black-and-white diamond floorcloth imitating marble, blue-green carpet |
+| seats | side chairs and armchairs, wine upholstery | ladder-backs, green Windsors, one wing chair |
+| hearth | `mantel` — carved chimneypiece, overmantel panel | `chimneyNE` — plain bolection surround, deep opening, iron fireback |
+
+**Different forms, not recolours.** A red chair painted green is still a red
+chair; a ladder-back has a different silhouette at thirty pixels. `wallTint`
+had existed on `MapDef` since the interiors were written and nothing had ever
+read it — one line in `build.ts` was most of the fix.
+
+Also new: `boarded` (feather-edged sheathing, for a plain room — the chambers
+upstairs, and every barracks and farmhouse from here on).
+
 ### The three things Act 2 added to the engine
 
 **1. Seasons, as one map function in two states.** `cambridge('summer')` and

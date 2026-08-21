@@ -23,7 +23,9 @@ export type TileId =
   | 'flag' | 'brickyard' | 'site' | 'garden' | 'board' | 'painted' | 'kitchenfloor'
   | 'deck' | 'cellar' | 'carpet' | 'straw'
   // Cambridge, and the winter it turns into.
-  | 'snow' | 'slush' | 'turf' | 'trampled' | 'ice';
+  | 'snow' | 'slush' | 'turf' | 'trampled' | 'ice'
+  // New England indoors. A different house has to be a different house.
+  | 'oakfloor' | 'marbled' | 'carpetBlue';
 
 /** Draw order in the atlas. Index is the row. */
 export const TILE_ORDER: TileId[] = [
@@ -31,6 +33,7 @@ export const TILE_ORDER: TileId[] = [
   'flag', 'brickyard', 'site', 'garden', 'board', 'painted', 'kitchenfloor',
   'deck', 'cellar', 'carpet', 'straw',
   'snow', 'slush', 'turf', 'trampled', 'ice',
+  'oakfloor', 'marbled', 'carpetBlue',
 ];
 
 export const TILE_INDEX: Record<TileId, number> = Object.fromEntries(
@@ -351,6 +354,82 @@ function drawTile(id: TileId, v: number): Surface {
         }
       }
       speckle(g, 0, 0, TILE_PX, TILE_PX, P.grassD, 0.07, v + 141);
+      break;
+    }
+    /* ------------------------------------------------------------------
+     * NEW ENGLAND INDOORS.
+     *
+     * A borrowed loyalist house on Brattle Street should not be furnished
+     * out of a Virginia planter's floor tiles, and the first build of it
+     * was: the same wide pine boards, the same ochre floorcloth, the same
+     * wine turkey carpet. Two rooms in two colonies eight hundred miles
+     * apart looked like two rooms in the same house, which is a claim
+     * about the eighteenth century that is simply not true.
+     *
+     * So: narrower and darker boards, a black-and-white diamond floorcloth
+     * of the kind a Boston merchant imported to imitate marble paving, and
+     * a blue-green carpet instead of a red one.
+     * ---------------------------------------------------------------- */
+    case 'oakfloor': {
+      // Narrow quartered oak, laid tight. Half the board width of the
+      // mansion's pine and a good deal darker, so the two never read alike.
+      rect(g, 0, 0, TILE_PX, TILE_PX, shade(P.woodD, 0.06));
+      for (let y = 0; y < TILE_PX; y += 5) {
+        const tone = hash(0, y, v * 11) < 0.4 ? shade(P.wood, -0.10) : P.woodD;
+        rect(g, 0, y, TILE_PX, 4, tone);
+        hline(g, 0, y, TILE_PX, shade(P.wood, 0.10));
+        for (let x = 0; x < TILE_PX; x++) {
+          if (hash(x, y, v * 17) < 0.09) px(g, x, y + 1 + Math.floor(hash(x, y, v) * 3), shade(P.woodD, -0.18));
+        }
+      }
+      // End joints, staggered, which is what says boards rather than lines.
+      for (let y = 0; y < TILE_PX; y += 5) {
+        const jx = Math.floor(hash(1, y, v * 23) * TILE_PX);
+        vline(g, jx, y, 4, shade(P.woodD, -0.22));
+      }
+      break;
+    }
+    case 'marbled': {
+      /*
+       * A painted floorcloth in black and white diamonds — canvas, oiled,
+       * and meant to be mistaken for marble paving at the far end of a
+       * hall. Two colonial gentlemen, one of whom is at war with the other,
+       * both trying to make a wooden floor look like Italy.
+       *
+       * Diamonds, not squares: a square checker is the Mount Vernon
+       * floorcloth turned monochrome and would read as the same object.
+       */
+      rect(g, 0, 0, TILE_PX, TILE_PX, P.plasterL);
+      for (let y = 0; y < TILE_PX; y++) {
+        for (let x = 0; x < TILE_PX; x++) {
+          // Manhattan distance on a rotated lattice makes a diamond grid.
+          const d = (Math.abs(((x + y) % 32) - 16) + Math.abs(((x - y + 64) % 32) - 16));
+          if (d < 16) px(g, x, y, shade(P.blackD, 0.06));
+        }
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.plasterD, 0.06, v);
+      // Wear. A floorcloth that has been walked on for fifteen years.
+      speckle(g, 0, 0, TILE_PX, TILE_PX, shade(P.plaster, -0.05), 0.05, v + 9);
+      break;
+    }
+    case 'carpetBlue': {
+      // A turkey carpet in blue and green, not red — and the pattern is a
+      // repeating lozenge rather than the mansion's scattered stars.
+      rect(g, 0, 0, TILE_PX, TILE_PX, P.parlourD);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, shade(P.parlourD, -0.10), 0.14, v);
+      for (let y = 2; y < TILE_PX; y += 8) {
+        for (let x = 2 + ((y / 8) % 2) * 4; x < TILE_PX; x += 8) {
+          for (let k = 0; k < 4; k++) {
+            px(g, x + k, y + 3 - k, P.verdigris);
+            px(g, x + k, y + 3 + k, P.verdigrisD);
+            px(g, x + 6 - k, y + 3 - k, P.verdigris);
+            px(g, x + 6 - k, y + 3 + k, P.verdigrisD);
+          }
+          px(g, x + 3, y + 3, P.buffD);
+        }
+      }
+      // The border thread, which is what makes it a carpet and not a colour.
+      for (let y = 0; y < TILE_PX; y += 16) hline(g, 0, y, TILE_PX, shade(P.parlour, 0.10));
       break;
     }
     case 'ice': {

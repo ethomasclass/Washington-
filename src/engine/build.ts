@@ -517,7 +517,14 @@ function buildInteriorWalls(map: MapDef, grid: Grid): THREE.Group {
   const isWall = (c: number, r: number) => (map.objects?.[r]?.[c] ?? ' ') === '#';
 
   const tex = new THREE.CanvasTexture(
-    facade({ style: map.wallStyle ?? 'plaster', wide: 1, high: 3, seed: 11 }).canvas,
+    facade({
+      style: map.wallStyle ?? 'plaster', wide: 1, high: 3, seed: 11,
+      // `MapDef.wallTint` has existed since the interiors were written and
+      // nothing ever read it, so every room in the game came out the same
+      // plaster. One line, and a house in Massachusetts stops being a house
+      // in Virginia painted a different light.
+      tint: map.wallTint,
+    }).canvas,
   );
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestMipmapNearestFilter;

@@ -1574,6 +1574,280 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
 
+
+  /* ====================================================================== *
+   * NEW ENGLAND FURNITURE
+   *
+   * A borrowed loyalist house on Brattle Street furnished out of Mount
+   * Vernon's prop list looked like Mount Vernon, which is a claim about the
+   * eighteenth century that is not true: Virginia sat on upholstered
+   * mahogany from London and Massachusetts sat on turned maple made forty
+   * miles away, and a student who walks from one to the other should be able
+   * to feel the difference before anybody tells them.
+   *
+   * These are different FORMS, not recolours. A ladder-back has a different
+   * silhouette from a side chair at thirty pixels; a red side chair painted
+   * green is still a red side chair.
+   * ==================================================================== */
+
+  /** A rush-seated ladder-back in turned maple. The New England chair. */
+  chairLadderback: {
+    w: 30, h: 52, block: 0.26, sink: 2,
+    draw(g, w, h, v) {
+      const back = 8;
+      // Turned rear stiles, with the swelling at the turnings.
+      for (const x of [6, w - 9]) {
+        rect(g, x, back, 3, h - back - 4, P.brownD);
+        vline(g, x, back, h - back - 4, P.brown);
+        for (const y of [back + 4, back + 16, h - 20]) rect(g, x - 1, y, 5, 2, P.brownL);
+      }
+      // Four arched slats, each a little wider than the one below it.
+      for (let i = 0; i < 4; i++) {
+        const y = back + 2 + i * 7;
+        rect(g, 7, y, w - 16, 4, i % 2 ? P.brown : shade(P.brown, -0.06));
+        hline(g, 8, y, w - 18, P.brownL);
+        px(g, Math.round(w / 2), y - 1, P.brownL);
+      }
+      // The rush seat: woven, in four triangles, and the weave is the point.
+      const sy = h - 20;
+      rect(g, 3, sy, w - 6, 7, P.buffD);
+      for (let i = 0; i < 7; i++) {
+        hline(g, 3 + i, sy + i, w - 6 - i * 2, i % 2 ? P.buff : P.buffL);
+        hline(g, 3 + i, sy + 6 - i, w - 6 - i * 2, i % 2 ? P.buffL : P.buff);
+      }
+      // Front legs, turned, with a stretcher.
+      for (const x of [4, w - 7]) {
+        rect(g, x, sy + 6, 3, h - sy - 8, P.brownD);
+        vline(g, x, sy + 6, h - sy - 8, P.brown);
+      }
+      rect(g, 4, h - 8, w - 8, 2, P.brownD);
+      speckle(g, 3, sy, w - 6, 7, P.sandD, 0.10, v);
+    },
+  },
+
+  /**
+   * A Windsor, painted green.
+   *
+   * The American chair, and Washington's own: he bought twenty-seven of
+   * them for the Mount Vernon piazza. Spindles and a saddled plank seat, no
+   * upholstery at all, and cheap enough that a camp could own some.
+   */
+  chairWindsor: {
+    w: 32, h: 50, block: 0.26, sink: 2,
+    draw(g, w, h) {
+      const sy = h - 20;
+      // The bow, bent in one piece.
+      for (let a = 0; a <= 22; a++) {
+        const t = a / 22;
+        const x = Math.round(5 + t * (w - 10));
+        const y = Math.round(sy - 22 + Math.sin(t * Math.PI) * -4 + 4);
+        px(g, x, y, P.greenD); px(g, x, y + 1, P.green);
+      }
+      // Spindles up to it.
+      for (let i = 0; i < 7; i++) {
+        const x = 7 + i * Math.round((w - 14) / 6);
+        const top = Math.round(sy - 22 + Math.sin((i / 6) * Math.PI) * -4 + 6);
+        vline(g, x, top, sy - top, P.greenD);
+        px(g, x, top, P.greenL);
+      }
+      // The seat: a saddled plank, thick at the front edge.
+      rect(g, 2, sy, w - 4, 6, P.green);
+      hline(g, 3, sy, w - 6, P.greenL);
+      hline(g, 2, sy + 5, w - 4, P.greenD);
+      rect(g, 8, sy + 1, w - 16, 2, shade(P.greenD, -0.08));   // the saddling
+      // Splayed legs, which is what makes it a Windsor and not a chair.
+      for (const [x0, x1] of [[7, 2], [w - 8, w - 3]] as const) {
+        for (let k = 0; k < 3; k++) line(g, x0 + k, sy + 6, x1 + k, h - 3, k === 0 ? P.greenL : P.greenD);
+      }
+      line(g, 5, h - 9, w - 6, h - 9, P.greenD);
+    },
+  },
+
+  /** An easy chair, wings and all, in blue-green wool. A room's best seat. */
+  chairWing: {
+    w: 44, h: 58, block: 0.34, sink: 2,
+    draw(g, w, h, v) {
+      const sy = h - 22;
+      // The back and the two wings, which are the silhouette.
+      rect(g, 6, 8, w - 12, sy - 6, P.parlour);
+      rect(g, 6, 8, 8, sy - 6, P.parlourD);
+      rect(g, w - 14, 8, 8, sy - 6, P.parlourD);
+      hline(g, 8, 8, w - 16, P.parlourL);
+      for (const x of [2, w - 8]) {
+        rect(g, x, 12, 7, sy - 20, P.parlour);
+        vline(g, x, 12, sy - 20, P.parlourL);
+        rect(g, x, sy - 10, 7, 8, P.parlourD);
+      }
+      // Rolled arms.
+      for (const x of [1, w - 9]) {
+        ellipse(g, x + 4, sy - 4, 5, 5, P.parlour);
+        ellipse(g, x + 3, sy - 6, 3, 3, P.parlourL);
+      }
+      // A loose cushion, which is a different value or the chair is a blob.
+      rect(g, 6, sy - 4, w - 12, 8, shade(P.parlour, 0.10));
+      hline(g, 7, sy - 4, w - 14, P.parlourL);
+      rect(g, 5, sy + 4, w - 10, 6, P.parlourD);
+      for (const x of [7, w - 11]) rect(g, x, sy + 10, 4, h - sy - 12, P.woodD);
+      speckle(g, 6, 8, w - 12, sy - 2, shade(P.parlourD, -0.08), 0.07, v);
+    },
+  },
+
+  /** A tavern table: scrubbed pine, turned legs, no cloth. */
+  tableTavern: {
+    w: 72, h: 40, block: 0.5, sink: 2,
+    draw(g, w, h, v) {
+      const top = h - 22;
+      for (const x of [8, w - 14]) {
+        rect(g, x, top + 4, 5, h - top - 8, P.brownD);
+        vline(g, x, top + 4, h - top - 8, P.brown);
+        for (const y of [top + 8, h - 14]) rect(g, x - 1, y, 7, 3, P.brownL);
+      }
+      rect(g, 6, h - 8, w - 12, 3, P.brownD);       // the stretcher
+      board(g, 2, top, w - 4, 7, [P.woodD, P.pine, P.pineL], v);
+      hline(g, 2, top, w - 4, P.pineL);
+      // Scrubbed: the top is paler than the frame, and unevenly so.
+      speckle(g, 3, top + 1, w - 6, 5, shade(P.pineL, 0.10), 0.16, v + 3);
+      rect(g, 2, top + 7, w - 4, 3, P.brownD);
+    },
+  },
+
+  /** A corner cupboard with pewter on it. Pewter, not china: this is 1775. */
+  cupboardCorner: {
+    w: 52, h: 92, block: 0.42, sink: 2,
+    draw(g, w, h, v) {
+      rect(g, 4, 6, w - 8, h - 8, P.brownD);
+      rect(g, 6, 8, w - 12, h - 12, shade(P.brown, -0.04));
+      // An arched, glazed upper stage.
+      rect(g, 9, 12, w - 18, 40, shade(P.ink, 0.10));
+      for (let a = 0; a <= 18; a++) {
+        const t = a / 18;
+        px(g, Math.round(9 + t * (w - 18)), Math.round(14 - Math.sin(t * Math.PI) * 5), P.brownL);
+      }
+      // Three shelves of pewter: plates on edge, a tankard, a charger.
+      for (let i = 0; i < 3; i++) {
+        const y = 20 + i * 12;
+        hline(g, 9, y + 8, w - 18, P.brownL);
+        for (let x = 11; x < w - 12; x += 6) {
+          ellipse(g, x + 2, y + 4, 2, 4, P.stoneL);
+          px(g, x + 1, y + 2, P.plasterL);
+        }
+        if (i === 1) { rect(g, w / 2 - 3, y + 1, 6, 7, P.stone); px(g, w / 2 + 3, y + 4, P.stoneL); }
+      }
+      // Panelled doors below.
+      rect(g, 9, 56, w - 18, h - 66, P.brown);
+      for (const x of [10, w / 2 + 1]) stroke(g, x, 60, Math.round(w / 2) - 12, h - 76, P.brownD);
+      px(g, Math.round(w / 2) - 2, 70, P.buffL);
+      px(g, Math.round(w / 2) + 2, 70, P.buffL);
+      speckle(g, 6, 8, w - 12, h - 12, P.brownD, 0.05, v);
+    },
+  },
+
+  /** A tall case clock. A merchant's status object, and it is the loudest thing in a quiet house. */
+  caseClock: {
+    w: 34, h: 104, block: 0.26, sink: 2,
+    draw(g, w, h) {
+      // Hood, with a broken-arch pediment.
+      rect(g, 2, 6, w - 4, 30, P.brownD);
+      rect(g, 4, 8, w - 8, 26, P.brown);
+      for (const s of [-1, 1] as const) {
+        for (let a = 0; a <= 10; a++) {
+          const t = a / 10;
+          px(g, Math.round(w / 2 + s * (2 + t * (w / 2 - 4))),
+            Math.round(6 - Math.sin((1 - t) * Math.PI * 0.5) * 5), P.brownL);
+        }
+      }
+      px(g, Math.round(w / 2), 0, P.buffL);
+      // The dial: brass, with a silvered chapter ring and no numerals drawn.
+      disc(g, w / 2, 20, 10, P.buffD);
+      disc(g, w / 2, 20, 8, P.buff);
+      disc(g, w / 2, 20, 6, P.linenL);
+      for (let a = 0; a < 12; a++) {
+        const t = (a / 12) * Math.PI * 2;
+        px(g, Math.round(w / 2 + Math.cos(t) * 7), Math.round(20 + Math.sin(t) * 7), P.inkSoft);
+      }
+      line(g, w / 2, 20, w / 2 + 3, 16, P.ink);
+      line(g, w / 2, 20, w / 2 - 1, 26, P.ink);
+      // Waist, with a small glazed door onto the pendulum.
+      rect(g, 6, 36, w - 12, h - 50, P.brownD);
+      rect(g, 8, 38, w - 16, h - 54, P.brown);
+      rect(g, 11, 46, w - 22, 34, shade(P.ink, 0.12));
+      disc(g, w / 2, 74, 4, P.buff);
+      // Base and bracket feet.
+      rect(g, 4, h - 16, w - 8, 14, P.brownD);
+      rect(g, 6, h - 14, w - 12, 10, P.brown);
+      for (const x of [4, w - 8]) rect(g, x, h - 4, 5, 3, P.brownD);
+    },
+  },
+
+  /** A slant-front bureau, open, with the pigeonholes showing. */
+  bureauSlant: {
+    w: 56, h: 62, block: 0.4, sink: 2,
+    draw(g, w, h, v) {
+      // Case and three graduated drawers.
+      rect(g, 3, 26, w - 6, h - 30, P.brownD);
+      let y = 32;
+      for (const dh of [8, 9, 10]) {
+        rect(g, 5, y, w - 10, dh - 1, P.brown);
+        hline(g, 5, y, w - 10, P.brownL);
+        for (const x of [14, w - 18]) { px(g, x, y + Math.floor(dh / 2), P.buffL); px(g, x + 1, y + Math.floor(dh / 2), P.buffD); }
+        y += dh;
+      }
+      // The fall, let down, with the interior above it.
+      rect(g, 1, 22, w - 2, 5, P.brown);
+      hline(g, 1, 22, w - 2, P.brownL);
+      rect(g, 6, 6, w - 12, 16, shade(P.brownD, -0.10));
+      for (let x = 8; x < w - 12; x += 7) {
+        rect(g, x, 8, 6, 12, shade(P.brown, -0.06));
+        vline(g, x, 8, 12, P.brownD);
+        // A paper in one of them, which is what makes it a working desk.
+        if (hash(x, 0, v) < 0.4) rect(g, x + 1, 9, 4, 3, P.paper);
+      }
+      rect(g, 12, 20, 20, 4, P.paper);
+      hline(g, 12, 20, 20, P.paperDim);
+      for (const x of [4, w - 7]) rect(g, x, h - 5, 4, 4, P.brownD);
+    },
+  },
+
+  /**
+   * A New England chimney piece: a plain bolection surround in painted
+   * wood over a plastered breast, with an iron fireback in the opening.
+   *
+   * `mantel` is the Virginia one — a carved marble-look chimneypiece with
+   * an overmantel panel. This is the same object in a colony with less
+   * money and colder winters: bigger opening, less carving, more iron.
+   */
+  chimneyNE: {
+    w: 96, h: 80, block: 0, sink: 0,
+    draw(g, w, h, v) {
+      // The breast, plastered, and a bolection moulding round the opening.
+      rect(g, 0, 0, w, h, P.plaster);
+      speckle(g, 0, 0, w, h, P.plasterD, 0.08, v);
+      const ox = 16, ow = w - 32, oy = 24, oh = h - 26;
+      rect(g, ox - 8, oy - 8, ow + 16, oh + 8, shade(P.plasterD, -0.04));
+      rect(g, ox - 5, oy - 5, ow + 10, oh + 5, P.linenD);
+      hline(g, ox - 8, oy - 8, ow + 16, P.plasterL);
+      // The opening: deep, black, with a fireback and a fire in it.
+      rect(g, ox, oy, ow, oh, shade(P.ink, 0.04));
+      rect(g, ox + 4, oy + 4, ow - 8, oh - 10, P.ironD);
+      for (let i = 0; i < 5; i++) hline(g, ox + 8, oy + 10 + i * 6, ow - 16, shade(P.ironD, 0.06));
+      // Andirons and a fire.
+      for (const x of [ox + 8, ox + ow - 12]) {
+        rect(g, x, h - 18, 3, 14, P.ironL);
+        rect(g, x - 1, h - 6, 6, 3, P.iron);
+      }
+      for (let i = 0; i < 22; i++) {
+        const fx = Math.round(ox + 12 + hash(i, v, 41) * (ow - 24));
+        const fy = Math.round(h - 8 - hash(i, v, 42) * 14);
+        px(g, fx, fy, hash(i, v, 43) < 0.3 ? P.ember : hash(i, v, 44) < 0.6 ? P.fireL : P.fire);
+      }
+      rect(g, ox + 10, h - 8, ow - 20, 4, P.fireD);
+      // A shelf, and a pair of candlesticks on it. No overmantel painting:
+      // that is the Virginia room.
+      rect(g, 6, 14, w - 12, 5, P.linen);
+      hline(g, 6, 14, w - 12, P.linenL);
+      for (const x of [20, w - 24]) { rect(g, x, 8, 3, 6, P.stoneL); px(g, x + 1, 6, P.ember); }
+    },
+  },
   /*
    * doorFrame and staircase used to live here: both were flat, always-
    * camera-facing billboards, and both turned out to be the wrong shape for

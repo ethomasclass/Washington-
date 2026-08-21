@@ -17,6 +17,31 @@
  * screen = the garden and the hill beyond it; high row = the street and the
  * camp; low column = west; high column = east.
  *
+ * WHY THIS HOUSE DOES NOT LOOK LIKE MOUNT VERNON, AND HAD TO BE MADE NOT TO.
+ *
+ * The first build of it used the Virginia interior legend, the Virginia wall
+ * style and the Virginia furniture, and it came out looking like the Mount
+ * Vernon parlour with different people standing in it — which is a claim
+ * about the eighteenth century that is simply false. A Potomac planter sat
+ * on upholstered mahogany from London under fielded panelling; a Cambridge
+ * merchant sat on turned maple made forty miles away under imported printed
+ * paper, and the two rooms did not resemble each other.
+ *
+ * So, four levers, all of them period rather than decorative:
+ *
+ *   walls   `papered`, in a blue-green ground, with a printed border where a
+ *           Virginia room would have a cornice. Wallpaper was an imported,
+ *           taxed status object in Boston in the 1770s.
+ *   floors  `NE_INDOOR_LEGEND`: narrow dark oak instead of wide pine, a
+ *           black-and-white diamond floorcloth imitating marble paving
+ *           instead of an ochre checker, a blue-green carpet not a red one.
+ *   seats   ladder-backs, Windsors and one wing chair instead of a rank of
+ *           wine-upholstered side chairs. Different silhouettes, not
+ *           different colours: a red chair painted green is still a red chair.
+ *   hearth  `chimneyNE` — a plain bolection surround over a deep opening with
+ *           an iron fireback, rather than Virginia's carved chimneypiece with
+ *           an overmantel panel.
+ *
  * WHY THE SEASONS ARE TWO MAPS AND NOT ONE. The house does not change. What
  * changes is who is in it: in the autumn Knox is at that table arguing for a
  * journey nobody believes in, and by the end of December he is somewhere west
@@ -28,7 +53,7 @@
 
 import type { Interactable, MapDef, NpcDef, PropInstance } from '../types';
 import { LIGHT } from '../palette';
-import { INDOOR_LEGEND } from './legend';
+import { NE_INDOOR_LEGEND } from './legend';
 import { Canvas } from './paint';
 import { MARTHA } from './people';
 import { GATES, HARRISON, KNOX, REED } from './act2-people';
@@ -117,13 +142,18 @@ function groundWalls(): string[] {
 function groundProps(season: Season): PropInstance[] {
   const w = season === 'winter';
   return [
-    // --- the passage ------------------------------------------------------
+    // --- the hall ---------------------------------------------------------
     // The stair is ground, not a prop. No door frames either: a billboard
     // always faces the camera and every one of these openings is in a wall
     // running the other way, so a frame prop reads as turned a quarter-turn
     // from the opening it stands in. See the note in `props.ts`.
-    { id: 'chairSide', x: 17.5, z: 6.4 },
-    { id: 'chairSide', x: 17.5, z: 17.4, flip: true },
+    //
+    // A tall clock in the hall, which is the object that says merchant. It
+    // is the loudest thing in a quiet house and it is the first thing a
+    // visitor saw.
+    { id: 'caseClock', x: 17.4, z: 5.0 },
+    { id: 'chairLadderback', x: 17.5, z: 8.4 },
+    { id: 'chairLadderback', x: 17.5, z: 17.4, flip: true },
     { id: 'candleStand', x: 18.6, z: 4.6 },
     { id: 'framedPortrait', x: 19.4, z: 20.4 },
     { id: 'trunkBox', x: 18.0, z: 14.6 },
@@ -142,47 +172,47 @@ function groundProps(season: Season): PropInstance[] {
      * east end. Both looked handsome. Neither could be walked, and only the
      * reachability flood ever said so.
      */
-    { id: 'mantel', x: 8.5, z: 4.5, scale: 0.6 },
-    { id: 'tableLong', x: 12.0, z: 8.0 },
-    { id: 'chairSide', x: 10.4, z: 6.6 },
-    { id: 'chairSide', x: 12.0, z: 6.4 },
-    { id: 'chairSide', x: 13.6, z: 6.6, flip: true },
-    { id: 'chairSide', x: 10.4, z: 9.6 },
-    { id: 'chairSide', x: 12.0, z: 9.8 },
-    { id: 'chairSide', x: 13.6, z: 9.6, flip: true },
-    { id: 'armchair', x: 12.0, z: 5.0 },
+    { id: 'chimneyNE', x: 8.5, z: 4.3, scale: 0.78 },
+    { id: 'tableTavern', x: 12.0, z: 8.0 },
+    { id: 'chairLadderback', x: 10.4, z: 6.6 },
+    { id: 'chairWindsor', x: 12.0, z: 6.4 },
+    { id: 'chairLadderback', x: 13.6, z: 6.6, flip: true },
+    { id: 'chairWindsor', x: 10.4, z: 9.6 },
+    { id: 'chairLadderback', x: 12.0, z: 9.8 },
+    { id: 'chairWindsor', x: 13.6, z: 9.6, flip: true },
+    { id: 'chairWing', x: 12.0, z: 5.0 },
     { id: 'candleStand', x: 14.4, z: 8.2 },
-    { id: 'sideboard', x: 8.6, z: 4.4 },
+    { id: 'cupboardCorner', x: 8.6, z: 4.4 },
 
     /* --- the general's office, at the street end ------------------------- */
     { id: 'mapTable', x: 11.0, z: 16.0 },
-    { id: 'desk', x: 8.6, z: 19.0 },
-    { id: 'chairSide', x: 8.6, z: 20.2 },
+    { id: 'bureauSlant', x: 8.6, z: 19.0 },
+    { id: 'chairWindsor', x: 8.6, z: 20.2 },
     { id: 'bookcase', x: 13.6, z: 14.0 },
     { id: 'globe', x: 14.2, z: 19.4 },
     { id: 'papers', x: 9.6, z: 17.6 },
     { id: 'chestSurveyor', x: 7.6, z: 14.2 },
-    { id: 'mantel', x: 8.5, z: 13.5, scale: 0.6 },
+    { id: 'chimneyNE', x: 8.5, z: 13.5, scale: 0.58 },
 
     /* --- the secretaries' room, at the garden end ----------------------- */
-    { id: 'tableLong', x: 27.0, z: 7.0 },
-    { id: 'chairSide', x: 25.0, z: 7.0 },
-    { id: 'chairSide', x: 29.0, z: 7.0, flip: true },
+    { id: 'tableTavern', x: 27.0, z: 7.0 },
+    { id: 'chairWindsor', x: 25.0, z: 7.0 },
+    { id: 'chairWindsor', x: 29.0, z: 7.0, flip: true },
     { id: 'bookcase', x: 24.0, z: 4.6 },
     { id: 'bookStack', x: 27.2, z: 6.0 },
     { id: 'papers', x: 28.6, z: 6.2 },
     { id: 'chestDrawers', x: 32.0, z: 5.0 },
     { id: 'candleStand', x: 31.6, z: 9.4 },
-    { id: 'mantel', x: 30.5, z: 4.5, scale: 0.55 },
+    { id: 'chimneyNE', x: 30.5, z: 4.5, scale: 0.55 },
 
     /* --- the dining room, at the street end ----------------------------- */
     { id: 'tableRound', x: 27.0, z: 16.4 },
-    { id: 'chairSide', x: 25.0, z: 16.4 },
-    { id: 'chairSide', x: 29.0, z: 16.4, flip: true },
-    { id: 'chairSide', x: 27.0, z: 14.6 },
-    { id: 'sideboard', x: 30.4, z: 14.0 },
+    { id: 'chairLadderback', x: 25.0, z: 16.4 },
+    { id: 'chairLadderback', x: 29.0, z: 16.4, flip: true },
+    { id: 'chairLadderback', x: 27.0, z: 14.6 },
+    { id: 'chimneyNE', x: 30.5, z: 13.5, scale: 0.55 },
+    { id: 'cupboardCorner', x: 24.4, z: 14.4 },
     { id: 'dresserPlates', x: 24.4, z: 19.6 },
-    { id: 'mantel', x: 30.5, z: 13.5, scale: 0.55 },
     { id: 'candleStand', x: 32.0, z: 18.6 },
 
     // The one seasonal object on this floor: in December the fires are the
@@ -781,12 +811,15 @@ export function vassallGround(season: Season): MapDef {
     when: w ? '30 December 1775' : 'October 1775',
     light: LIGHT.hqParlour,
     interior: true,
-    wallStyle: 'panelled',
+    wallStyle: 'papered',
+    // A blue-green ground, which is what survives in the New England
+    // collections and is as far from Virginia plaster as the palette goes.
+    wallTint: '#8FA79C',
     wallHeight: 2.2,
     ground: groundTiles(),
     elev: groundElevation(),
     objects: groundWalls(),
-    legend: INDOOR_LEGEND,
+    legend: NE_INDOOR_LEGEND,
     props: groundProps(season),
     interactables: groundThings(season),
     npcs: groundNpcs(season),
@@ -859,36 +892,40 @@ export function vassallUpper(season: Season): MapDef {
     when: w ? '30 December 1775' : 'October 1775',
     light: LIGHT.interiorDay,
     interior: true,
-    wallStyle: 'plaster',
+    // Upstairs is not papered. Paper went in the rooms visitors saw and
+    // nowhere else, and the chambers of a house whose owner has fled are
+    // sheathed boards with the paint going.
+    wallStyle: 'boarded',
+    wallTint: '#B9BCAE',
     wallHeight: 2.05,
     ground: upperTiles(),
     objects: upperWalls(),
-    legend: INDOOR_LEGEND,
+    legend: NE_INDOOR_LEGEND,
     props: [
       { id: 'bedSimple', x: 12.0, z: 5.4 },
       { id: 'chestDrawers', x: 14.2, z: 8.6 },
-      { id: 'desk', x: 8.6, z: 9.0 },
-      { id: 'chairSide', x: 8.6, z: 10.2 },
+      { id: 'bureauSlant', x: 8.6, z: 9.0 },
+      { id: 'chairWindsor', x: 8.6, z: 10.4 },
       { id: 'trunkBox', x: 8.0, z: 5.2 },
-      { id: 'mantel', x: 8.5, z: 4.5, scale: 0.5 },
+      { id: 'chimneyNE', x: 8.5, z: 4.5, scale: 0.5 },
 
       { id: 'bedTester', x: 11.6, z: 15.0 },
       { id: 'chestDrawers', x: 8.4, z: 18.6 },
       { id: 'candleStand', x: 14.2, z: 18.6 },
-      { id: 'chairSide', x: 13.4, z: 15.6, flip: true },
+      { id: 'chairLadderback', x: 13.4, z: 15.6, flip: true },
 
       { id: 'bedSimple', x: 26.0, z: 5.4 },
       { id: 'bedSimple', x: 30.4, z: 5.4, flip: true },
-      { id: 'workTable', x: 28.0, z: 9.0 },
+      { id: 'tableTavern', x: 28.0, z: 9.0, scale: 0.8 },
       { id: 'candleStand', x: 24.4, z: 9.4 },
       { id: 'bookStack', x: 28.0, z: 8.2 },
 
       { id: 'bedSimple', x: 27.0, z: 15.4 },
       { id: 'chestDrawers', x: 31.4, z: 18.4 },
       { id: 'washTub', x: 24.4, z: 19.0 },
-      { id: 'mantel', x: 30.5, z: 13.5, scale: 0.5 },
+      { id: 'chimneyNE', x: 30.5, z: 13.5, scale: 0.5 },
 
-      { id: 'chairSide', x: 18.4, z: 5.4 },
+      { id: 'chairLadderback', x: 18.4, z: 5.4 },
       { id: 'candleStand', x: 18.6, z: 18.6 },
       { id: 'framedPortrait', x: 19.4, z: 4.4 },
     ],

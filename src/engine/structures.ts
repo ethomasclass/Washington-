@@ -27,7 +27,9 @@ export type WallStyle =
   | 'log'           // the quarter
   | 'frameOpen'     // the north wing: studs and sheathing, no siding yet
   | 'plaster'       // interior
-  | 'panelled'      // interior, a fine room
+  | 'panelled'      // interior, a fine room in Virginia
+  | 'papered'       // interior, a merchant's room in New England
+  | 'boarded'       // interior, feather-edged sheathing: a plain room
   | 'wash';         // interior, limewashed
 
 export interface Opening {
@@ -52,6 +54,15 @@ export interface FacadeOpts {
   /** Storey height in tiles. Governs where upper windows land. */
   storeyH?: number;
   seed?: number;
+  /**
+   * Override the wall's body colour.
+   *
+   * `wallInterior` has taken a tint since it was written and nothing ever
+   * passed one, so every interior in the game came out the same shade of
+   * plaster. It is the cheapest single lever there is for making one house
+   * not look like another house.
+   */
+  tint?: string;
 }
 
 /* ---------------------------------------------------------------------- *
@@ -160,6 +171,60 @@ function wallInterior(g: CanvasRenderingContext2D, w: number, h: number, style: 
   rect(g, 0, 0, w, h, body);
   speckle(g, 0, 0, w, h, shade(body, -0.06), 0.10, seed);
   speckle(g, 0, 0, w, h, shade(body, 0.08), 0.06, seed + 1);
+  if (style === 'papered') {
+    /*
+     * PRINTED PAPER, which is the single most legible way to say "this is
+     * not Virginia".
+     *
+     * English printed paper was a Boston merchant's status object in the
+     * 1770s — imported, taxed, and hung in the best room. It is a
+     * completely different surface from Virginia fielded panelling: no
+     * dado, no stiles, no rails, just a repeat running the full height with
+     * a printed border at the top where a cornice would be.
+     *
+     * The repeat is drawn, not sampled, and it is a damask-ish lozenge
+     * because that is what survives in the collections. Never letters.
+     */
+    const rep = 22;
+    for (let y = -rep; y < h + rep; y += rep) {
+      for (let x = ((y / rep) % 2) * (rep / 2); x < w + rep; x += rep) {
+        const cx = Math.round(x), cy = Math.round(y);
+        // A lozenge, hatched, and a small flower at the crossing points.
+        for (let k = 0; k <= 7; k++) {
+          px(g, cx + k, cy - 7 + k, shade(body, -0.16));
+          px(g, cx + k, cy + 7 - k, shade(body, -0.16));
+          px(g, cx - k, cy - 7 + k, shade(body, -0.16));
+          px(g, cx - k, cy + 7 - k, shade(body, -0.16));
+        }
+        for (let k = 0; k <= 3; k++) {
+          px(g, cx + k, cy - 3 + k, shade(body, 0.14));
+          px(g, cx - k, cy + 3 - k, shade(body, 0.14));
+        }
+        px(g, cx, cy, shade(body, 0.22));
+      }
+    }
+    // The printed border, at the top, in place of a cornice.
+    rect(g, 0, 0, w, 7, shade(body, -0.24));
+    hline(g, 0, 0, w, shade(body, 0.18));
+    hline(g, 0, 6, w, shade(body, 0.18));
+    for (let x = 2; x < w; x += 6) { px(g, x, 3, shade(body, 0.26)); px(g, x + 3, 3, shade(body, -0.34)); }
+    // Seams, every roll width. Paper came in strips and you could see it.
+    for (let x = 0; x < w; x += 44) vline(g, x, 7, h - 13, shade(body, -0.09));
+  }
+  if (style === 'boarded') {
+    // Feather-edged horizontal sheathing: a plain room, a farmhouse, a
+    // barracks. Cheap, quick, and nothing like a panelled parlour.
+    for (let y = 4; y < h - 6; y += 9) {
+      rect(g, 0, y, w, 8, hash(0, y, seed) < 0.4 ? shade(body, -0.07) : body);
+      hline(g, 0, y, w, shade(body, 0.16));
+      hline(g, 0, y + 7, w, shade(body, -0.20));
+      for (let x = 0; x < w; x++) if (hash(x, y, seed + 5) < 0.06) px(g, x, y + 3, shade(body, -0.18));
+    }
+    // Nails at the studs.
+    for (let x = 7; x < w; x += 32) {
+      for (let y = 8; y < h - 8; y += 9) px(g, x, y, shade(body, -0.32));
+    }
+  }
   if (style === 'panelled') {
     // Dado, chair rail, and fielded panels above — a fine room in 1775.
     const dado = Math.round(h * 0.42);
@@ -247,7 +312,7 @@ export function facade(o: FacadeOpts): Surface {
     case 'brick': sidingBrick(g, w, h, seed); break;
     case 'log': sidingLog(g, w, h, seed); break;
     case 'frameOpen': sidingFrameOpen(g, w, h, seed); break;
-    default: wallInterior(g, w, h, o.style, seed); break;
+    default: wallInterior(g, w, h, o.style, seed, o.tint); break;
   }
 
   if (o.plinth) {

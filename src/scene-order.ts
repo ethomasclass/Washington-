@@ -13,4 +13,6 @@ export const SCENE_ORDER: string[] = [
   'CB-CAMP', 'CB-HQ', 'CB-HQ-UP', 'CB-CAMP-W', 'CB-HQ-W', 'CB-HQ-UP-W',
   // Act 3.
   'BK-LINES', 'BK-FERRY', 'BK-HOUSE', 'BK-FERRY-N',
+  // Act 4.
+  'DL-BANK', 'DL-BANK-N', 'TR-STREET', 'TR-STREET-A',
 ];

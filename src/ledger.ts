@@ -91,6 +91,54 @@ const ACTS: Record<number, {
       { n: 1800, cause: 'marched in from the county militia, for six weeks' },
     ],
   },
+
+  /*
+   * ACT 3 — BROOKLYN. FIGURES UNVERIFIED, and marked, like Act 2's.
+   *
+   * The opening strength is of the documented order for the army in and
+   * around New York in late August 1776 — Washington reported something over
+   * nineteen thousand on the rolls with a great many sick — and no line here
+   * has been checked against a primary source. `08` §10 makes that blocking
+   * for classroom use.
+   *
+   * The fixed losses are the act. About a thousand men were taken or killed
+   * on Long Island on the twenty-seventh, including two major generals, and
+   * the Connecticut militia went home in September in whole companies —
+   * which is not a casualty and is by far the larger number. The evacuation
+   * is on the page as a GAIN, because nine thousand men who were not
+   * captured is what the night was for.
+   */
+  3: {
+    openedWith: 19000,
+    openedOn: '26 August 1776',
+    closedOn: '30 August 1776',
+    fixed: [
+      { n: -5300, cause: 'militia who went home in September, by companies and by regiments' },
+      { n: -1100, cause: 'sick, in a camp with no hospital worth the name' },
+      { n: 9000, cause: 'taken off Long Island in one night, and not one man lost doing it' },
+      { n: -9000, cause: 'who were on that island in the first place' },
+    ],
+  },
+
+  /*
+   * ACT 4 — THE DELAWARE. FIGURES UNVERIFIED, and marked.
+   *
+   * The opening strength is the documented order for the force at
+   * McConkey's on 25 December: about two thousand four hundred fit for duty.
+   * The largest line on the page is the one nothing on the twenty-sixth
+   * changed — every enlistment expired on the thirty-first, and Trenton
+   * bought six weeks, not a solution.
+   */
+  4: {
+    openedWith: 2400,
+    openedOn: '25 December 1776',
+    closedOn: '31 December 1776',
+    fixed: [
+      { n: -1300, cause: 'whose enlistment expired on the thirty-first, as it always would' },
+      { n: -60, cause: 'lost to exposure, frostbite and the road' },
+      { n: 900, cause: 'Hessian prisoners, marched back across the river the same night' },
+    ],
+  },
 };
 
 /**

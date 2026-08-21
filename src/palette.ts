@@ -116,6 +116,11 @@ export const P = {
   canvasD: '#A79B80', canvasM: '#C8BDA1', canvasL: '#E0D7BC',
   // Iron: gun barrels, kettles, the trail of a carriage.
   ironD: '#2E3236', iron: '#464B50', ironL: '#646A70',
+  // Bright steel — a bayonet, a blade, a barrel with the light on it.
+  // The `iron` ramp is what iron looks like in the rain; this is what a
+  // sixteen-inch bayonet looks like held above a rank, which is the only
+  // thing in a grey frame that has any shine on it at all.
+  steel: '#8E979E', steelL: '#BFC7CC',
   // The gun carriages at Ticonderoga were painted with red ochre and lampblack.
   carriageD: '#5E3A28', carriage: '#7C4E34', carriageL: '#986344',
 
@@ -360,10 +365,28 @@ export const LIGHT: Record<string, Light> = {
     key: '#D6D2C6', fill: '#7A8088', haze: '#A8ADB2',
     sun: 0.95, contrast: 0.36, bloom: 0.22, saturation: 0.48,
   },
-  /** The crossing. Torchlight on black water, sleet, and no horizon at all. */
+  /**
+   * The crossing. Sleet, snow, running ice, and no horizon at all.
+   *
+   * THE KEY HERE IS COLD, AND THAT IS THE POINT.
+   *
+   * It was warm (`#E8AC4A`) on the first pass, on the theory that a night
+   * lit by lanterns wants a lantern-coloured key. Brooklyn gets away with
+   * that because Brooklyn's ground is mud. This ground is snow and river
+   * ice, and a blue-white tile multiplied by an orange key comes out
+   * *olive* — the Delaware read as a field of pond scum for a whole
+   * afternoon before anybody said the word "green" out loud.
+   *
+   * The warmth belongs to the lanterns and the cook fires, and since
+   * `PropDef.glow` those carry it themselves: a glowing prop is drawn at
+   * full brightness regardless of the map light, so it is the only warm
+   * thing in the frame and it reads as a light source rather than as a
+   * tint everything shares. That is what a lantern in the dark actually
+   * looks like, and the key is free to be what the sky is: cold.
+   */
   delawareNight: {
-    key: '#E8AC4A', fill: '#111826', haze: '#080D14',
-    sun: -0.70, contrast: 0.95, bloom: 0.62, saturation: 0.60,
+    key: '#9FB4D2', fill: '#0E1420', haze: '#080D14',
+    sun: -0.70, contrast: 0.92, bloom: 0.62, saturation: 0.56,
     exposure: 0.50,
   },
   /** King Street, an hour after sunrise, in sleet. Daylight, and thin with it. */

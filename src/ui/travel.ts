@@ -142,6 +142,45 @@ export const DESTINATIONS: TravelGroup[] = [
       { map: 'BK-FERRY-N', at: [44, 40], facing: 3, label: 'The road down, at night', note: 'the regiments coming off the line one at a time' },
     ],
   },
+  {
+    heading: 'Act Four',
+    where: "McKonkey's Ferry, 25 December 1776",
+    rows: [
+      { map: 'DL-BANK', at: [34, 44], facing: 3, label: 'The road from Newtown', note: 'where the act opens' },
+      { map: 'DL-BANK', at: [32, 31], facing: 3, label: 'The camp', note: 'Greene, and an army with eight days left on its enlistments' },
+      { map: 'DL-BANK', at: [20, 32], facing: 3, label: 'The shelters', note: 'brush and sailcloth, and the men who have no shoes' },
+      { map: 'DL-BANK', at: [46, 33], facing: 3, label: 'The east end of the camp', note: 'the Crisis, read aloud to men who cannot read it' },
+      { map: 'DL-BANK', at: [40, 25], facing: 3, label: 'The ferry road', note: 'the guns coming down, and the ground already going' },
+      { map: 'DL-BANK', at: [26, 20], facing: 3, label: 'The bank', note: 'Glover again, and the same men who took you off Long Island' },
+      { map: 'DL-BANK', at: [34, 18], facing: 3, label: "McKonkey's landing", note: 'the Durham boats, and the river running ice' },
+    ],
+  },
+  {
+    heading: 'Act Four — the crossing',
+    where: 'The Delaware, night of 25 December 1776',
+    rows: [
+      { map: 'DL-BANK-N', at: [34, 21], facing: 3, label: 'The ferry, at night', note: 'where the crossing begins, and it is already late' },
+      { map: 'DL-BANK-N', at: [34, 17], facing: 3, label: 'The boats', note: 'the tally chalked on a thwart, and what each gun costs in minutes' },
+      { map: 'DL-BANK-N', at: [42, 21], facing: 3, label: 'The guns waiting', note: 'eighteen of them, and Knox is not losing one' },
+      { map: 'DL-BANK-N', at: [33, 30], facing: 3, label: 'The road down, in the dark', note: 'the poles, the storm, and the password' },
+    ],
+  },
+  {
+    heading: 'Act Four — Trenton',
+    where: 'King Street, morning of 26 December 1776',
+    rows: [
+      { map: 'TR-STREET', at: [31, 42], facing: 3, label: 'The head of King Street', note: 'where the column came in, four minutes apart from Sullivan' },
+      { map: 'TR-STREET', at: [31, 38], facing: 3, label: 'The guns', note: 'both of them came from Ticonderoga eleven months ago' },
+      { map: 'TR-STREET', at: [31, 30], facing: 3, label: 'King Street', note: 'the whole street, downhill, and the shot going along it' },
+      { map: 'TR-STREET', at: [31, 20], facing: 3, label: 'The Hessians', note: 'forming by companies, under arms, not asleep' },
+      { map: 'TR-STREET', at: [42, 27], facing: 3, label: "Rall's quarters", note: 'the warning nobody wrote down at the time' },
+      { map: 'TR-STREET', at: [16, 17], facing: 3, label: 'The Old Barracks', note: 'the only building here anybody will remember' },
+      { map: 'TR-STREET', at: [31, 10], facing: 3, label: 'The Assunpink bridge', note: 'the only road south, and it matters again on 2 January' },
+      { map: 'TR-STREET-A', at: [31, 26], facing: 3, label: 'After', note: 'nine hundred prisoners, and the reckoning' },
+      { map: 'TR-STREET-A', at: [47, 20], facing: 3, label: 'The Methodist church', note: 'the wounded, both sides, in the same room' },
+      { map: 'TR-STREET-A', at: [48, 48], facing: 3, label: 'The orchard', note: 'where the act ends, and the enlistments still expire' },
+    ],
+  },
 ];
 
 const FLAT: Array<{ d: Destination; group: number }> = [];

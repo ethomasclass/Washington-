@@ -2159,6 +2159,92 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
 
+  /**
+   * A FILE OF HESSIANS, FORMED.
+   *
+   * This is the most load-bearing prop in Act 4 and it exists because the
+   * act was built without it and did not work. The whole argument of
+   * Trenton — `docs/05` §4.3, and every decision in the act — is that the
+   * garrison was not asleep and not drunk: it turned out under arms, in the
+   * street, in the sleet, and formed by companies while the guns were
+   * firing down the street at it. The text said so in six places. The
+   * street was empty. A player standing at the head of King Street saw two
+   * cannon, a well, and nothing to shoot at, and concluded — reasonably —
+   * that the story about the sleeping garrison was true after all.
+   *
+   * So: five men, shoulder to shoulder, drawn as one object. Blue coats,
+   * brass mitre caps, and a bayonet on every barrel, because a third of the
+   * muskets in the American column would not take one and that difference
+   * is the argument the prop is making.
+   *
+   * They are deliberately NOT individuated. At this size the read is the
+   * dressed line — the fact that the intervals are equal and the barrels
+   * are all at the same angle — and jittering them would destroy the one
+   * thing the prop is for. The only variation is a half-pixel of height
+   * off `hash`, so the rank does not look stamped.
+   */
+  hessianFile: {
+    w: 78, h: 52, block: 0.5, sink: 2,
+    draw(g, _w, h, v) {
+      for (let m = 0; m < 5; m++) {
+        const cx = 9 + m * 15;
+        // A pixel of height, so five men are not one man five times. It is
+        // the only variation there is, and that is deliberate: see above.
+        const lift = hash(m, v, 241) < 0.5 ? 0 : 1;
+        const head = 18 - lift;          // top of the face
+        const coat = head + 7;           // shoulders
+        const foot = h - 6;
+
+        /*
+         * The musket, first, and passing OUTSIDE the right shoulder.
+         * On the first pass it ran up the middle of the figure and the
+         * coat, drawn after it, painted over the whole barrel: five men
+         * turned out under arms with no arms. It is shouldered, so it
+         * clears the coat by two pixels and the bayonet clears the cap.
+         */
+        line(g, cx + 7, foot - 2, cx + 4, head - 8, P.woodD);
+        line(g, cx + 8, foot - 2, cx + 5, head - 8, P.wood);
+        // The bayonet, in bright steel. Sixteen inches of it above the cap
+        // is the one silhouette in this frame that says these men can close.
+        line(g, cx + 4, head - 8, cx + 3, head - 16, P.steelL);
+        line(g, cx + 5, head - 8, cx + 4, head - 16, P.iron);
+        px(g, cx + 3, head - 17, P.steelL);
+
+        // The coat: Hessian blue, turnbacks light on one edge, shadow on
+        // the other, and the belts crossed white over the breast.
+        rect(g, cx - 5, coat, 11, foot - coat, P.hessian);
+        vline(g, cx - 5, coat, foot - coat, P.hessianL);
+        vline(g, cx + 5, coat, foot - coat, P.hessianD);
+        line(g, cx - 4, coat + 2, cx + 4, coat + 9, P.linen);
+        line(g, cx + 4, coat + 2, cx - 4, coat + 9, P.linen);
+        hline(g, cx - 5, foot - 1, 11, P.hessianD);
+
+        // Black gaiters to the knee, which is the other half of why a
+        // Hessian reads as a Hessian at this size.
+        rect(g, cx - 4, foot, 3, 5, P.ironD);
+        rect(g, cx + 2, foot, 3, 5, P.ironD);
+
+        // The face. No features: two pixels of shadow under the plate is
+        // all a head this size will carry, and eyes at this scale read as
+        // a skull.
+        rect(g, cx - 2, head, 5, 6, P.skinA);
+        hline(g, cx - 2, head, 5, P.skinAD);
+
+        // The mitre cap over it: a tall brass front plate, tapering up.
+        for (let y = 0; y < 9; y++) {
+          const half = Math.round(1 + (y / 8) * 3);
+          hline(g, cx - half, head - 9 + y, half * 2 + 1, P.brassD);
+          px(g, cx - half, head - 9 + y, P.brass);
+        }
+        px(g, cx, head - 10, P.brassL);
+        // The scrollwork, as a shape, never as letters.
+        px(g, cx, head - 5, P.brassL);
+        hline(g, cx - 4, head - 1, 9, P.brass);
+        px(g, cx - 4, head - 1, P.brassL);
+      }
+    },
+  },
+
   /** A stand of arms, grounded: nine hundred muskets in one object. */
   armsStand: {
     w: 62, h: 46, block: 0.4, sink: 2,

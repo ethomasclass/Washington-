@@ -40,6 +40,10 @@ import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
 import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
 import { ACT2_DECISIONS } from './content/act2-decisions';
 import { ACT3_DECISIONS } from './content/act3-decisions';
+import {
+  A4_APPEAL_FLOOR, A4_D1_APPEAL_COLD, ACT4_DECISIONS,
+} from './content/act4-decisions';
+import { DL_BANK, DL_BANK_NIGHT, TR_STREET, TR_STREET_AFTER } from './content/delaware';
 import { BK_LINES, BK_FERRY, BK_FERRY_NIGHT } from './content/brooklyn';
 import { FOUR_CHIMNEYS } from './content/four-chimneys';
 import { SurveySheet, type SurveyResult } from './ui/survey';
@@ -67,6 +71,10 @@ const MAPS: Record<string, MapDef> = {
   [BK_FERRY.id]: BK_FERRY,
   [BK_FERRY_NIGHT.id]: BK_FERRY_NIGHT,
   [FOUR_CHIMNEYS.id]: FOUR_CHIMNEYS,
+  [DL_BANK.id]: DL_BANK,
+  [DL_BANK_NIGHT.id]: DL_BANK_NIGHT,
+  [TR_STREET.id]: TR_STREET,
+  [TR_STREET_AFTER.id]: TR_STREET_AFTER,
 };
 
 /**
@@ -79,6 +87,7 @@ const MAP_ACT: Record<string, number> = {
   [CAMBRIDGE_SUMMER.id]: 2, [HQ_AUTUMN.id]: 2, [HQ_UP_AUTUMN.id]: 2,
   [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
   [BK_LINES.id]: 3, [BK_FERRY.id]: 3, [BK_FERRY_NIGHT.id]: 3, [FOUR_CHIMNEYS.id]: 3,
+  [DL_BANK.id]: 4, [DL_BANK_NIGHT.id]: 4, [TR_STREET.id]: 4, [TR_STREET_AFTER.id]: 4,
 };
 
 /**
@@ -90,8 +99,19 @@ const MAP_ACT: Record<string, number> = {
  * it, in `act2-decisions.ts`.
  */
 const EARNED = new Map<string, LedgerLine[]>();
-for (const d of [...ACT2_DECISIONS, ...ACT3_DECISIONS]) {
-  for (const o of d.options) if (o.ledger) EARNED.set(`${d.id}/${o.id}`, o.ledger);
+/*
+ * Keyed by ACT as well as by decision, because a reckoning is per act and a
+ * decision made at Cambridge has no business appearing on the page that
+ * accounts for Trenton. `state.decisions` is cumulative across the whole
+ * run, so without the act in the key every act's reckoning after the first
+ * would carry every earlier act's lines — which the linter found by
+ * reckoning Act 4 with every decision in the game set to its worst option
+ * and getting an army of minus two thousand.
+ */
+for (const [act, list] of [[2, ACT2_DECISIONS], [3, ACT3_DECISIONS], [4, ACT4_DECISIONS]] as const) {
+  for (const d of list) {
+    for (const o of d.options) if (o.ledger) EARNED.set(`${act}/${d.id}/${o.id}`, o.ledger);
+  }
 }
 
 const WALK_SPEED = 4.2;
@@ -377,6 +397,31 @@ class Game {
       return;
     }
 
+    if (MAP_ACT[this.mapId] === 4) {
+      const crossed = has('obs.a4.went_on');
+      const fought = this.mapId === TR_STREET_AFTER.id;
+      this.ui.setObjectives(
+        fought
+          ? [
+            { text: 'Settle what becomes of nine hundred prisoners.', done: done('A4-D3') },
+            { text: 'Walk down to the bridge. The column goes back tonight.', done: this.actOver },
+          ]
+          : crossed
+            ? [
+              { text: 'Down King Street. Do not let them out over the bridge.', done: fought },
+            ]
+            : [
+              { text: 'Six days. Tell Sergeant Young what happens on the thirty-first.', done: done('A4-D1') },
+              { text: 'Go down to the boats.', done: has('obs.a4.went_on') || has('obs.a4.turned_back') },
+              ...(has('obs.a4.honeyman_contradiction')
+                ? []
+                : [{ text: 'Honeyman says they are at ease. Somebody intercepted an order.', done: false }]),
+            ],
+        fought ? 'After' : crossed ? 'Eight in the morning' : 'Six days',
+      );
+      return;
+    }
+
     this.ui.setObjectives([
       { text: 'Answer Martha. She asked you a week ago.', done: done('A1-D1') },
       { text: 'See Lund about the north end.', done: done('A1-D2') },
@@ -575,8 +620,28 @@ class Game {
 
   private async runDecision(d: Parameters<Ui['decide']>[0]): Promise<void> {
     const id = await this.ui.decide(d, this.state);
-    const chosen = d.options.find((o) => o.id === id)!;
+    let chosen = d.options.find((o) => o.id === id)!;
     this.state.decisions.set(d.id, id);
+
+    /*
+     * THE SAME WORDS, TWO AFTERNOONS.
+     *
+     * `A4-D1`'s third option is an appeal with no money behind it, and
+     * whether it works depends on whether this army loves him — which is a
+     * number that has been accumulating for four hours of play and which the
+     * player has never seen.
+     *
+     * There is no lock on the option and no warning before or after. The
+     * player says the same sentence either way and finds out what it was
+     * worth. It is the only place in the game where an option's arithmetic
+     * is not fully authored on the option, and it is the entire point of
+     * that option: Loyalty is a thing you have been spending all game
+     * without being shown the balance.
+     */
+    if (d.id === 'A4-D1' && id === 'appeal' && this.state.stats.loyalty < A4_APPEAL_FLOOR) {
+      chosen = { ...chosen, ...A4_D1_APPEAL_COLD };
+    }
+
     for (const [k, v] of Object.entries(chosen.effects)) {
       applyDelta(this.state, k as never, v as number, !!d.sealed);
     }
@@ -714,6 +779,19 @@ class Game {
             ['Whitcomb', 'heard.a2.whitcomb', 'A scout. Counts what is over there and reports the count.'],
             ['A woman of the camp', 'heard.a2.campwoman', 'On the rations at half a man&rsquo;s allowance, and worth more.'],
             ['Martha, at Cambridge', 'heard.a2.martha', 'Came five hundred miles in December, and said nothing about it.'],
+            // --- Act 3 -------------------------------------------------
+            ['Lord Stirling', 'heard.a3.stirling', 'William Alexander. Turned 250 Marylanders about and attacked six times.'],
+            ['John Sullivan', 'heard.a3.sullivan', 'A New Hampshire lawyer. Taken prisoner on the twenty-seventh.'],
+            ['Israel Putnam', 'heard.a3.putnam', 'A Connecticut tavern keeper, and a legend before this war started.'],
+            ['Lieutenant Ford', 'heard.a3.ford', 'One of five men on the Jamaica road, with no relief and no orders.'],
+            ['Thomas Mifflin', 'heard.a3.mifflin', 'Took the covering party, and stood in an empty line all night.'],
+            ['John Glover', 'heard.a3.glover', 'Marblehead. His fishermen rowed the army off Long Island.'],
+            ['Alexander Hamilton', 'heard.a3.hamilton', 'Twenty-one, two guns, and nobody has heard of him.'],
+            // --- Act 4 -------------------------------------------------
+            ['Joseph Plumb Martin', 'heard.a4.martin', 'Sixteen. In fifty years he writes the best account of this war there is.'],
+            ['Sergeant Young', 'heard.a4.young', 'Pennsylvania. Keeps a diary that is mostly weather, and it is useful.'],
+            ['John Honeyman', 'heard.a4.honeyman', 'A cattle dealer, or a spy. The evidence is a grandson&rsquo;s story from 1873.'],
+            ['Colonel Rall', 'heard.a4.rall', 'Thirty years a soldier. Warned twice, refused a redoubt twice.'],
           ].filter(([, flag]) => this.state.knowledge.has(flag as string));
           if (!met.length) return `<h3>Spoken to</h3><div class="empty">Nobody yet.</div>`;
           return `<h3>Spoken to</h3>` + met
@@ -749,6 +827,8 @@ class Game {
 
   private async maybeEndAct(): Promise<void> {
     if (MAP_ACT[this.mapId] === 2) { await this.maybeEndActTwo(); return; }
+    if (MAP_ACT[this.mapId] === 3) { await this.maybeEndActThree(); return; }
+    if (MAP_ACT[this.mapId] === 4) { await this.maybeEndActFour(); return; }
     if (this.actOver || this.mapId !== ESTATE.id) return;
     // The wharf. He has to have answered Philadelphia first, or there is
     // nothing to leave for.
@@ -792,13 +872,11 @@ class Game {
      *
      * Six weeks and four hundred miles happen inside one fade, which is the
      * right amount of screen time for a journey the player has no decisions
-     * in. The snapshot is taken BEFORE the crossing, so Act 2's world mood
-     * and his portrait are set by the man who got on the boat, not by what
-     * happens to him in the first ten minutes of the camp.
+     * in. `closeAct` does the same four things at every act break.
      */
     await this.ui.fadeOut(700);
     this.state.act = 2;
-    this.state.scene = 'CB-01';
+    this.state.scene = CAMBRIDGE_SUMMER.id;
     takeSnapshot(this.state);
     this.actOver = false;
     this.firedZones.clear();
@@ -856,15 +934,139 @@ class Game {
       + 'funny for two hundred years.',
     ]);
 
-    const r = reckon(2, this.state, (d, o) => EARNED.get(`${d}/${o}`) ?? []);
+    await this.closeAct(2, [
+      'The lines above Charlestown, the seventeenth of March, and the fleet is gone. Eleven '
+      + 'thousand people went out of Boston harbour in three days and nobody fired at them, '
+      + 'because there was nothing to be gained by it.',
+      'They are going to New York. So are you, and so is everything that happens next.',
+    ], BK_LINES.id);
+  }
+
+  /**
+   * The end of an act, and the beginning of the next one.
+   *
+   * Every act break in this game does exactly the same four things and it is
+   * worth them being in one place: the reckoning, the snapshot, the passport
+   * code, and — where there is a next act — a fade straight into it, with no
+   * menu in between.
+   *
+   * The snapshot is taken BEFORE the crossing into the next act, so the new
+   * act's world mood and his portrait are set by the man who finished the
+   * last one and not by whatever happens in the first ten minutes of the
+   * new one.
+   */
+  private async closeAct(act: number, bridge: string[], nextMap?: string): Promise<void> {
+    const r = reckon(act, this.state, (d, o) => EARNED.get(`${act}/${d}/${o}`) ?? []);
     if (r) await this.ui.reckoning(r);
 
     takeSnapshot(this.state);
     this.refreshObjectives();
+    const words = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'][act - 1] ?? String(act);
     await this.ui.narrate([
-      `Act Two is done. Your code is ${encode(this.state)} — write it down; the next lesson starts from it.`,
+      `Act ${words} is done. Your code is ${encode(this.state)} — write it down; the next lesson `
+      + 'starts from it.',
     ]);
+
+    if (!nextMap) { this.busy = false; return; }
+
+    await this.ui.fadeOut(700);
+    this.state.act = act + 1;
+    this.state.scene = nextMap;
+    takeSnapshot(this.state);
+    this.actOver = false;
+    this.firedZones.clear();
+    this.firedAmbient.clear();
+    this.loadMap(nextMap);
+    await this.ui.fadeIn(700);
+    await this.ui.narrate(bridge);
+    await this.ui.narrate(MAPS[nextMap].arrival!);
     this.busy = false;
+  }
+
+  /**
+   * THE END OF ACT 3.
+   *
+   * At the stage, in the dark, once Hamilton has his answer. Washington went
+   * in the last boat and several hundred people watched him do it, which is
+   * the one much-repeated story about that night that there is no reason
+   * whatever to doubt.
+   */
+  private async maybeEndActThree(): Promise<void> {
+    if (this.actOver || this.mapId !== BK_FERRY_NIGHT.id) return;
+    const atStage = this.player.z < 15 && this.player.x > 28 && this.player.x < 42;
+    if (!atStage) return;
+
+    if (!this.state.decisions.has('A3-D3')) {
+      if (!this.firedZones.has('nudge:stage')) {
+        this.firedZones.add('nudge:stage');
+        this.busy = true;
+        await this.ui.narrate(
+          'Glover will not let you into a boat until the last of them are off, and there is a '
+          + 'captain of artillery standing by two guns at the top of the ramp who has been trying '
+          + 'to ask you something for twenty minutes.',
+        );
+        this.busy = false;
+      }
+      return;
+    }
+
+    this.busy = true;
+    this.actOver = true;
+    await this.ui.narrate([
+      'The last regiment goes at about six and it is getting light, and then the fog comes down '
+      + 'on this shore and does not come down on the other one, which is a thing fog does about '
+      + 'once a decade.',
+      'You go in the last boat. Several hundred people watch you do it, which is why it is the '
+      + 'one story about tonight there is no reason to doubt.',
+      'Nine thousand men, in one night, off an island, without losing one. It is the finest thing '
+      + 'this army has done and nobody will ever paint it, because nothing happened.',
+    ]);
+    await this.closeAct(3, [
+      'Then Kip&rsquo;s Bay, and Harlem Heights, and White Plains, and Fort Washington with two '
+      + 'thousand eight hundred men taken in an afternoon, and four hundred miles of retreat '
+      + 'across the Jerseys with the enemy a day behind the whole way.',
+      'It is the twenty-fifth of December. Congress has left Philadelphia. Every enlistment in '
+      + 'what is left expires in six days.',
+    ], DL_BANK.id);
+  }
+
+  /**
+   * THE END OF ACT 4.
+   *
+   * In King Street, after, once the prisoners are settled. There is no Act 5
+   * built yet, so this one closes on the code and stops — and the last thing
+   * it says is the fixed loss, because the fixed loss is what Trenton did
+   * not fix.
+   */
+  private async maybeEndActFour(): Promise<void> {
+    if (this.actOver || this.mapId !== TR_STREET_AFTER.id) return;
+    if (!this.state.decisions.has('A4-D3')) return;
+    const atBridge = this.player.z < 12;
+    if (!atBridge) {
+      if (!this.firedZones.has('nudge:bridge')) {
+        this.firedZones.add('nudge:bridge');
+        this.busy = true;
+        await this.ui.narrate(
+          'The column forms at the bottom of the town, by the bridge, and goes back over the '
+          + 'river tonight with all of them. Walk down to it when you are ready.',
+        );
+        this.busy = false;
+      }
+      return;
+    }
+
+    this.busy = true;
+    this.actOver = true;
+    await this.ui.narrate([
+      'Back over the river the same night, with nine hundred prisoners, in the dark, in the same '
+      + 'weather, having been awake for about fifty hours. Nobody is staying in Trenton. There is '
+      + 'nothing in Trenton.',
+      'And on the thirty-first of December, five days from now, every enlistment in the army that '
+      + 'has just done this expires exactly as it was always going to. What this morning bought '
+      + 'is six weeks, on your own credit, at ten dollars a man.',
+      'It is enough. It is the first time in this war that anything has been.',
+    ]);
+    await this.closeAct(4, []);
   }
 
   /* ---------------- the loop ------------------------------------------------ */
@@ -1007,6 +1209,8 @@ window.addEventListener('keydown', (e) => {
     ESTATE.id, MANSION_GROUND.id, MANSION_UPPER.id,
     CAMBRIDGE_SUMMER.id, HQ_AUTUMN.id, HQ_UP_AUTUMN.id,
     CAMBRIDGE_WINTER.id, HQ_WINTER.id, HQ_UP_WINTER.id,
+    BK_LINES.id, BK_FERRY.id, FOUR_CHIMNEYS.id, BK_FERRY_NIGHT.id,
+    DL_BANK.id, DL_BANK_NIGHT.id, TR_STREET.id, TR_STREET_AFTER.id,
   ];
   const cur = order.indexOf((game as unknown as { mapId: string }).mapId);
   game.loadMap(order[(cur + 1) % order.length]);

@@ -27,6 +27,8 @@ import { A2_D3_ENLISTMENT, ACT2_DECISIONS } from './content/act2-decisions';
 import { ACT3_DECISIONS } from './content/act3-decisions';
 import { BK_FERRY, BK_FERRY_NIGHT, BK_LINES } from './content/brooklyn';
 import { FOUR_CHIMNEYS } from './content/four-chimneys';
+import { ACT4_DECISIONS } from './content/act4-decisions';
+import { DL_BANK, DL_BANK_NIGHT, TR_STREET, TR_STREET_AFTER } from './content/delaware';
 import { reckon, RECKONED_ACTS } from './ledger';
 import { DESTINATIONS } from './ui/travel';
 
@@ -47,6 +49,7 @@ const MAPS: MapDef[] = [
   CAMBRIDGE_SUMMER, HQ_AUTUMN, HQ_UP_AUTUMN,
   CAMBRIDGE_WINTER, HQ_WINTER, HQ_UP_WINTER,
   BK_LINES, BK_FERRY, FOUR_CHIMNEYS, BK_FERRY_NIGHT,
+  DL_BANK, DL_BANK_NIGHT, TR_STREET, TR_STREET_AFTER,
 ];
 
 /**
@@ -62,6 +65,7 @@ const ACT_OF: Record<string, number> = {
   [CAMBRIDGE_SUMMER.id]: 2, [HQ_AUTUMN.id]: 2, [HQ_UP_AUTUMN.id]: 2,
   [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
   [BK_LINES.id]: 3, [BK_FERRY.id]: 3, [FOUR_CHIMNEYS.id]: 3, [BK_FERRY_NIGHT.id]: 3,
+  [DL_BANK.id]: 4, [DL_BANK_NIGHT.id]: 4, [TR_STREET.id]: 4, [TR_STREET_AFTER.id]: 4,
 };
 const mapsOfAct = (a: number) => MAPS.filter((m) => ACT_OF[m.id] === a);
 
@@ -85,7 +89,8 @@ function decisionsOf(m: MapDef): Decision[] {
  */
 const SEEN_DECISIONS = new Map<string, Decision>();
 for (const d of [
-  ...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM, ...ACT2_DECISIONS, ...ACT3_DECISIONS,
+  ...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM,
+  ...ACT2_DECISIONS, ...ACT3_DECISIONS, ...ACT4_DECISIONS,
 ]) {
   const prior = SEEN_DECISIONS.get(d.id);
   if (prior && prior !== d) {
@@ -205,7 +210,8 @@ section('every locked option is openable inside this act');
     return g;
   };
   const byAct = new Map<number, Set<string>>([
-    [1, grantsOf(mapsOfAct(1))], [2, grantsOf(mapsOfAct(2))], [3, grantsOf(mapsOfAct(3))],
+    [1, grantsOf(mapsOfAct(1))], [2, grantsOf(mapsOfAct(2))],
+    [3, grantsOf(mapsOfAct(3))], [4, grantsOf(mapsOfAct(4))],
   ]);
   const actOfDecision = new Map<string, number>();
   for (const m of MAPS) for (const d of decisionsOf(m)) actOfDecision.set(d.id, ACT_OF[m.id]);
@@ -563,7 +569,11 @@ section('the ledger');
         (a.ledger ?? []).reduce((t, l) => t + l.n, 0) - (b.ledger ?? []).reduce((t, l) => t + l.n, 0))[0];
       s.decisions.set(d.id, worst.id);
     }
+    // Act-scoped, exactly as `main.ts` does it: a decision belongs to one act
+    // and its lines belong on that act's page and nowhere else.
+    const inAct = (id: string) => id.startsWith(`A${act}-`);
     const r = reckon(act, s, (id, opt) => {
+      if (!inAct(id)) return [];
       const d = ALL_DECISIONS.find((x) => x.id === id);
       return d?.options.find((o) => o.id === opt)?.ledger ?? [];
     });

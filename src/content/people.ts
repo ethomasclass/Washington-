@@ -16,6 +16,7 @@ import { actor, portrait, type ActorSpec, type Mood } from '../engine/actors';
 import { P } from '../palette';
 import { ACT2_CAST, ACT2_SPEAKERS } from './act2-people';
 import { ACT3_CAST, ACT3_SPEAKERS } from './act3-people';
+import { ACT4_CAST, ACT4_SPEAKERS } from './act4-people';
 
 /* ---------------------------------------------------------------------- *
  * The man himself
@@ -271,6 +272,7 @@ export const CAST: Record<string, ActorSpec> = {
   maid: HOUSEMAID,
   ...ACT2_CAST,
   ...ACT3_CAST,
+  ...ACT4_CAST,
 };
 
 /** Speaker names as they appear in dialogue, mapped to their portrait key. */
@@ -288,6 +290,7 @@ export const SPEAKER_KEY: Record<string, string> = {
   'A joiner': 'joiner',
   ...ACT2_SPEAKERS,
   ...ACT3_SPEAKERS,
+  ...ACT4_SPEAKERS,
 };
 
 const PORTRAITS = new Map<string, string>();

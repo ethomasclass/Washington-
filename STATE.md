@@ -6,9 +6,100 @@ Read this first. It is the handoff, not the design — the design is in `docs/`.
 here. `main` still carries the old print-direction build; nothing on this branch
 has been merged into it.
 
-**Acts 1 and 2 are both playable, end to end, and they run into each other.**
-Act 1 closes on the boat at the landing and Act 2 opens on the common at
-Cambridge without a menu in between.
+**Acts 1 through 4 are playable, end to end, and they run into each other.**
+Act 1 closes on the boat at the landing, Act 2 opens on the common at Cambridge,
+Act 3 opens behind the Brooklyn line, Act 4 opens on the road down to
+McKonkey's Ferry — and there is no menu anywhere between them. Sixteen maps.
+
+---
+
+## ACTS 3 AND 4 — BROOKLYN AND THE DELAWARE — 21 August 2026
+
+### What is playable
+
+**Act 3, as two adjoining maps and a house.**
+
+| map | what it is |
+|---|---|
+| `BK-LINES` | 80×56, 26 August 1776. The Brooklyn works, the parapet over the Flatbush plain, the Gowanus marsh and the mill dam, the camp behind, and the road going east to the pass nobody is watching. |
+| `BK-FERRY` / `BK-FERRY-N` | 70×54, 29 August, day and night. The road down off the Heights, the ferry yard, and the same yard again in the dark with nine thousand men going through it and nobody speaking. |
+| `BK-HOUSE` | Four Chimneys: the room the council of war sat in, with the rain coming under the door. |
+
+**Act 3 is two maps and not one, and that is a rule now.** The line faces
+south-east at the enemy; the ferry faces north-west at the river. A map has
+exactly one up-screen direction, so a single map cannot hold both views — you
+would be standing on the parapet looking at the back of the army. Any act whose
+two halves face opposite ways is two maps.
+
+Three decisions (`A3-D1` **sealed** — hold the city or burn it, `A3-D2` when to
+call Mifflin off the empty works, `A3-D3` Hale), seven documents, fourteen
+speaking characters, the East River wind rose, and the act ends in the fog on
+the last boat.
+
+**Act 4, as a river bank in two states and a street in two states.**
+
+| map | what it is |
+|---|---|
+| `DL-BANK` / `DL-BANK-N` | 72×54, 25 December 1776, afternoon and night. The worst camp in the game, the ferry road, the landing, and the Durham boats going out into running ice. |
+| `TR-STREET` / `TR-STREET-A` | 64×58, the morning of the 26th, during and after. King Street downhill to the barracks and the Assunpink bridge, with the guns at the head of it. |
+
+Three decisions (`A4-D1` the enlistments that expire in six days, `A4-D2`
+**sealed** — three hours behind, nine miles to go, sunrise at seven, `A4-D3`
+what becomes of nine hundred prisoners), seven documents, seventeen speaking
+characters, and the act ends in the orchard with the enlistments still expiring.
+
+### `A4-D1`'s appeal is conditional on what you have been
+
+The bounty appeal — standing in front of men whose enlistments run out on
+Thursday and asking them to stay — reads differently depending on
+`stats.loyalty`. Below `A4_APPEAL_FLOOR` the same option is spliced with
+`A4_D1_APPEAL_COLD` and the men hear a general they have no reason to trust.
+It is the only place in the game where an option's *text and outcome* change
+under a stat rather than its availability, and it is deliberate: the historical
+appeal worked because of who was making it, and a player who has spent four acts
+being expedient should not get the same result from the same words.
+
+### The four things Acts 3 and 4 added to the engine
+
+**1. `Light.exposure`, and the grade moved in front of the bloom.** A night frame
+is not a day frame with a dark fill; it is the same frame exposed three stops
+down with the lanterns left where they are. `exposure` drives the composite gain,
+tinted a hair cool. The grade used to run *after* the bloom was added, which
+crushed every lantern in the frame back to nothing — it runs before it now, and
+that reordering is most of why the ferry at night reads at all.
+
+**2. `PropDef.glow`.** A prop that is its own light source is drawn at full
+brightness with a warm bias and the map light does not dim it, so it clears the
+bloom threshold on its own and throws a halo. Ship lanterns, cook fires and camp
+kettles carry it. This is what lets a night light have a *cold* key: the warmth
+belongs to the lanterns and they carry it themselves. `delawareNight` learned
+that the hard way — a warm key over snow and river ice came out olive, and the
+Delaware read as a field of pond scum for an afternoon.
+
+**3. `hessianFile`, and why Act 4 needed it.** The whole argument of Trenton is
+that the garrison was *not* asleep: it turned out under arms and formed by
+companies in the street while round shot came down it. The text said so in six
+places and the street was empty, so a player stood at the head of King Street,
+saw two guns and a well, and concluded the story about the drunk Hessians was
+true after all. Five men shoulder to shoulder, deliberately not individuated,
+with a bayonet over every cap — because a third of the muskets in the American
+column would not take one, and that difference is the argument.
+
+**4. `ragged` on the elevation grid.** Every terrace here is a full-width
+rectangle, and a full-width rectangle of elevation draws a riser that runs from
+one edge of the map to the other in a dead straight line. Props hide it in a
+camp; on an open snow road it reads as a drawing error. `ragged` only converts
+cells already on a boundary, so the terraces keep their heights and lose their
+straight edges — work downward from the high ground.
+
+### Two cuts worth knowing about
+
+**Sarah Osborn is not in Acts 2 or 3**, though `docs/05` lists her at both. She
+was not with the army until about 1780. The cut is recorded in both cast files
+so nobody re-adds her from the design doc.
+
+**`ledger.ts`'s Act 2, 3 and 4 figures are unverified and marked so**, which is
+blocking for classroom use per `08` §10.
 
 ---
 
@@ -190,17 +281,25 @@ npm run build:single            # dist-single/washington.html, one file, no asse
 the walk, the whole prop library, every ground tile and every wall style at 2–4×.
 **Judge the drawing there before judging it in the frame.**
 
-**`F1` opens the travel panel.** Thirty-five named places across both acts —
+**`F1` opens the travel panel.** Sixty-nine named places across all four acts —
 the Quarter, the burying ground, the council room, the parapet on the first of
-January — grouped by act, with a dot against every destination on the map you
-are currently standing in. Up/down to choose, left/right to jump a whole act,
+January, the landing in the dark, the head of King Street — in ten groups, with
+a dot against every destination on the map you are currently standing in. Up/down to choose, left/right to jump a whole act,
 Enter to go, Escape to stay. It opens over anything, including mid-conversation,
 and lands you at a position rather than at the map's spawn.
 
 Destinations are content, in `ui/travel.ts`, and `npm test` checks every one of
 them the way it checks a portal: the map exists, the tile exists, it is not
 inside a wall, and it is connected to the rest of the map. A build tool that
-lands you inside a wall costs more time than it saves.
+lands you inside a wall costs more time than it saves. It caught three the day
+it was written — a barrel at the landing, the round table in the west parlour, a
+chair in the council room — and two more on King Street since, and it is the
+reason the panel cannot rot as the maps change.
+
+It stops every key it sees with `stopImmediatePropagation()` while it is open,
+because `stopPropagation()` does nothing at all to a sibling listener on the same
+`window` node — that is the bug that made Space-to-dismiss also queue an interact
+and restart every conversation you tried to leave.
 
 `` ` `` or F2 still cycles the map list, which is one key and sometimes one key
 is what you want. In the browser console, `__game.warp(x, z)` and
@@ -256,17 +355,21 @@ see into, and it is why this game does not need a camera it does not have.
    `D0`–`D4`. The *content* is the same content; the structure is not. `05`
    should be revised act by act as each act is rebuilt, not all at once.
 
-2. **Acts 3–8 do not exist in the new engine.** `content/` is Acts 1 and 2. The
-   engine is act-agnostic; the rest of the content is not written. Act 3 is
-   New York, and on the evidence of this act it wants the same shape: one
-   continuous place, one interior, one instrument, one fixed loss.
+2. **Acts 5–8 do not exist in the new engine.** `content/` is Acts 1 through 4.
+   The engine is act-agnostic; the rest is not written. Every act so far has
+   wanted the same shape — a continuous place, an interior, one instrument, one
+   fixed loss — and Acts 3 and 4 added a second rule to it: **an act whose two
+   halves face opposite ways is two maps, not one**, because a map has exactly
+   one up-screen direction. Act 5 is Morristown and Valley Forge.
 
-3. **The Witness Register is still behind a review gate, and it is now larger.**
-   Frank Lee, Doll and Harry at Mount Vernon; **William Lee in the field and
-   Salem Poor in the camp** at Cambridge; the Quarter notice; and the whole of
-   `A2-D3` and `DOC-A2.7`. All carry `sensitive: true` or the R5 marking and the
-   §7.6 named pedagogical sign-off **has not been given**. It is drafted. It is
-   not approved. Budget the review before budgeting anything else.
+3. **The Witness Register is still behind a review gate, and it is now larger
+   again.** Frank Lee, Doll and Harry at Mount Vernon; **William Lee in the
+   field** in Acts 2, 3 and 4; Salem Poor in the camp at Cambridge; the Black
+   Marbleheader at the ferry; the Black Continental on the Delaware; the Quarter
+   notice; and the whole of `A2-D3` and `DOC-A2.7`. All carry `sensitive: true`
+   or the R5 marking and the §7.6 named pedagogical sign-off **has not been
+   given**. It is drafted. It is not approved. Budget the review before
+   budgeting anything else.
 
 4. **`V-A2.1` — Amos Doolittle is a documented compression, and it is not
    resolved.** He marched to Cambridge after Lexington and published the four
@@ -274,17 +377,19 @@ see into, and it is why this game does not need a camera it does not have.
    compression, recorded at the head of `content/act2-people.ts`. Either date it,
    cut him, or find the evidence.
 
-5. **`ledger.ts`'s Act 2 figures are unverified and marked so.** The opening
-   strength is `CB-01`'s sourced return of 3 July 1775; the fixed losses under it
-   are of the documented order but no line has been checked against a primary
-   source, and `08` §10 makes that blocking for classroom use.
+5. **`ledger.ts`'s Act 2, 3 and 4 figures are unverified and marked so.** Act
+   2's opening strength is `CB-01`'s sourced return of 3 July 1775; everything
+   under it, and everything in Acts 3 and 4, is of the documented order but no
+   line has been checked against a primary source, and `08` §10 makes that
+   blocking for classroom use. This is the largest single piece of unfinished
+   work in the build.
 
-6. **The passport code has headroom again but the rule has not changed.**
-   27 characters at full knowledge against a limit of 32. `FLAG_REGISTRY` and
-   `PASSPORT_FLAGS` are **append-only**; reordering either invalidates every
-   save code in every classroom. Act 2 appended 62 registry flags and 3 passport
-   flags, and left the pre-rebuild Act 2 names above them where they were — a
-   dead flag costs one bit, and a renumbering costs somebody's lesson.
+6. **The passport code still has headroom and the rule has not changed.**
+   `FLAG_REGISTRY` and `PASSPORT_FLAGS` are **append-only**; reordering either
+   invalidates every save code in every classroom. Acts 3 and 4 appended only —
+   including eight flags added after the fact when Act 4's contradiction objects
+   were written, which is exactly the case the rule exists for. A dead flag
+   costs one bit; a renumbering costs somebody's lesson.
 
 7. **Never let generated art produce readable text.** Still true, and now easier
    to break: `props.ts` draws books, papers and a globe. None of them carry
@@ -323,5 +428,18 @@ this game.
 - The Vassall House's council room is furnished around two guaranteed-clear
   aisles (column 7 and row 11) because it sealed itself twice. Any new furniture
   in that room goes against those, not across them.
+- **Fog is measured from the camera, which sits 30.5 units back.** A `fogNear`
+  under about 31 hazes the player himself. The Brooklyn ferry at night was built
+  with `fogNear: 8` and came out an even black with a grey figure in the middle
+  of it; it is 33/56 now. Anything below 31 is a bug, not a mood.
+- The Gowanus marsh and the Delaware's ice cost both those maps their flood-fill
+  ratio the same way Charlestown costs Cambridge — about 92% on `BK-FERRY` and
+  `DL-BANK`. The linter asserts the water is *not* walkable, so the gap is the
+  point.
+- `TR-STREET` after the fight reads almost identically to `TR-STREET` during it
+  with the ranks removed. The emptiness is the story, but a distinct prisoner
+  sprite — capless, unarmed, and not the `hessianFile` — would carry it better.
+- The road up from Newtown on `DL-BANK` is a large empty field of snow with a
+  milestone in it. Period-correct, and still a lot of nothing.
 - `docs/05-act-scene-inventory.md` is now out of step for Act 2 as well as Act 1:
   it describes `A2-S1` to `A2-S5` as five separate scenes.

@@ -24,6 +24,9 @@ import { CAM_DIST_EXTERIOR } from './engine/view';
 import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
 import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
 import { A2_D3_ENLISTMENT, ACT2_DECISIONS } from './content/act2-decisions';
+import { ACT3_DECISIONS } from './content/act3-decisions';
+import { BK_FERRY, BK_FERRY_NIGHT, BK_LINES } from './content/brooklyn';
+import { FOUR_CHIMNEYS } from './content/four-chimneys';
 import { reckon, RECKONED_ACTS } from './ledger';
 import { DESTINATIONS } from './ui/travel';
 
@@ -43,6 +46,7 @@ const MAPS: MapDef[] = [
   ESTATE, MANSION_GROUND, MANSION_UPPER,
   CAMBRIDGE_SUMMER, HQ_AUTUMN, HQ_UP_AUTUMN,
   CAMBRIDGE_WINTER, HQ_WINTER, HQ_UP_WINTER,
+  BK_LINES, BK_FERRY, FOUR_CHIMNEYS, BK_FERRY_NIGHT,
 ];
 
 /**
@@ -57,6 +61,7 @@ const ACT_OF: Record<string, number> = {
   [ESTATE.id]: 1, [MANSION_GROUND.id]: 1, [MANSION_UPPER.id]: 1,
   [CAMBRIDGE_SUMMER.id]: 2, [HQ_AUTUMN.id]: 2, [HQ_UP_AUTUMN.id]: 2,
   [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
+  [BK_LINES.id]: 3, [BK_FERRY.id]: 3, [FOUR_CHIMNEYS.id]: 3, [BK_FERRY_NIGHT.id]: 3,
 };
 const mapsOfAct = (a: number) => MAPS.filter((m) => ACT_OF[m.id] === a);
 
@@ -79,7 +84,9 @@ function decisionsOf(m: MapDef): Decision[] {
  * already in `state.decisions`.
  */
 const SEEN_DECISIONS = new Map<string, Decision>();
-for (const d of [...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM, ...ACT2_DECISIONS]) {
+for (const d of [
+  ...MAPS.flatMap(decisionsOf), A1_D4_UNIFORM, ...ACT2_DECISIONS, ...ACT3_DECISIONS,
+]) {
   const prior = SEEN_DECISIONS.get(d.id);
   if (prior && prior !== d) {
     failures++; console.error(`  FAIL  two different decisions share the id ${d.id}`);
@@ -197,7 +204,9 @@ section('every locked option is openable inside this act');
     }
     return g;
   };
-  const byAct = new Map<number, Set<string>>([[1, grantsOf(mapsOfAct(1))], [2, grantsOf(mapsOfAct(2))]]);
+  const byAct = new Map<number, Set<string>>([
+    [1, grantsOf(mapsOfAct(1))], [2, grantsOf(mapsOfAct(2))], [3, grantsOf(mapsOfAct(3))],
+  ]);
   const actOfDecision = new Map<string, number>();
   for (const m of MAPS) for (const d of decisionsOf(m)) actOfDecision.set(d.id, ACT_OF[m.id]);
   actOfDecision.set('A1-D4', 1);
@@ -621,10 +630,20 @@ section('Act 2 — the shape of the act');
   ok((CAMBRIDGE_WINTER.marks ?? []).filter((m) => m.grants).length === 7,
     'the seven are still there in the winter');
 
-  // Exactly one object in the game opens a screen of its own.
+  /*
+   * MAP TABLES ARE RARE, and the assertion exists to keep them rare.
+   *
+   * One per act that has one, plus one extra for Act 2 because Cambridge
+   * exists in two seasons and the same table stands in both. Anything beyond
+   * that is a second special case, and the rule this project keeps proving is
+   * that a thing which looks like it wants a special case almost never does.
+   */
   const opens = MAPS.flatMap((m) => (m.interactables ?? []).filter((i) => i.opens));
-  ok(opens.length === 2, `only the map table opens a screen, in each season (${opens.length})`);
-  ok(opens.every((i) => i.opens === 'survey'), 'and it is the survey sheet');
+  const kinds = new Set(opens.map((i) => i.opens));
+  ok(opens.length <= 4, `map tables stay rare (${opens.length} objects open a screen)`);
+  ok(kinds.size <= 2, `and there are at most two kinds of them (${[...kinds].join(', ')})`);
+  ok(opens.filter((i) => i.opens === 'survey').length === 2,
+    "Knox's table stands in both seasons of Cambridge");
 
   // The Witness Register followed the army north.
   const witnesses = a2.flatMap((m) => (m.npcs ?? []).filter((n) => n.sensitive));

@@ -452,7 +452,7 @@ export class SurveySheet {
   private resolveKey: ((code: string) => void) | null = null;
 
   constructor() {
-    this.root = el('div');
+    this.root = el('div', 'sheetui');
     this.root.id = 'survey';
 
     const frame = el('div', 'frame');

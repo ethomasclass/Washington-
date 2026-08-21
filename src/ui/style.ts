@@ -377,7 +377,14 @@ html, body {
   background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
 }
 
-/* ---------- the map table -------------------------------------------- *
+/* ---------- the map tables ------------------------------------------- *
+ *
+ * TWO of them now — Knox's route and the East River — and they share every
+ * rule of chrome: the same sheet, the same head, the same option rows, the
+ * same dispatch card, the same footer. Only the drawing underneath and the
+ * thing you move on it differ, which is as it should be, because they are
+ * the same object in two rooms.
+ *
  *
  * The one screen in the game that is a THING rather than a panel: a survey
  * sheet on a table, lit from one side, with the rest of the room dark. It is
@@ -389,36 +396,36 @@ html, body {
  * the options collapse to a column under 900px.
  * ------------------------------------------------------------------- */
 
-#survey {
+.sheetui {
   position: absolute; inset: 0;
   display: none; align-items: center; justify-content: center;
   background: radial-gradient(120% 100% at 30% 0%, #241a12 0%, #0a0806 70%);
   padding: 18px;
 }
-#survey.on { display: flex; }
-#survey .frame {
+.sheetui.on { display: flex; }
+.sheetui .frame {
   width: min(1040px, 100%); max-height: 100%;
   display: flex; flex-direction: column; gap: 10px;
 }
 /* A label near the right edge hangs its text back over the sheet instead of
  * off it. Four place names out of eight sit past two-thirds across. */
-#survey .board .place.right { transform: translate(-9px, -15px); text-align: right; }
-#survey .board .place.right::after { content: ''; }
-#survey .head {
+.sheetui .board .place.right { transform: translate(-9px, -15px); text-align: right; }
+.sheetui .board .place.right::after { content: ''; }
+.sheetui .head {
   display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
   border-bottom: 1px solid #3a2f22; padding-bottom: 7px;
 }
-#survey .head .ttl {
+.sheetui .head .ttl {
   font-family: var(--serif); font-size: 19px; color: var(--parch); letter-spacing: .02em;
 }
-#survey .head .sub {
+.sheetui .head .sub {
   font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--brass-dim);
 }
 
 /* The sheet keeps the proportions it was drawn at.
  * Stretched to whatever height was left over it read as a strip of wallpaper;
  * a survey is a sheet of paper and it has to look like one. */
-#survey .board {
+.sheetui .board {
   position: relative; flex: 0 1 auto;
   width: 100%; max-width: min(100%, 62vh * 1.6);
   aspect-ratio: 8 / 5; margin: 0 auto;
@@ -429,23 +436,23 @@ html, body {
   filter: saturate(.95);
   image-rendering: pixelated;
 }
-#survey .board .place {
+.sheetui .board .place {
   position: absolute; transform: translate(9px, -15px);
   font-family: var(--serif); font-size: 12.5px; font-style: italic;
   color: #2a2118; white-space: nowrap;
   text-shadow: 0 1px 0 rgba(255,255,255,.5);
 }
-#survey .board .scale,
-#survey .board .north {
+.sheetui .board .scale,
+.sheetui .board .north {
   position: absolute; transform: translate(0, 10px);
   font-size: 10.5px; letter-spacing: .1em; color: #3b3025;
 }
-#survey .board .north {
+.sheetui .board .north {
   transform: translate(-4px, 0); font-family: var(--serif); font-size: 14px; color: #7a2f22;
 }
 /* The train, as a token you can watch move. Two pixels of brass on a sheet
  * of paper is the whole of the animation budget and it is enough. */
-#survey .board .token {
+.sheetui .board .token {
   position: absolute; width: 15px; height: 15px; margin: -8px 0 0 -8px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #f0d68a, #a37f26 60%, #5c4412);
@@ -453,17 +460,17 @@ html, body {
   transition: left .55s cubic-bezier(.4,0,.2,1), top .55s cubic-bezier(.4,0,.2,1);
 }
 
-#survey .ask {
+.sheetui .ask {
   font-family: var(--serif); font-size: 17px; line-height: 1.4; color: var(--parch);
 }
-#survey .ask .n {
+.sheetui .ask .n {
   display: inline-block; margin-right: 10px;
   font-family: var(--ui); font-size: 10.5px; letter-spacing: .18em;
   text-transform: uppercase; color: var(--brass-dim);
 }
 
-#survey .opts { display: flex; gap: 10px; }
-#survey .opt {
+.sheetui .opts { display: flex; gap: 10px; }
+.sheetui .opt {
   flex: 1 1 0; min-width: 0; text-align: left;
   display: flex; flex-direction: column; gap: 4px;
   padding: 10px 13px; border-radius: 2px; cursor: default;
@@ -471,50 +478,105 @@ html, body {
   background: rgba(20,15,10,.72);
   border: 1px solid #3a2f22; border-left: 3px solid #3a2f22;
 }
-#survey .opt.on {
+.sheetui .opt.on {
   color: var(--text); background: rgba(48,36,20,.9);
   border-color: var(--brass-dim); border-left-color: var(--brass);
 }
-#survey .opt.locked { opacity: .45; }
-#survey .opt .lab { font-size: 14.5px; letter-spacing: .01em; }
-#survey .opt .det { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
-#survey .opt .lock { font-size: 11.5px; font-style: italic; color: var(--sealed); }
+.sheetui .opt.locked { opacity: .45; }
+.sheetui .opt .lab { font-size: 14.5px; letter-spacing: .01em; }
+.sheetui .opt .det { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.sheetui .opt .lock { font-size: 11.5px; font-style: italic; color: var(--sealed); }
 
 /* The dispatches. Deliberately a different object from the sheet: a folded
  * paper that came in on a horse, not part of the drawing. */
-#survey .wire {
+.sheetui .wire {
   display: none;
   background: rgba(233,224,201,.94); color: #201a12;
   border-radius: 2px; padding: 12px 16px;
   box-shadow: 0 8px 26px rgba(0,0,0,.55);
   max-height: 34vh; overflow-y: auto;
 }
-#survey .wire.on { display: block; }
-#survey .wire .hdr {
+.sheetui .wire.on { display: block; }
+.sheetui .wire .hdr {
   display: block; margin-bottom: 6px;
   font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: #7a5c1e;
 }
-#survey .wire p { margin: 0 0 8px; font-family: var(--serif); font-size: 15.5px; line-height: 1.5; }
-#survey .wire p:last-child { margin-bottom: 0; }
-#survey .wire .cite { font-size: 13px; font-style: italic; color: #5d5240; }
+.sheetui .wire p { margin: 0 0 8px; font-family: var(--serif); font-size: 15.5px; line-height: 1.5; }
+.sheetui .wire p:last-child { margin-bottom: 0; }
+.sheetui .wire .cite { font-size: 13px; font-style: italic; color: #5d5240; }
 
-#survey .foot { font-size: 13px; color: var(--text-dim); letter-spacing: .04em; }
-#survey .foot .key {
+.sheetui .foot { font-size: 13px; color: var(--text-dim); letter-spacing: .04em; }
+.sheetui .foot .key {
   font-size: 11px; padding: 2px 7px; border-radius: 2px; margin-right: 5px;
   background: linear-gradient(180deg, #d9b862, #a37f26); color: #211607; font-weight: 700;
 }
 
 @media (max-width: 900px) {
-  #survey .opts { flex-direction: column; }
-  #survey .opt .det { display: none; }
+  .sheetui .opts { flex-direction: column; }
+  .sheetui .opt .det { display: none; }
 }
 /* A short window (a 1024x600 Chromebook in landscape) gives the sheet less
  * room rather than squashing it: the options and the dispatch are the part
  * that must never scroll. */
 @media (max-height: 700px) {
-  #survey .board { max-width: min(100%, 44vh * 1.6); }
-  #survey .head .sub { display: none; }
+  .sheetui .board { max-width: min(100%, 44vh * 1.6); }
+  .sheetui .head .sub { display: none; }
 }
+
+/* ---------- the wind rose and the fleet's reach ------------------------ *
+ *
+ * The one instrument in the game the player turns rather than chooses from,
+ * and the whole readout is two elements: an arrow that rotates and a band
+ * along the river that grows. No legend, no key, no numbers.
+ * ------------------------------------------------------------------- */
+
+#windtable .rose {
+  position: absolute; left: 13%; top: 20%;
+  width: 74px; height: 74px; margin: -37px 0 0 -37px;
+  border-radius: 50%;
+  border: 1px solid rgba(40,32,20,.55);
+  box-shadow: inset 0 0 0 6px rgba(233,224,201,.55);
+  background: rgba(233,224,201,.5);
+}
+#windtable .rose .pip {
+  position: absolute; left: 50%; top: 2px; transform: translateX(-50%);
+  font-family: var(--serif); font-size: 12px; color: #7a2f22;
+}
+/* The needle points FROM the quarter the wind blows from, which is how a
+ * weather-vane works and is the opposite of an arrow showing where it goes. */
+#windtable .rose .needle {
+  position: absolute; inset: 0;
+  transform: rotate(var(--deg, 45deg));
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+}
+#windtable .rose .needle::before {
+  content: ''; position: absolute; left: 50%; top: 8px;
+  width: 0; height: 0; margin-left: -6px;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-bottom: 15px solid #7a2f22;
+}
+#windtable .rose .needle::after {
+  content: ''; position: absolute; left: 50%; top: 22px;
+  width: 2px; height: 30px; margin-left: -1px; background: #2a2118;
+}
+
+/* The reach: a band up the river, scaled by how far the fleet can work. */
+#windtable .track {
+  position: absolute; left: 27%; bottom: 6%;
+  width: 42%; height: calc(var(--reach, 0) * 0.86%);
+  max-height: 86%;
+  transform: skewX(-13deg);
+  background: linear-gradient(0deg, rgba(150,52,40,.52), rgba(150,52,40,.14));
+  border-top: 2px solid rgba(150,52,40,.85);
+  transition: height .3s cubic-bezier(.4,0,.2,1), background .3s linear;
+  pointer-events: none;
+}
+#windtable .track.none { opacity: 0; }
+#windtable .track.cuts {
+  background: linear-gradient(0deg, rgba(180,44,30,.66), rgba(180,44,30,.24));
+  border-top-color: rgba(210,60,42,.95);
+}
+#windtable .ask strong { color: var(--brass); font-weight: 600; }
 
 /* ---------- the travel panel ------------------------------------------ *
  *

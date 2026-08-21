@@ -39,7 +39,11 @@ import { A1_D4_UNIFORM, DEPARTURE_LINES } from './content/departure';
 import { CAMBRIDGE_SUMMER, CAMBRIDGE_WINTER } from './content/cambridge';
 import { HQ_AUTUMN, HQ_UP_AUTUMN, HQ_UP_WINTER, HQ_WINTER } from './content/vassall';
 import { ACT2_DECISIONS } from './content/act2-decisions';
+import { ACT3_DECISIONS } from './content/act3-decisions';
+import { BK_LINES, BK_FERRY, BK_FERRY_NIGHT } from './content/brooklyn';
+import { FOUR_CHIMNEYS } from './content/four-chimneys';
 import { SurveySheet, type SurveyResult } from './ui/survey';
+import { WindTable } from './ui/windtable';
 import { Travel } from './ui/travel';
 import { SurveyOverlay } from './engine/overlay';
 import { isDown } from './engine/input';
@@ -59,6 +63,10 @@ const MAPS: Record<string, MapDef> = {
   [HQ_WINTER.id]: HQ_WINTER,
   [HQ_UP_AUTUMN.id]: HQ_UP_AUTUMN,
   [HQ_UP_WINTER.id]: HQ_UP_WINTER,
+  [BK_LINES.id]: BK_LINES,
+  [BK_FERRY.id]: BK_FERRY,
+  [BK_FERRY_NIGHT.id]: BK_FERRY_NIGHT,
+  [FOUR_CHIMNEYS.id]: FOUR_CHIMNEYS,
 };
 
 /**
@@ -70,6 +78,7 @@ const MAP_ACT: Record<string, number> = {
   [ESTATE.id]: 1, [MANSION_GROUND.id]: 1, [MANSION_UPPER.id]: 1,
   [CAMBRIDGE_SUMMER.id]: 2, [HQ_AUTUMN.id]: 2, [HQ_UP_AUTUMN.id]: 2,
   [CAMBRIDGE_WINTER.id]: 2, [HQ_WINTER.id]: 2, [HQ_UP_WINTER.id]: 2,
+  [BK_LINES.id]: 3, [BK_FERRY.id]: 3, [BK_FERRY_NIGHT.id]: 3, [FOUR_CHIMNEYS.id]: 3,
 };
 
 /**
@@ -81,7 +90,7 @@ const MAP_ACT: Record<string, number> = {
  * it, in `act2-decisions.ts`.
  */
 const EARNED = new Map<string, LedgerLine[]>();
-for (const d of ACT2_DECISIONS) {
+for (const d of [...ACT2_DECISIONS, ...ACT3_DECISIONS]) {
   for (const o of d.options) if (o.ledger) EARNED.set(`${d.id}/${o.id}`, o.ledger);
 }
 
@@ -103,6 +112,9 @@ function lerpLight(a: Light, b: Light, t: number): Light {
     contrast: a.contrast + (b.contrast - a.contrast) * t,
     bloom: a.bloom + (b.bloom - a.bloom) * t,
     saturation: a.saturation + (b.saturation - a.saturation) * t,
+    // Undefined means 1: a light that has never thought about exposure is a
+    // daylight, and a daylight is exposed as lit.
+    exposure: (a.exposure ?? 1) + ((b.exposure ?? 1) - (a.exposure ?? 1)) * t,
   };
 }
 
@@ -141,6 +153,8 @@ class Game {
   /** The map table's four decisions, once they have been settled. */
   private survey: SurveySheet;
   private surveyResult: SurveyResult | null = null;
+  /** The East River, and the wind that saved the army. */
+  private windTable: WindTable;
   /** The held-key survey of the ground. Never takes the keyboard. */
   private overlay: SurveyOverlay;
   /** F1. The build jump, and the one a teacher wants too. */
@@ -156,10 +170,14 @@ class Game {
       passport: () => encode(this.state),
     });
     this.survey = new SurveySheet();
+    this.windTable = new WindTable();
     this.overlay = new SurveyOverlay();
     this.travel = new Travel();
     const stage = document.getElementById('stage')!;
-    stage.append(this.ui.root, this.survey.root, this.overlay.root, this.travel.root);
+    stage.append(
+      this.ui.root, this.survey.root, this.windTable.root,
+      this.overlay.root, this.travel.root,
+    );
 
     /*
      * F1, from anywhere, including out of a conversation.
@@ -205,7 +223,11 @@ class Game {
     this.targetLight = def.light;
     this.targetDist = def.interior ? CAM_DIST_INTERIOR : CAM_DIST_EXTERIOR;
     this.rig.dist = this.targetDist;
-    applyFog(this.scene, this.light, def.interior ? 14 : 34, def.interior ? 46 : 110);
+    applyFog(
+      this.scene, this.light,
+      def.fogNear ?? (def.interior ? 14 : 34),
+      def.fogFar ?? (def.interior ? 46 : 110),
+    );
     this.postSettings = postFor(this.light, def.interior ? { vignette: 0.55 } : {});
 
     // The camera is clamped inside the map, so it never shows the void past
@@ -318,6 +340,39 @@ class Game {
               : []),
           ],
         winter ? 'Eleven days' : 'This summer',
+      );
+      return;
+    }
+
+    if (MAP_ACT[this.mapId] === 3) {
+      /*
+       * ACT 3's RAIL, AND WHAT IT DOES NOT SAY.
+       *
+       * It never mentions holding the position, winning, or preventing
+       * anything, because none of those was available. It lists three things
+       * to settle and one place to walk to, and the act ends in a defeat on
+       * every branch. The rail is the first place a student would look for a
+       * promise the game is not making, so it does not make one.
+       */
+      const night = has('obs.a3.night_came');
+      this.ui.setObjectives(
+        night
+          ? [
+            { text: 'Get them off. Every one of them, before it is light.', done: this.actOver },
+            { text: 'Answer Hamilton about Knowlton&rsquo;s volunteer.', done: done('A3-D3') },
+            ...(has('obs.a3.manifest_read')
+              ? []
+              : [{ text: 'The manifest is on a barrel head at the stage.', done: false }]),
+          ]
+          : [
+            { text: 'Tell Stirling where to put his brigade.', done: done('A3-D1') },
+            { text: 'Walk the line to the end of it.', done: has('obs.a3.line_walked') },
+            { text: 'Settle the covering party with Mifflin.', done: done('A3-D2') },
+            ...(has('obs.a3.map') && !has('obs.a3.wind_understood')
+              ? [{ text: 'Turn the wind on the drum-head chart.', done: false }]
+              : []),
+          ],
+        night ? 'Before it is light' : 'The twenty-sixth',
       );
       return;
     }
@@ -449,6 +504,27 @@ class Game {
     }
 
     if (it.opens === 'survey') await this.openSurvey();
+    if (it.opens === 'wind') await this.openWind();
+  }
+
+  /**
+   * The East River, and the wind.
+   *
+   * Unlike the Knox table this one settles nothing and can be opened as often
+   * as the player likes — it is an instrument, not a decision. What it does
+   * is record that they turned the arrow far enough to see a wind that opens
+   * the river, because a student who has seen the south-west case has
+   * understood the whole of why the army got off Long Island, and one option
+   * at Four Chimneys is written for somebody who has.
+   */
+  private async openWind(): Promise<void> {
+    const r = await this.windTable.run();
+    this.state.knowledge.add('obs.a3.wind_table');
+    if (r.sawTheRisk) {
+      const fresh = !this.state.knowledge.has('obs.a3.wind_understood');
+      this.state.knowledge.add('obs.a3.wind_understood');
+      if (fresh) this.ui.toast('A south-west wind puts them past the ferry on one tide');
+    }
   }
 
   /**
@@ -577,6 +653,8 @@ class Game {
     (this.scene.background as THREE.Color).setRGB(r / 255 * 0.92, g / 255 * 0.92, b / 255 * 0.92);
     this.postSettings.bloom = this.light.bloom;
     this.postSettings.saturation = this.light.saturation;
+    const e = this.light.exposure ?? 1;
+    this.postSettings.gain = [e, e * 1.01, e * 1.09];
     this.player.setLight(this.light);
     for (const v of this.npcViews.values()) v.setLight(this.light);
 

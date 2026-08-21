@@ -12,7 +12,9 @@
  * and it is the one part of that document that survives contact with pixels.
  */
 
-import { hash, hline, px, rect, shade, speckle, surface, vline, type Surface } from './pixels';
+import {
+  ellipse, hash, hline, px, rect, shade, speckle, surface, vline, type Surface,
+} from './pixels';
 import { P } from '../palette';
 
 export const TILE_PX = 32;
@@ -25,7 +27,9 @@ export type TileId =
   // Cambridge, and the winter it turns into.
   | 'snow' | 'slush' | 'turf' | 'trampled' | 'ice'
   // New England indoors. A different house has to be a different house.
-  | 'oakfloor' | 'marbled' | 'carpetBlue';
+  | 'oakfloor' | 'marbled' | 'carpetBlue'
+  // Brooklyn, and the Delaware.
+  | 'marsh' | 'mudflat' | 'cobble' | 'plank' | 'furrow' | 'sleet';
 
 /** Draw order in the atlas. Index is the row. */
 export const TILE_ORDER: TileId[] = [
@@ -34,6 +38,7 @@ export const TILE_ORDER: TileId[] = [
   'deck', 'cellar', 'carpet', 'straw',
   'snow', 'slush', 'turf', 'trampled', 'ice',
   'oakfloor', 'marbled', 'carpetBlue',
+  'marsh', 'mudflat', 'cobble', 'plank', 'furrow', 'sleet',
 ];
 
 export const TILE_INDEX: Record<TileId, number> = Object.fromEntries(
@@ -430,6 +435,117 @@ function drawTile(id: TileId, v: number): Surface {
       }
       // The border thread, which is what makes it a carpet and not a colour.
       for (let y = 0; y < TILE_PX; y += 16) hline(g, 0, y, TILE_PX, shade(P.parlour, 0.10));
+      break;
+    }
+    /* ------------------------------------------------------------------
+     * BROOKLYN AND THE DELAWARE.
+     *
+     * Two of these decide whether Act 3 works at all. `marsh` is Gowanus,
+     * which is where a third of the Maryland line was lost and which most
+     * students picture as a field — it is cordgrass standing in salt water,
+     * and the tile has to have the water in it. `mudflat` is the same
+     * ground twice a day at low tide, and it is the reason the timing of
+     * the whole battle turns on a tide table.
+     * ---------------------------------------------------------------- */
+    case 'marsh': {
+      // Standing water first, then cordgrass growing up out of it, so the
+      // water shows through between the blades rather than sitting behind.
+      base(g, [P.siltD, P.silt, P.marshD], v);
+      for (let i = 0; i < 5; i++) {
+        const x = Math.floor(hash(i, v, 161) * 24), y = Math.floor(hash(i, v, 162) * 24);
+        ellipse(g, x + 4, y + 4, 5, 3, shade(P.waterD, 0.06));
+        hline(g, x, y + 2, 7, shade(P.waterL, -0.10));
+      }
+      // Cordgrass: tall, thin, and leaning one way — a marsh has a wind in it.
+      for (let i = 0; i < 46; i++) {
+        const x = Math.floor(hash(i, v, 163) * TILE_PX);
+        const y = Math.floor(hash(i, v, 164) * TILE_PX);
+        const len = 4 + Math.floor(hash(i, v, 165) * 7);
+        const c = hash(i, v, 166) < 0.35 ? P.marshL : hash(i, v, 167) < 0.7 ? P.marsh : P.marshD;
+        for (let k = 0; k < len; k++) px(g, x + Math.floor(k / 3), y - k, c);
+      }
+      break;
+    }
+    case 'mudflat': {
+      // Low water. Ribbed by the tide, and the ribs run one way.
+      base(g, [P.siltD, P.flat, P.flatL], v);
+      for (let y = (v * 2) % 5; y < TILE_PX; y += 5) {
+        for (let x = 0; x < TILE_PX; x++) {
+          const yy = y + Math.round(Math.sin((x + v * 8) * 0.35) * 1.5);
+          px(g, x, yy, P.flatD);
+          px(g, x, yy + 1, shade(P.flatL, 0.06));
+        }
+      }
+      // Shell and weed, which is what a flat is actually covered in.
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.plasterD, 0.05, v + 168);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.marshD, 0.04, v + 169);
+      break;
+    }
+    case 'cobble': {
+      // A ferry road. Rounded beach stone set in sand, not dressed setts.
+      rect(g, 0, 0, TILE_PX, TILE_PX, P.sandD);
+      for (let i = 0; i < 34; i++) {
+        const x = Math.floor(hash(i, v, 171) * TILE_PX);
+        const y = Math.floor(hash(i, v, 172) * TILE_PX);
+        const r = 2 + Math.floor(hash(i, v, 173) * 2);
+        const t = hash(i, v, 174);
+        ellipse(g, x, y, r + 1, r, P.cobbleD);
+        ellipse(g, x, y - 1, r, r - 1, t < 0.4 ? P.cobbleL : P.cobble);
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.sand, 0.10, v + 175);
+      break;
+    }
+    case 'plank': {
+      // A ferry stair and a landing stage: heavy planks running across, wet.
+      rect(g, 0, 0, TILE_PX, TILE_PX, P.woodD);
+      for (let y = 0; y < TILE_PX; y += 8) {
+        rect(g, 0, y, TILE_PX, 7, hash(0, y, v) < 0.4 ? shade(P.wood, -0.10) : P.wood);
+        hline(g, 0, y, TILE_PX, P.woodL);
+        hline(g, 0, y + 7, TILE_PX, shade(P.woodD, -0.12));
+        // Wet: a couple of dark patches per plank, never a wash over all.
+        if (hash(1, y, v + 3) < 0.5) {
+          rect(g, Math.floor(hash(2, y, v) * 20), y + 1, 8, 5, shade(P.woodD, -0.06));
+        }
+      }
+      for (let x = 4; x < TILE_PX; x += 11) {
+        for (let y = 3; y < TILE_PX; y += 8) px(g, x, y, P.ironD);
+      }
+      break;
+    }
+    case 'furrow': {
+      // Winter plough on the Pennsylvania bank: frozen ridges with old snow
+      // lying in the bottoms. Nothing walks well on it and it looks it.
+      base(g, [P.mudD, P.mud, P.dirtL], v);
+      for (let x = (v * 3) % 7; x < TILE_PX; x += 7) {
+        for (let y = 0; y < TILE_PX; y++) {
+          const xx = x + Math.round(Math.sin((y + v * 5) * 0.3) * 1.2);
+          vline(g, xx, y, 1, P.mudD);
+          px(g, xx + 3, y, P.snowD);
+          if (hash(xx, y, v) < 0.4) px(g, xx + 4, y, P.snow);
+        }
+      }
+      break;
+    }
+    case 'sleet': {
+      /*
+       * Not weather — GROUND. This is the surface of King Street on the
+       * morning of the twenty-sixth: frozen slush over cobble, with the
+       * stone showing through where it has been walked and driven on.
+       *
+       * The sleet in the air is the post stack's business. A tile that
+       * tried to be falling sleet would crawl every time the camera moved,
+       * which is the one thing pixel art must never do.
+       */
+      rect(g, 0, 0, TILE_PX, TILE_PX, P.slush);
+      for (let i = 0; i < 20; i++) {
+        const x = Math.floor(hash(i, v, 181) * TILE_PX);
+        const y = Math.floor(hash(i, v, 182) * TILE_PX);
+        const r = 2 + Math.floor(hash(i, v, 183) * 2);
+        ellipse(g, x, y, r + 1, r, P.cobbleD);
+        ellipse(g, x, y - 1, r, r - 1, P.cobble);
+      }
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.snowL, 0.16, v + 184);
+      speckle(g, 0, 0, TILE_PX, TILE_PX, P.slushD, 0.10, v + 185);
       break;
     }
     case 'ice': {

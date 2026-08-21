@@ -117,6 +117,31 @@ export const DESTINATIONS: TravelGroup[] = [
       { map: 'CB-HQ-UP-W', at: [18, 10], facing: 0, label: 'Upstairs in December', note: 'Martha came five hundred miles in December' },
     ],
   },
+  {
+    heading: 'Act Three',
+    where: 'Brooklyn, 26 August 1776',
+    rows: [
+      { map: 'BK-LINES', at: [34, 34], facing: 3, label: 'Behind the line', note: 'where the act opens' },
+      { map: 'BK-LINES', at: [36, 13], facing: 3, label: 'The Brooklyn works', note: 'Stirling, the guns, and the drum with the map on it' },
+      { map: 'BK-LINES', at: [40, 10], facing: 3, label: 'The Brooklyn parapet', note: 'the Flatbush plain, and the enemy on it' },
+      { map: 'BK-LINES', at: [63, 16], facing: 3, label: 'The right of the line', note: 'Lieutenant Ford, and the road going east' },
+      { map: 'BK-LINES', at: [10, 22], facing: 1, label: 'The Gowanus marsh', note: 'the creek, the mill dam, and the Old Stone House' },
+      { map: 'BK-LINES', at: [46, 22], facing: 3, label: 'The Brooklyn camp', note: 'Putnam, the Marylanders, the Connecticut men' },
+    ],
+  },
+  {
+    heading: 'Act Three — the ferry',
+    where: 'Brooklyn Heights, 29 August 1776',
+    rows: [
+      { map: 'BK-FERRY', at: [34, 50], facing: 3, label: 'The top of the road', note: 'coming down off the Heights in the rain' },
+      { map: 'BK-FERRY', at: [30, 24], facing: 3, label: 'The ferry yard', note: 'Glover, the boat return, the wind' },
+      { map: 'BK-FERRY', at: [46, 39], facing: 3, label: "Livingston's door", note: 'nine general officers and four chairs' },
+      { map: 'BK-HOUSE', at: [16, 17], facing: 3, label: 'Four Chimneys', note: 'water coming in under the door' },
+      { map: 'BK-HOUSE', at: [10, 8], facing: 3, label: 'The council of war', note: 'Greene, Putnam, Mifflin, Glover, and one candle-branch' },
+      { map: 'BK-FERRY-N', at: [34, 22], facing: 3, label: 'The landing, at night', note: 'nine thousand men, and nobody speaking' },
+      { map: 'BK-FERRY-N', at: [44, 40], facing: 3, label: 'The road down, at night', note: 'the regiments coming off the line one at a time' },
+    ],
+  },
 ];
 
 const FLAT: Array<{ d: Destination; group: number }> = [];

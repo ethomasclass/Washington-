@@ -29,6 +29,22 @@ export interface PropDef {
   block?: number;
   /** Sits this many pixels into the ground, so it does not look pasted on. */
   sink?: number;
+  /**
+   * The prop is its own light source, and the map's light does not dim it.
+   *
+   * Everything else in the world is drawn multiplied by the scene's key and
+   * fill, which is right: a barrel at midnight is a dark barrel. A LANTERN at
+   * midnight is not a dark lantern, and the first night map in this game
+   * proved it the hard way — the lanterns were tinted down by the same dark
+   * fill as the mud they were standing in, so the one thing in the frame
+   * that was supposed to be lit was the same value as everything else and
+   * the whole scene came out an even black.
+   *
+   * A glowing prop is drawn at full brightness with a slight warm bias, so
+   * it also clears the bloom threshold and throws a halo. Use it for exactly
+   * what it says: lanterns, fires, torches, candles, a musket flash.
+   */
+  glow?: boolean;
   draw: (g: CanvasRenderingContext2D, w: number, h: number, v: number) => void;
 }
 
@@ -862,6 +878,7 @@ export const PROPS: Record<string, PropDef> = {
     },
   },
   cookFire: {
+    glow: true,
     w: 50, h: 34, sink: 3,
     draw(g, w, h) {
       ellipse(g, w / 2, h - 6, 18, 6, P.stoneD);
@@ -1061,6 +1078,7 @@ export const PROPS: Record<string, PropDef> = {
 
   /** The kettle, on a trivet, over the fire. One to a mess of six. */
   campKettle: {
+    glow: true,
     w: 34, h: 32, block: 0.22, sink: 2,
     draw(g, w, h, v) {
       // Embers.
@@ -1846,6 +1864,322 @@ export const PROPS: Record<string, PropDef> = {
       rect(g, 6, 14, w - 12, 5, P.linen);
       hline(g, 6, 14, w - 12, P.linenL);
       for (const x of [20, w - 24]) { rect(g, x, 8, 3, 6, P.stoneL); px(g, x + 1, 6, P.ember); }
+    },
+  },
+
+  /* ====================================================================== *
+   * BROOKLYN, AUGUST 1776, AND THE DELAWARE IN DECEMBER
+   *
+   * Two boats in this set carry an actual historical correction each, and
+   * both corrections are the kind a picture makes and a paragraph cannot.
+   *
+   * The DURHAM BOAT is not the boat in the Leutze painting. It is forty to
+   * sixty feet long, four feet deep, black, with high sides and no thwarts
+   * to speak of — a freight barge for iron ore, poled and steered by a
+   * sweep, and the men crossed the Delaware standing up in it because there
+   * was nowhere to sit. Draw it right once and the painting can never lie
+   * to that student again.
+   *
+   * The FLATBOAT at Brooklyn is the other half of the same point: what took
+   * nine thousand men off Long Island in one night was a scratch fleet of
+   * whatever Glover's fishermen could find, rowed, with muffled oarlocks.
+   * ==================================================================== */
+
+  /** A Durham boat: black, sixty feet, high-sided, poled. NOT the Leutze boat. */
+  durhamBoat: {
+    w: 150, h: 40, block: 0.7, sink: 2,
+    draw(g, w, h, v) {
+      const top = 10, bot = h - 8;
+      // The hull: long, straight-sided, pointed at both ends, and BLACK.
+      for (let x = 0; x < w; x++) {
+        const t = x / w;
+        // Fine ends: the sheer rises and the hull narrows at both bows.
+        const rise = Math.round(Math.pow(Math.abs(t - 0.5) * 2, 3) * 7);
+        const y0 = top - rise, y1 = bot - Math.round(rise * 0.35);
+        rect(g, x, y0, 1, y1 - y0, P.blackD);
+        px(g, x, y0, P.ironL);
+        px(g, x, y0 + 1, shade(P.black, 0.10));
+        px(g, x, y1 - 1, shade(P.blackD, -0.3));
+      }
+      // The wale, running the whole length, which is the line that says boat.
+      for (let x = 2; x < w - 2; x++) {
+        const t = x / w;
+        const rise = Math.round(Math.pow(Math.abs(t - 0.5) * 2, 3) * 7);
+        px(g, x, top - rise + 4, P.woodD);
+      }
+      // Setting poles, laid along the top, and the steering sweep aft.
+      line(g, 14, top + 1, 70, top - 2, P.pineL);
+      line(g, 80, top - 1, 136, top + 2, P.pine);
+      line(g, w - 6, top + 2, w - 34, top - 12, P.woodD);
+      rect(g, w - 40, top - 15, 10, 3, P.wood);
+      // A little water inside, and the ribs.
+      for (let x = 12; x < w - 12; x += 9) vline(g, x, top + 2, 5, shade(P.blackD, 0.12));
+      speckle(g, 6, top, w - 12, 6, shade(P.waterD, 0.10), 0.10, v);
+    },
+  },
+
+  /** A flatboat, rowed, with muffled oarlocks. What crossed the East River. */
+  flatBoat: {
+    w: 104, h: 38, block: 0.6, sink: 2,
+    draw(g, w, h, v) {
+      const top = 12, bot = h - 8;
+      for (let x = 0; x < w; x++) {
+        const t = x / w;
+        const rise = Math.round(Math.pow(Math.abs(t - 0.5) * 2, 2.4) * 6);
+        rect(g, x, top - rise, 1, bot - top + rise, P.woodD);
+        px(g, x, top - rise, P.woodL);
+        px(g, x, bot - 1, shade(P.woodD, -0.28));
+      }
+      // Thwarts — this one you sit in, which is the difference from a Durham.
+      for (const x of [22, 46, 70]) {
+        rect(g, x, top + 1, 4, bot - top - 3, P.wood);
+        hline(g, x, top + 1, 4, P.woodL);
+      }
+      // Oars out, and rags round the looms where they bear. The rags are the
+      // reason nobody in Brooklyn heard nine thousand men leave.
+      for (const [x, s] of [[26, -1], [50, -1], [74, -1], [34, 1], [58, 1], [82, 1]] as const) {
+        line(g, x, top + 4, x + s * 16, top + 4 - s * 12, P.pine);
+        rect(g, x + s * 4 - 1, top + 2 - s * 3, 3, 3, P.linenD);
+      }
+      speckle(g, 6, top, w - 12, 5, shade(P.waterD, 0.10), 0.09, v);
+    },
+  },
+
+  /** A ship's lantern with a horn pane. The only warm thing in the night frames. */
+  shipLantern: {
+    glow: true,
+    w: 26, h: 44, block: 0.14, sink: 2,
+    draw(g, w, h) {
+      // A post to hang it on, because a lantern lying on the ground is a lamp.
+      rect(g, w / 2 - 2, 14, 4, h - 16, P.woodD);
+      vline(g, w / 2 - 2, 14, h - 16, P.wood);
+      // The body: pierced tin, four panes, a conical top and a ring.
+      for (let a = 0; a <= 10; a++) {
+        const t = a / 10;
+        px(g, Math.round(w / 2 - 8 + t * 16), Math.round(10 - Math.sin(t * Math.PI) * 4), P.ironL);
+      }
+      rect(g, w / 2 - 8, 10, 16, 16, P.ironD);
+      rect(g, w / 2 - 6, 12, 12, 12, P.lantern);
+      rect(g, w / 2 - 6, 12, 5, 12, P.lanternD);
+      vline(g, w / 2, 12, 12, P.ironD);
+      hline(g, w / 2 - 6, 17, 12, P.ironD);
+      // The flame, and a halo of two pixels. Bloom does the rest.
+      px(g, w / 2 + 2, 18, P.ember);
+      px(g, w / 2 + 2, 17, '#FFF6D0');
+      rect(g, w / 2 - 9, 26, 18, 3, P.ironD);
+      disc(g, w / 2, 6, 2, P.ironL);
+    },
+  },
+
+  /** A gun spiked and left, because it would not fit in the boat. */
+  gunSpiked: {
+    w: 76, h: 40, block: 0.5, sink: 3,
+    draw(g, w, h) {
+      // Same gun as `fieldGun`, over on its side with a wheel off. The
+      // silhouette has to read as WRONG at a glance.
+      rect(g, 10, h - 12, w - 24, 6, P.carriageD);
+      rect(g, w - 22, h - 18, 12, 10, P.carriageD);
+      for (let x = 12; x < w - 20; x++) {
+        const t = (x - 12) / (w - 32);
+        const r = Math.round(6 - t * 2);
+        rect(g, x, h - 24 - r, 1, r * 2, P.ironD);
+        px(g, x, h - 24 - r, P.iron);
+      }
+      // The spike, driven into the vent and snapped off. One nail, and it
+      // is the whole difference between a gun and eight hundredweight of iron.
+      rect(g, w - 30, h - 34, 3, 12, P.ironL);
+      px(g, w - 29, h - 36, P.linenL);
+      // A wheel, off, lying flat beside it.
+      ellipse(g, 22, h - 6, 12, 5, P.carriageD);
+      ellipse(g, 22, h - 7, 9, 4, P.carriage);
+      for (let a = 0; a < 8; a++) {
+        const t = (a / 8) * Math.PI * 2;
+        line(g, 22, h - 7, Math.round(22 + Math.cos(t) * 9), Math.round(h - 7 + Math.sin(t) * 4), P.carriageL);
+      }
+    },
+  },
+
+  /** A redoubt's embrasure: a gun looking out through a notch in the bank. */
+  embrasure: {
+    w: 70, h: 44, block: 0.55, sink: 2,
+    draw(g, w, h, v) {
+      // The bank either side, cut turf, with a notch between.
+      for (const [x0, x1] of [[0, 24], [w - 24, w]] as const) {
+        for (let x = x0; x < x1; x++) {
+          const drop = Math.round(Math.abs(x - (x < w / 2 ? x1 : x0)) * 0.35);
+          rect(g, x, 10 + drop, 1, h - 12 - drop, P.turf);
+          px(g, x, 10 + drop, P.turfL);
+          if (hash(x, 0, v) < 0.3) px(g, x, 12 + drop, P.turfD);
+        }
+      }
+      // Fascines revetting the cheeks of the notch.
+      for (const x of [22, w - 26]) {
+        for (let y = 16; y < h - 6; y += 5) {
+          rect(g, x, y, 4, 4, P.brown);
+          hline(g, x, y, 4, P.leafDry);
+        }
+      }
+      // The muzzle in the notch, and a very dark hole behind it.
+      rect(g, 26, 18, w - 52, h - 22, shade(P.ink, 0.08));
+      rect(g, Math.round(w / 2) - 5, 20, 10, 12, P.ironD);
+      rect(g, Math.round(w / 2) - 4, 20, 8, 3, P.ironL);
+      disc(g, w / 2, 24, 3, shade(P.ink, 0.02));
+    },
+  },
+
+  /** A haystack on a Kings County farm, standing in the middle of a battle. */
+  haystack: {
+    w: 60, h: 54, block: 0.45, sink: 2,
+    draw(g, w, h, v) {
+      // A pole in the middle, and hay heaped round it — a New York hayrick,
+      // not a bale. Bales are a hundred years away.
+      vline(g, w / 2, 2, h - 4, P.woodD);
+      for (let y = h - 4; y > 8; y--) {
+        const t = (h - 4 - y) / (h - 12);
+        const half = Math.round((1 - Math.pow(t, 1.6)) * (w / 2 - 3));
+        hline(g, w / 2 - half, y, half * 2, t > 0.55 ? P.buff : P.buffD);
+        px(g, w / 2 - half, y, P.buffD);
+        px(g, w / 2 + half - 1, y, shade(P.buffD, -0.12));
+        if (hash(y, v, 191) < 0.4) px(g, Math.round(w / 2 - half + hash(y, v, 192) * half * 2), y, P.buffL);
+      }
+      // Loose wisps off the sides, or it is a cone.
+      for (let i = 0; i < 24; i++) {
+        const y = Math.round(14 + hash(i, v, 193) * (h - 20));
+        const t = (h - 4 - y) / (h - 12);
+        const half = Math.round((1 - Math.pow(t, 1.6)) * (w / 2 - 3));
+        const s = hash(i, v, 194) < 0.5 ? -1 : 1;
+        line(g, w / 2 + s * half, y, w / 2 + s * (half + 4), y - 2, P.buffL);
+      }
+    },
+  },
+
+  /** An oyster-shell midden. Two hundred years of Brooklyn's dinner. */
+  shellHeap: {
+    w: 46, h: 20, flat: true, block: 0,
+    draw(g, w, h, v) {
+      for (let i = 0; i < 90; i++) {
+        const x = Math.round(4 + hash(i, v, 201) * (w - 8));
+        const y = Math.round(3 + hash(i, v, 202) * (h - 6));
+        const t = hash(i, v, 203);
+        ellipse(g, x, y, 3, 2, t < 0.4 ? P.plasterD : t < 0.75 ? P.plaster : P.plasterL);
+        px(g, x - 1, y - 1, P.plasterL);
+      }
+      speckle(g, 2, 2, w - 4, h - 4, P.siltD, 0.10, v);
+    },
+  },
+
+  /** A milestone on the Jamaica road, which is how anybody knew where they were. */
+  milestone: {
+    w: 22, h: 30, block: 0.14, sink: 3,
+    draw(g, w, h, v) {
+      for (let y = 6; y < h - 2; y++) {
+        const t = (y - 6) / (h - 8);
+        const half = Math.round(4 + t * 4);
+        hline(g, w / 2 - half, y, half * 2, P.stone);
+        px(g, w / 2 - half, y, P.stoneL);
+        px(g, w / 2 + half - 1, y, P.stoneD);
+      }
+      for (let a = 0; a <= 8; a++) {
+        const t = a / 8;
+        px(g, Math.round(w / 2 - 4 + t * 8), Math.round(6 - Math.sin(t * Math.PI) * 3), P.stoneL);
+      }
+      // Cut lettering, illegible on purpose: never readable generated text.
+      for (let y = 12; y < 22; y += 4) hline(g, w / 2 - 3, y, 6, P.stoneD);
+      speckle(g, 4, 6, w - 8, h - 8, P.stoneD, 0.08, v);
+    },
+  },
+
+  /** A pile of knapsacks and blankets, dropped where the boats are. */
+  kitPile: {
+    w: 48, h: 26, block: 0.24, sink: 2,
+    draw(g, w, h, v) {
+      for (let i = 0; i < 7; i++) {
+        const x = Math.round(4 + hash(i, v, 211) * (w - 20));
+        const y = Math.round(h - 6 - hash(i, v, 212) * 12);
+        const c = [P.osnaD, P.brownD, P.linenD, P.greenD][Math.floor(hash(i, v, 213) * 4)];
+        rect(g, x, y, 12, 7, c);
+        hline(g, x, y, 12, shade(c, 0.16));
+        rect(g, x + 2, y + 2, 8, 2, shade(c, -0.14));
+        // A strap, which is what makes it a knapsack and not a box.
+        line(g, x + 1, y, x + 5, y + 7, P.buffD);
+      }
+    },
+  },
+
+  /** A drum, laid flat, with a map on the head. Where a plan gets made outdoors. */
+  drumTable: {
+    w: 40, h: 30, block: 0.22, sink: 2,
+    draw(g, w, h, v) {
+      ellipse(g, w / 2, h - 10, 16, 8, P.woodD);
+      ellipse(g, w / 2, h - 12, 16, 8, P.blueD);
+      ellipse(g, w / 2, h - 13, 14, 7, P.linenL);
+      for (let a = 0; a < 16; a++) {
+        const t = (a / 16) * Math.PI * 2;
+        px(g, Math.round(w / 2 + Math.cos(t) * 15), Math.round(h - 12 + Math.sin(t) * 7.5), P.buffL);
+      }
+      // The sheet on it, curling.
+      rect(g, w / 2 - 10, h - 19, 20, 10, P.paper);
+      hline(g, w / 2 - 10, h - 19, 20, P.paperDim);
+      line(g, w / 2 - 7, h - 15, w / 2 + 6, h - 17, P.inkSoft);
+      line(g, w / 2 - 4, h - 12, w / 2 + 8, h - 13, P.blueD);
+      speckle(g, w / 2 - 9, h - 18, 18, 8, P.paperDim, 0.06, v);
+    },
+  },
+
+  /**
+   * A Hessian grenadier cap, on the ground.
+   *
+   * `docs/05` calls the brass cap plate "the money object" of Act 4 and it
+   * is right: a mitre cap is instantly, unmistakably not-American, and one
+   * of them lying in a street is the whole of what nine hundred prisoners
+   * means, at the size a sprite can carry.
+   */
+  hessianCap: {
+    w: 30, h: 34, block: 0, sink: 2,
+    draw(g, w, h) {
+      // The mitre: a tall front plate over a cloth bag, tipped over.
+      for (let y = 6; y < h - 6; y++) {
+        const t = (y - 6) / (h - 12);
+        const half = Math.round(3 + t * 10);
+        hline(g, w / 2 - half, y, half * 2, P.brassD);
+        px(g, w / 2 - half, y, P.brassL);
+        px(g, w / 2 + half - 1, y, shade(P.brassD, -0.2));
+      }
+      // The lion and the scrollwork, as shapes, never as letters.
+      disc(g, w / 2, 16, 5, P.brass);
+      disc(g, w / 2, 15, 3, P.brassL);
+      for (const s of [-1, 1] as const) {
+        line(g, w / 2 + s * 5, 12, w / 2 + s * 9, 20, P.brassL);
+        line(g, w / 2 + s * 6, 22, w / 2 + s * 10, 26, P.brass);
+      }
+      // The cloth bag behind, and the band.
+      rect(g, w / 2 - 12, h - 8, 24, 5, P.hessian);
+      hline(g, w / 2 - 12, h - 8, 24, P.hessianL);
+      rect(g, w / 2 - 13, h - 4, 26, 3, P.brassD);
+    },
+  },
+
+  /** A stand of arms, grounded: nine hundred muskets in one object. */
+  armsStand: {
+    w: 62, h: 46, block: 0.4, sink: 2,
+    draw(g, _w, h, v) {
+      for (let cluster = 0; cluster < 3; cluster++) {
+        const cx = 12 + cluster * 20;
+        for (const s of [-1, 0, 1] as const) {
+          line(g, cx + s * 6, h - 3, cx + Math.round(s * 1.5), 8, P.woodD);
+          line(g, cx + s * 6 + 1, h - 3, cx + Math.round(s * 1.5) + 1, 8, P.wood);
+          px(g, cx + Math.round(s * 1.5), 7, P.ironL);
+        }
+        // Bayonets crossed at the top. These ones HAVE bayonets, and that is
+        // the point: they are Hessian.
+        disc(g, cx, 7, 2, P.ironD);
+        line(g, cx - 4, 10, cx + 4, 2, P.ironL);
+        line(g, cx + 4, 10, cx - 4, 2, P.ironL);
+        if (hash(cluster, v, 221) < 0.6) {
+          rect(g, cx - 5, h - 14, 10, 6, P.hessian);
+          hline(g, cx - 5, h - 14, 10, P.hessianL);
+        }
+      }
     },
   },
   /*

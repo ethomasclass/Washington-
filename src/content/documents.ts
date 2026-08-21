@@ -13,6 +13,7 @@
 
 import type { DocumentDef } from '../types';
 import { ACT2_DOCUMENTS } from './act2-documents';
+import { ACT3_DOCUMENTS } from './act3-documents';
 
 export const DOCUMENTS: Record<string, DocumentDef> = {
 
@@ -213,6 +214,9 @@ export const DOCUMENTS: Record<string, DocumentDef> = {
    * longest thing in the project a writer has to scroll past.
    * ------------------------------------------------------------------ */
   ...ACT2_DOCUMENTS,
+
+  /* ACT 3 — Brooklyn, and one document that is wrong on purpose. */
+  ...ACT3_DOCUMENTS,
 };
 
 export function documentById(id: string): DocumentDef | undefined {

@@ -58,6 +58,43 @@ export const CAMP_LEGEND: Record<string, TileId> = {
 };
 
 /**
+ * NEW YORK AND THE DELAWARE. Acts 3 and 4.
+ *
+ * Its own alphabet again, and for the same reason Cambridge got one: Brooklyn
+ * needs salt marsh, tidal flat, cobble and plank, and has no use whatever for
+ * a bowling green. Sharing one legend across every exterior in the game would
+ * mean every future map inherited every past map's vocabulary, which is how a
+ * legend turns into a dictionary nobody reads.
+ */
+export const FIELD_LEGEND: Record<string, TileId> = {
+  '.': 'grass',
+  'm': 'meadow',
+  'g': 'gravel',
+  'd': 'dirt',
+  'u': 'mud',
+  't': 'trampled',
+  'e': 'turf',
+  's': 'sand',
+  'h': 'shallow',
+  'w': 'water',
+  'i': 'ice',
+  'n': 'snow',
+  'l': 'slush',
+  'r': 'straw',
+  'b': 'brickyard',
+  'f': 'flag',
+  'x': 'site',
+  'v': 'garden',
+  // Acts 3 and 4's own ground.
+  'q': 'marsh',
+  'z': 'mudflat',
+  'c': 'cobble',
+  'k': 'plank',
+  'o': 'furrow',
+  'y': 'sleet',
+};
+
+/**
  * VIRGINIA INDOORS. Mount Vernon's floors and nobody else's.
  *
  * Wide pine boards, an ochre painted floorcloth in the passage, and a wine
@@ -106,4 +143,9 @@ export const STEP_SOUND: Partial<Record<TileId, 'grass' | 'gravel' | 'board' | '
   // Cambridge. Snow is the quietest footstep in the game and slush is the
   // loudest, which is most of what a winter camp sounds like.
   snow: 'grass', slush: 'gravel', trampled: 'gravel', turf: 'grass', ice: 'stone',
+  // Brooklyn and the Delaware. A marsh is the quietest ground in the game and
+  // a plank stage is the loudest, which is most of the difference between
+  // walking a salt meadow and walking onto a boat in the dark.
+  marsh: 'grass', mudflat: 'gravel', cobble: 'stone', plank: 'board',
+  furrow: 'gravel', sleet: 'gravel',
 };

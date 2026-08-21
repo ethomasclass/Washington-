@@ -118,6 +118,23 @@ export const P = {
   ironD: '#2E3236', iron: '#464B50', ironL: '#646A70',
   // The gun carriages at Ticonderoga were painted with red ochre and lampblack.
   carriageD: '#5E3A28', carriage: '#7C4E34', carriageL: '#986344',
+
+  // --- Brooklyn, and the Delaware ----------------------------------------
+  // Salt marsh: cordgrass in August is a yellow-green nothing like a lawn,
+  // and the mud under it is the colour that gets on everybody's legs.
+  marshD: '#5A6438', marsh: '#7A8248', marshL: '#9CA05E',
+  siltD: '#4A4438', silt: '#645C4A', siltL: '#807561',
+  // Tidal flat, at low water. Half of Gowanus is this twice a day.
+  flatD: '#6A6656', flat: '#8A8674', flatL: '#A6A28E',
+  // Cobbles and plank, which is what a ferry road and a ferry stair are.
+  cobbleD: '#5E5A54', cobble: '#7C7770', cobbleL: '#9A948B',
+  // Night. Nothing at night is black; it is a very dark blue with a green
+  // bias, and the only warm thing in the frame is a lantern.
+  nightD: '#151C26', night: '#233043', nightL: '#374A63',
+  lantern: '#F2C86A', lanternD: '#C08A2E', lanternHalo: '#7A5A1E',
+  // Hessian blue, and the brass of a grenadier cap plate.
+  hessianD: '#1E2A44', hessian: '#2E3F60', hessianL: '#46587C',
+  brassD: '#8A6A22', brass: '#B8933C', brassL: '#DCBE6A',
 } as const;
 
 /** A three-step ramp, for anything that has a lit face and a shadow face. */
@@ -164,6 +181,19 @@ export interface Light {
   bloom: number;
   /** Colour grade: saturation multiplier. The Quarter runs this near zero. */
   saturation: number;
+  /**
+   * Overall exposure, 1 = as lit. Below 1 the whole frame goes down.
+   *
+   * Every light before Act 3 was a daylight, so nothing needed this: a
+   * daylight scene is a question of WHICH colours, not how much of them. A
+   * night scene is the other way round — the lanterns have to be the only
+   * things in the frame that are lit, and no amount of choosing a dark fill
+   * gets you there while the grade is still exposing for noon.
+   *
+   * The first night at the Brooklyn ferry was built without it and came out
+   * looking like a warm afternoon with lamps on.
+   */
+  exposure?: number;
 }
 
 export const LIGHT: Record<string, Light> = {
@@ -260,5 +290,97 @@ export const LIGHT: Record<string, Light> = {
   hqCouncil: {
     key: '#FFE2A2', fill: '#3A4256', haze: '#160F0C',
     sun: -2.40, contrast: 0.94, bloom: 0.52, saturation: 1.06,
+  },
+
+  /* --------------------------------------------------------------------
+   * BROOKLYN, AUGUST 1776.
+   *
+   * Act 3's tone note in `docs/05` is "the paper gets wet", and the whole
+   * act is a light arc downward: a hot hazy August morning on the works, a
+   * wet grey afternoon of driving rain, and then a night on the water with
+   * nothing in the frame but lanterns and fog.
+   *
+   * The act carries a FLOOR AND A CEILING. `docs/05` §3.1 fixes it at the
+   * shader level: "the act cannot look like a good day no matter what the
+   * player does." None of these five lights is allowed to be cheerful, and
+   * the brightest of them has less bloom than Mount Vernon's shadiest.
+   * ------------------------------------------------------------------ */
+
+  /** Late August on Long Island. Hot, hazy, and already wrong. */
+  brooklynAugust: {
+    key: '#F6E8C6', fill: '#93A0AE', haze: '#C0C8CC',
+    sun: -2.05, contrast: 0.66, bloom: 0.40, saturation: 0.92,
+  },
+  /** The marsh at Gowanus. Flatter, greener, and full of standing water. */
+  brooklynMarsh: {
+    key: '#E8E4C4', fill: '#8A9A96', haze: '#B4BEB8',
+    sun: -2.05, contrast: 0.48, bloom: 0.34, saturation: 0.86,
+  },
+  /**
+   * 29 August, and it rained all day.
+   *
+   * Contrast almost off, saturation well down, and the haze pulled right
+   * in toward the key so the distance goes to nothing. This is the light
+   * the council of war sat in.
+   */
+  brooklynRain: {
+    key: '#C8CCCE', fill: '#78828C', haze: '#9BA4AA',
+    sun: -1.60, contrast: 0.22, bloom: 0.18, saturation: 0.54,
+  },
+  /**
+   * THE NIGHT OF THE 29TH, AND THE ACT'S SHOWPIECE.
+   *
+   * Nine thousand men taken off an island in one night, in the dark, in
+   * silence, without losing a man, under an enemy who never noticed. The
+   * key is a lantern and nothing else: `key` is warm and small, `fill` is
+   * the sky over water, and the haze is the fog, which in the old print
+   * direction was bare paper and here is simply a very near fog plane.
+   */
+  brooklynNight: {
+    key: '#E8B855', fill: '#141C2A', haze: '#0F1620',
+    sun: -0.90, contrast: 0.90, bloom: 0.66, saturation: 0.70,
+    exposure: 0.58,
+  },
+  /** Inside Four Chimneys, with the rain on the windows and one candle group. */
+  fourChimneys: {
+    key: '#F0D9A0', fill: '#3A4450', haze: '#10141A',
+    sun: -1.60, contrast: 0.82, bloom: 0.32, saturation: 0.80,
+    exposure: 0.78,
+  },
+
+  /* --------------------------------------------------------------------
+   * THE DELAWARE, 25–26 DECEMBER 1776.
+   *
+   * The darkest act. `docs/05` §4.1: iron-gall at maximum weight, the wash
+   * almost monochrome, and the only warmth from torch and musket flash.
+   * ------------------------------------------------------------------ */
+
+  /** The Pennsylvania bank, late afternoon, 25 December. The worst camp in the game. */
+  ferryCamp: {
+    key: '#D6D2C6', fill: '#7A8088', haze: '#A8ADB2',
+    sun: 0.95, contrast: 0.36, bloom: 0.22, saturation: 0.48,
+  },
+  /** The crossing. Torchlight on black water, sleet, and no horizon at all. */
+  delawareNight: {
+    key: '#E8AC4A', fill: '#111826', haze: '#080D14',
+    sun: -0.70, contrast: 0.95, bloom: 0.62, saturation: 0.60,
+    exposure: 0.50,
+  },
+  /** King Street, an hour after sunrise, in sleet. Daylight, and thin with it. */
+  trentonMorning: {
+    key: '#E4E2DA', fill: '#767E8A', haze: '#B2B6BA',
+    sun: 1.35, contrast: 0.42, bloom: 0.26, saturation: 0.56,
+  },
+  /**
+   * The same street, after.
+   *
+   * Deliberately a shade warmer and a shade more saturated than the fight
+   * that preceded it — not cheerful, but not the same grey either, because
+   * something did in fact happen and the light is allowed to know it. This
+   * is the only place in Acts 3 and 4 where the grade moves upward.
+   */
+  trentonAfter: {
+    key: '#F2E6CA', fill: '#7E8492', haze: '#B8BAB8',
+    sun: 1.35, contrast: 0.50, bloom: 0.34, saturation: 0.70,
   },
 };

@@ -139,14 +139,17 @@ export interface Interactable {
   /**
    * Opens a purpose-built screen instead of, or after, the examine panel.
    *
-   * There is exactly one of these and there should stay that way. The Knox
-   * map table is not a document and not a conversation: it is a plan of the
-   * country between Ticonderoga and Cambridge with tokens on it, and the
-   * only honest way to put a logistics problem in front of a student is to
-   * let them move the tokens. Everything else in this game that looks like a
-   * special case turned out not to need one.
+   * There are two, one per act that has a map table, and they are the only
+   * two: a plan of the country between Ticonderoga and Cambridge with tokens
+   * on it, and a draught of the East River with a wind rose on it. Neither
+   * is a document and neither is a conversation. The only honest way to put
+   * a logistics problem or a wind in front of a student is to let them move
+   * the thing and watch what happens.
+   *
+   * Everything else in this game that looked like it wanted a special case
+   * turned out not to need one, and that should stay true.
    */
-  opens?: 'survey';
+  opens?: 'survey' | 'wind';
 }
 
 export type DocRegister = 'printed' | 'secretary' | 'engrossed' | 'rough';
@@ -251,6 +254,18 @@ export interface MapDef {
   wallHeight?: number;
   interior?: boolean;
   ceiling?: boolean;
+  /**
+   * How far the haze reaches, in world units. Defaults are 34/110 outdoors
+   * and 14/46 indoors.
+   *
+   * Every map before Act 3 wanted the same distance, because every map
+   * before Act 3 was a place you could see across. The night at the Brooklyn
+   * ferry is not: the far shore is a mile off, it is dark, it is raining,
+   * and `docs/05` §3.3 says in terms that the far shore is not drawn at all.
+   * Bringing the fog in to 8/34 draws it by not drawing it.
+   */
+  fogNear?: number;
+  fogFar?: number;
   structures?: StructureDef[];
   props: PropInstance[];
   npcs?: NpcDef[];

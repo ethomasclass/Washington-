@@ -618,7 +618,12 @@ function buildProps(map: MapDef, grid: Grid): THREE.Group {
 
     // Vertical variation, so a row of the same prop is not a row of clones.
     const jitter = 0.94 + hash(Math.round(inst.x * 4), Math.round(inst.z * 4), 5) * 0.12;
-    const colour = lit.clone().multiplyScalar(jitter);
+    // A prop that is its own light source ignores the scene's light entirely.
+    // See the note on `glow` in props.ts: without this a lantern at midnight
+    // is exactly as dark as the mud it stands in.
+    const colour = def.glow
+      ? new THREE.Color(1.0, 0.96, 0.86)
+      : lit.clone().multiplyScalar(jitter);
 
     if (def.flat) {
       quad(flat,

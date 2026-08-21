@@ -101,12 +101,22 @@ const COMPOSITE = /* glsl */ `
     float k = smoothstep(0.0, 1.0, clamp((abs(d) - band) / max(0.0001, band * 1.6), 0.0, 1.0));
     vec3 c = mix(sharp, soft, k * uTiltAmount);
 
-    // Bloom, added rather than screened: it is light arriving, not a filter.
-    c += texture2D(uBloom, vUv).rgb * uBloomStrength;
-
-    // Grade. Lift and gain first, then saturation, so a desaturated scene keeps
-    // its tint — which is exactly what the Witness Register needs.
+    /*
+     * Grade the SCENE, then add the bloom on top of the graded scene.
+     *
+     * The order matters and it took a night at the Brooklyn ferry to find
+     * out why. Bloom is light arriving at the lens from a source in frame;
+     * exposure is how long the plate is open. Grading after the bloom was
+     * added meant that exposing down for a night scene crushed the lanterns
+     * along with everything else, and the first build of that map came out
+     * as a black rectangle with three faint yellow smudges in it.
+     *
+     * This way, stopping the frame down darkens the world and leaves the
+     * lanterns exactly where they were — which is both what a night
+     * photograph looks like and the entire point of a night scene.
+     */
     c = c * uGain + uLift;
+    c += texture2D(uBloom, vUv).rgb * uBloomStrength;
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = mix(vec3(l), c, uSaturation);
 
@@ -295,11 +305,27 @@ export function postFor(light: Light, over: Partial<PostSettings> = {}): PostSet
     ...DEFAULT_POST,
     bloom: light.bloom,
     saturation: light.saturation,
+    /*
+     * A darker frame needs a lower bloom threshold, or nothing in it is
+     * bright enough to bloom at all and the one light source in the scene
+     * stops being a light source.
+     */
+    bloomThreshold: DEFAULT_POST.bloomThreshold * (0.5 + 0.5 * (light.exposure ?? 1)),
     // The haze tints the lift, so distance goes to the sky's colour rather
     // than to grey — which is the only bit of aerial perspective a flat
     // renderer gets for free.
     lift: [(hr / 255) * 0.045, (hg / 255) * 0.045, (hb / 255) * 0.05],
-    gain: [1, 1, 1],
+    /*
+     * Exposure, tinted a hair cool.
+     *
+     * A night frame is not a day frame with a dark fill; it is the same
+     * frame exposed three stops down with the lanterns left where they are.
+     * The blue channel is held up slightly because everything the eye reads
+     * as night is a very dark blue and never a grey.
+     */
+    gain: light.exposure === undefined
+      ? [1, 1, 1]
+      : [light.exposure, light.exposure * 1.01, light.exposure * 1.09],
     ...over,
   };
 }

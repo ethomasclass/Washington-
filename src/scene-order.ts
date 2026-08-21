@@ -11,4 +11,6 @@ export const SCENE_ORDER: string[] = [
   // they are dead and stay where they are — an index in this list is a bit
   // pattern in every save code that has ever been written down.
   'CB-CAMP', 'CB-HQ', 'CB-HQ-UP', 'CB-CAMP-W', 'CB-HQ-W', 'CB-HQ-UP-W',
+  // Act 3.
+  'BK-LINES', 'BK-FERRY', 'BK-HOUSE', 'BK-FERRY-N',
 ];
